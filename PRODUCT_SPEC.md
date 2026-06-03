@@ -1,0 +1,89 @@
+# Product Specification
+
+## Product
+
+FinAiTr is a mobile-first PWA personal finance tracker focused on item-level receipt analysis.
+
+The app helps a single user understand where money goes by combining:
+
+- manual expense tracking;
+- pasted receipt text parsing;
+- human review of parsed receipt items;
+- recurring expense tracking;
+- dashboard analytics by category, merchant, product, and month.
+
+## Core MVP
+
+The first MVP is limited to local-first personal finance workflows:
+
+1. Manual transactions.
+2. Receipt text parsing from pasted OCR-like text.
+3. Receipt review and confirmation.
+4. Recurring expenses and subscriptions.
+5. Dashboard analytics.
+
+The MVP must be useful without bank access, server accounts, cloud storage, or real OCR.
+
+## Non-goals
+
+The first MVP must not include:
+
+- real bank API integration;
+- stored bank credentials;
+- real Google Drive integration;
+- real OCR API keys or provider calls;
+- crypto exchange integration;
+- brokerage or investment account integration;
+- payment execution;
+- multi-user auth;
+- background server jobs;
+- financial advice or tax advice automation.
+
+Future integrations may be planned, but not implemented, until the local-first MVP is stable.
+
+## Primary user
+
+A single person tracking personal spending from a phone, with particular interest in understanding spending at item level:
+
+- groceries and dairy;
+- alcohol;
+- medicine and health;
+- games;
+- software and subscriptions;
+- gym and fitness;
+- merchants and monthly trends.
+
+## Main workflows
+
+### Manual transaction
+
+The user opens the app, adds an expense with amount, date, merchant, account, category, tags, and note, then sees dashboard totals update.
+
+### Receipt text parsing
+
+The user pastes raw receipt text, such as text copied from an OCR app. The app parses merchant, date, total, line items, prices, guessed categories, tags, confidence, and warnings.
+
+### Receipt review
+
+The user edits the parsed receipt, adjusts item names, categories, tags, and prices, sees a mismatch warning if item totals do not match receipt total, then confirms the receipt. The confirmed receipt contributes to analytics and creates or links a transaction.
+
+### Recurring expense
+
+The user creates recurring expenses such as subscriptions, gym memberships, and software. The app calculates upcoming charges and monthly recurring total.
+
+### Dashboard analytics
+
+The user sees total monthly spend, spend by category, spend by merchant, top products/items, monthly trend, recurring total, recent receipts, and item search analytics.
+
+## Success criteria
+
+The first MVP is successful when:
+
+- manual transactions can be created, edited, deleted, and filtered;
+- pasted receipt text can produce editable receipt drafts;
+- confirmed receipts produce item-level analytics;
+- recurring expenses can be managed and included in the dashboard;
+- dashboard analytics update from local app data;
+- local data is not sent to external services;
+- validation commands pass.
+
