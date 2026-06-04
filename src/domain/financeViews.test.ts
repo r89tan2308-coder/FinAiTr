@@ -5,8 +5,12 @@ import {
   defaultCurrencySettings,
   roundMoney,
 } from "./currencySettings";
-import { buildFinanceOverview, toMonthlyRecurringAmount } from "./financeViews";
-import { type RecurringExpense } from "./models";
+import {
+  buildFinanceOverview,
+  buildReceiptItemAnalytics,
+  toMonthlyRecurringAmount,
+} from "./financeViews";
+import { type FinanceSnapshot, type RecurringExpense } from "./models";
 
 describe("finance view helpers", () => {
   it("builds June 2026 dashboard totals from seeded transactions", () => {
@@ -28,31 +32,25 @@ describe("finance view helpers", () => {
     });
   });
 
-  it("aggregates receipt items into top products", () => {
+  it("aggregates confirmed receipt items into top products", () => {
     const overview = buildFinanceOverview(createSeedFinanceSnapshot(), {
       monthKey: "2026-06",
     });
 
-    expect(overview.topProducts.slice(0, 3)).toEqual([
-      {
-        id: "coffee",
-        name: "Coffee",
-        amount: usdToRub(12.3),
-        tag: "groceries",
-      },
+    expect(overview.topProducts).toEqual([
       {
         id: "ibuprofen",
         name: "Ibuprofen",
         amount: usdToRub(12.5),
-        tag: "medicine",
+        tag: "Medicine",
       },
       {
-        id: "cottage cheese",
-        name: "Cottage cheese",
-        amount: usdToRub(8.8),
-        tag: "dairy",
+        id: "bandages",
+        name: "Bandages",
+        amount: usdToRub(6.2),
+        tag: "Medicine",
       },
-    ].sort((left, right) => right.amount - left.amount));
+    ]);
   });
 
   it("converts mixed transaction currencies into the selected display currency", () => {
@@ -193,12 +191,202 @@ describe("finance view helpers", () => {
       ),
     );
   });
+
+  it("aggregates confirmed receipt items by normalized name for a period", () => {
+    const snapshot = createItemAnalyticsSnapshot();
+    const originalItems = structuredClone(snapshot.receiptItems);
+
+    const analytics = buildReceiptItemAnalytics(snapshot, {
+      monthKey: "2026-06",
+      period: "current_month",
+    });
+    const overview = buildFinanceOverview(snapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(analytics.totalAmount).toBe(usdToRub(5));
+    expect(analytics.itemCount).toBe(1);
+    expect(analytics.averageItemPrice).toBe(usdToRub(5));
+    expect(analytics.topItems).toEqual([
+      {
+        averageItemPrice: usdToRub(5),
+        categoryId: "dairy",
+        categoryName: "Dairy",
+        id: "milk",
+        itemCount: 1,
+        name: "Milk",
+        totalAmount: usdToRub(5),
+      },
+    ]);
+    expect(overview.monthlySpend).toBe(usdToRub(100));
+    expect(snapshot.receiptItems).toEqual(originalItems);
+  });
+
+  it("aggregates confirmed receipt items by category", () => {
+    const analytics = buildReceiptItemAnalytics(createItemAnalyticsSnapshot(), {
+      monthKey: "2026-06",
+      period: "all_time",
+    });
+    const dairy = analytics.topCategories.find((category) => category.id === "dairy");
+    const groceries = analytics.topCategories.find(
+      (category) => category.id === "groceries",
+    );
+    const dairyTotal = roundMoney(usdToRub(5) + eurToRub(7));
+
+    expect(dairy).toMatchObject({
+      averageItemPrice: roundMoney(dairyTotal / 2),
+      itemCount: 2,
+      name: "Dairy",
+      totalAmount: dairyTotal,
+    });
+    expect(groceries).toMatchObject({
+      averageItemPrice: gbpToRub(10),
+      itemCount: 1,
+      name: "Groceries",
+      totalAmount: gbpToRub(10),
+    });
+  });
+
+  it("uses receipt dates for current-month filtering and all-time analytics", () => {
+    const snapshot = createItemAnalyticsSnapshot();
+    const currentMonth = buildReceiptItemAnalytics(snapshot, {
+      monthKey: "2026-06",
+      period: "current_month",
+    });
+    const allTime = buildReceiptItemAnalytics(snapshot, {
+      monthKey: "2026-06",
+      period: "all_time",
+    });
+
+    expect(currentMonth.totalAmount).toBe(usdToRub(5));
+    expect(currentMonth.itemCount).toBe(1);
+    expect(allTime.totalAmount).toBe(
+      roundMoney(usdToRub(5) + eurToRub(7) + gbpToRub(10)),
+    );
+    expect(allTime.itemCount).toBe(3);
+  });
+
+  it("keeps receipt item analytics separate from monthly transaction spend", () => {
+    const snapshot = createItemAnalyticsSnapshot();
+
+    const overview = buildFinanceOverview(snapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(overview.monthlySpend).toBe(usdToRub(100));
+    expect(overview.itemAnalytics.current_month.totalAmount).toBe(usdToRub(5));
+    expect(overview.categorySpend[0]).toMatchObject({
+      amount: usdToRub(100),
+      id: "groceries",
+    });
+  });
 });
 
 function usdToRub(amount: number): number {
   return convertMoney(amount, "USD", "RUB", defaultCurrencySettings);
 }
 
+function eurToRub(amount: number): number {
+  return convertMoney(amount, "EUR", "RUB", defaultCurrencySettings);
+}
+
+function gbpToRub(amount: number): number {
+  return convertMoney(amount, "GBP", "RUB", defaultCurrencySettings);
+}
+
 function sumUsdToRub(amounts: number[]): number {
   return roundMoney(amounts.reduce((sum, amount) => sum + usdToRub(amount), 0));
+}
+
+function createItemAnalyticsSnapshot(): FinanceSnapshot {
+  const snapshot = createSeedFinanceSnapshot();
+  const baseReceipt = snapshot.receipts[0];
+  const baseItem = snapshot.receiptItems[0];
+
+  snapshot.transactions = [
+    {
+      ...snapshot.transactions[0],
+      amount: 100,
+      currency: "USD",
+      date: "2026-06-08",
+      id: "tx-confirmed-june",
+      receiptId: "receipt-confirmed-june",
+      source: "receipt",
+    },
+  ];
+  snapshot.receipts = [
+    {
+      ...baseReceipt,
+      currency: "USD",
+      date: "2026-06-08",
+      id: "receipt-confirmed-june",
+      status: "confirmed",
+    },
+    {
+      ...baseReceipt,
+      currency: "EUR",
+      date: "2026-05-31",
+      id: "receipt-confirmed-may",
+      status: "confirmed",
+    },
+    {
+      ...baseReceipt,
+      currency: "USD",
+      date: "2026-06-09",
+      id: "receipt-needs-review",
+      status: "needs_review",
+    },
+    {
+      ...baseReceipt,
+      currency: "GBP",
+      date: undefined,
+      id: "receipt-confirmed-no-date",
+      status: "confirmed",
+    },
+  ];
+  snapshot.receiptItems = [
+    {
+      ...baseItem,
+      categoryId: "dairy",
+      id: "item-june-milk",
+      normalizedName: "milk",
+      rawName: "Milk",
+      receiptId: "receipt-confirmed-june",
+      tags: ["dairy"],
+      totalPrice: 5,
+    },
+    {
+      ...baseItem,
+      categoryId: "dairy",
+      id: "item-may-milk",
+      normalizedName: "milk",
+      rawName: "Milk",
+      receiptId: "receipt-confirmed-may",
+      tags: ["dairy"],
+      totalPrice: 7,
+    },
+    {
+      ...baseItem,
+      categoryId: "groceries",
+      id: "item-review-coffee",
+      normalizedName: "coffee",
+      rawName: "Coffee",
+      receiptId: "receipt-needs-review",
+      tags: ["groceries"],
+      totalPrice: 999,
+    },
+    {
+      ...baseItem,
+      categoryId: "groceries",
+      id: "item-no-date-tea",
+      normalizedName: "tea",
+      rawName: "Tea",
+      receiptId: "receipt-confirmed-no-date",
+      tags: ["groceries"],
+      totalPrice: 10,
+    },
+  ];
+  snapshot.recurringExpenses = [];
+
+  return snapshot;
 }

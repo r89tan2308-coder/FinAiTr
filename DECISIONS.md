@@ -302,3 +302,24 @@ Consequences:
 - Active recurring expenses contribute to the separate Dashboard recurring metric only.
 - Recurring expenses do not create transactions, do not alter monthly transaction spend, and do not affect receipt confirmation behavior.
 - No scheduling jobs, notifications, subscription detection, bank APIs, OCR, Google Drive, AI/LLM calls, crypto/brokerage integration, or live FX refresh is added.
+
+## 2026-06-04: Phase 7A item analytics are confirmed-receipt breakdowns
+
+Decision:
+
+Item-level analytics are derived only from final `ReceiptItem` records linked to final `Receipt` records with `status: confirmed`. The Dashboard presents these analytics as a separate confirmed receipt item breakdown, not as additional spending.
+
+Rationale:
+
+Receipt items provide product and category detail, but the linked receipt transaction already represents the accounting spend. Treating item analytics as a separate breakdown preserves item-level value without double-counting receipt-linked purchases.
+
+Consequences:
+
+- Dashboard monthly spend remains transaction-based.
+- Existing transaction category and merchant totals remain transaction-based in Phase 7A.
+- Item analytics aggregate by normalized item name and item category.
+- Current-month item analytics use final receipt dates; all-time analytics include all confirmed final receipts.
+- Receipt item amounts are converted for display using the linked receipt currency and the existing manual FX settings.
+- Original receipt item totals and receipt currencies are not rewritten.
+- Drafts, reviewed drafts, needs-review receipts, rejected receipts, and receipt draft items are excluded from item analytics.
+- Receipt confirmation, recurring expenses, external integrations, live FX, bank matching, and transaction creation behavior are unchanged.

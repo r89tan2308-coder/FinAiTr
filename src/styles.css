@@ -205,6 +205,33 @@ button {
   margin: 0;
 }
 
+.segmented-control {
+  background: #e5e9ef;
+  border-radius: 8px;
+  display: inline-grid;
+  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 38px;
+  min-width: 168px;
+  padding: 3px;
+}
+
+.segmented-control button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #4b5563;
+  font-size: 0.82rem;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.segmented-control button[aria-pressed="true"] {
+  background: #ffffff;
+  color: #0f766e;
+}
+
 .icon-text-button,
 .primary-button,
 .secondary-button,
@@ -510,6 +537,68 @@ button {
   font-weight: 700;
   padding: 18px;
   text-align: center;
+}
+
+.item-analytics-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.item-analytics-panel p {
+  color: #697386;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.analytics-summary-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+.analytics-summary-item {
+  background: #ffffff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  min-height: 92px;
+  padding: 12px;
+}
+
+.analytics-summary-item span,
+.analytics-row span {
+  color: #697386;
+}
+
+.analytics-summary-item span {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.analytics-summary-item strong {
+  color: #111827;
+  font-size: 1.25rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.analytics-grid,
+.analytics-column {
+  display: grid;
+  gap: 12px;
+}
+
+.analytics-column h3 {
+  color: #111827;
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.analytics-row {
+  align-items: start;
 }
 
 .status-banner {
@@ -907,6 +996,14 @@ button {
 @media (min-width: 620px) {
   .metric-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .analytics-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .analytics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .receipt-summary-grid {

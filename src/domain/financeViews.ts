@@ -32,6 +32,37 @@ export interface ProductSpend {
   tag: string;
 }
 
+export type ItemAnalyticsPeriod = "current_month" | "all_time";
+
+export interface ReceiptItemAnalyticsItem {
+  id: string;
+  name: string;
+  totalAmount: number;
+  itemCount: number;
+  averageItemPrice: number;
+  categoryId: string;
+  categoryName: string;
+}
+
+export interface ReceiptItemCategoryAnalytics {
+  id: string;
+  name: string;
+  totalAmount: number;
+  itemCount: number;
+  averageItemPrice: number;
+  color: string;
+}
+
+export interface ReceiptItemAnalyticsSummary {
+  averageItemPrice: number;
+  itemCount: number;
+  monthKey?: string;
+  period: ItemAnalyticsPeriod;
+  topCategories: ReceiptItemCategoryAnalytics[];
+  topItems: ReceiptItemAnalyticsItem[];
+  totalAmount: number;
+}
+
 export interface FinanceOverview {
   displayCurrency: CurrencySettings["displayCurrency"];
   monthKey: string;
@@ -39,6 +70,7 @@ export interface FinanceOverview {
   recurringMonthlyTotal: number;
   pendingReceiptCount: number;
   categorySpend: CategorySpend[];
+  itemAnalytics: Record<ItemAnalyticsPeriod, ReceiptItemAnalyticsSummary>;
   merchantSpend: MerchantSpend[];
   topProducts: ProductSpend[];
   recentTransactions: Transaction[];
@@ -74,6 +106,14 @@ export function buildFinanceOverview(
   const monthTransactions = snapshot.transactions.filter((transaction) =>
     transaction.date.startsWith(monthKey),
   );
+  const currentMonthItemAnalytics = buildReceiptItemAnalytics(snapshot, {
+    monthKey,
+    period: "current_month",
+  });
+  const allTimeItemAnalytics = buildReceiptItemAnalytics(snapshot, {
+    monthKey,
+    period: "all_time",
+  });
 
   return {
     displayCurrency,
@@ -102,12 +142,17 @@ export function buildFinanceOverview(
       snapshot.categories,
       currencySettings,
     ),
+    itemAnalytics: {
+      all_time: allTimeItemAnalytics,
+      current_month: currentMonthItemAnalytics,
+    },
     merchantSpend: getMerchantSpend(monthTransactions, currencySettings),
-    topProducts: getTopProducts(
-      snapshot.receiptItems,
-      snapshot.receipts,
-      currencySettings,
-    ),
+    topProducts: currentMonthItemAnalytics.topItems.map((item) => ({
+      amount: item.totalAmount,
+      id: item.id,
+      name: item.name,
+      tag: item.categoryName,
+    })),
     recentTransactions: sortByDateDesc(snapshot.transactions).slice(0, 4),
     recentReceipts: sortReceiptsByDateDesc(snapshot.receipts).slice(0, 4),
     recurringExpenses: sortRecurringByDueDate(snapshot.recurringExpenses),
@@ -176,6 +221,98 @@ export function getMerchantSpend(
     .sort((left, right) => right.amount - left.amount);
 }
 
+export function buildReceiptItemAnalytics(
+  snapshot: FinanceSnapshot,
+  options: {
+    monthKey?: string;
+    period?: ItemAnalyticsPeriod;
+  } = {},
+): ReceiptItemAnalyticsSummary {
+  const currencySettings = snapshot.currencySettings ?? defaultCurrencySettings;
+  const displayCurrency = currencySettings.displayCurrency;
+  const monthKey = options.monthKey ?? getCurrentMonthKey();
+  const period = options.period ?? "current_month";
+  const categoryMap = new Map(
+    snapshot.categories.map((category) => [category.id, category]),
+  );
+  const confirmedReceiptById = new Map(
+    snapshot.receipts
+      .filter((receipt) => receipt.status === "confirmed")
+      .filter((receipt) =>
+        period === "current_month"
+          ? Boolean(receipt.date?.startsWith(monthKey))
+          : true,
+      )
+      .map((receipt) => [receipt.id, receipt]),
+  );
+  const itemTotals = new Map<string, ReceiptItemAnalyticsItem>();
+  const categoryTotals = new Map<string, ReceiptItemCategoryAnalytics>();
+  let itemCount = 0;
+  let totalAmount = 0;
+
+  snapshot.receiptItems.forEach((item) => {
+    const receipt = confirmedReceiptById.get(item.receiptId);
+
+    if (!receipt) {
+      return;
+    }
+
+    const convertedAmount = convertMoney(
+      item.totalPrice,
+      receipt.currency,
+      displayCurrency,
+      currencySettings,
+    );
+    const itemId = item.normalizedName || item.rawName.toLowerCase();
+    const category = categoryMap.get(item.categoryId ?? "") ?? fallbackCategory;
+    const currentItem = itemTotals.get(itemId);
+    const currentItemCount = (currentItem?.itemCount ?? 0) + 1;
+    const currentItemTotal = roundMoney(
+      (currentItem?.totalAmount ?? 0) + convertedAmount,
+    );
+    const currentCategory = categoryTotals.get(category.id);
+    const currentCategoryCount = (currentCategory?.itemCount ?? 0) + 1;
+    const currentCategoryTotal = roundMoney(
+      (currentCategory?.totalAmount ?? 0) + convertedAmount,
+    );
+
+    itemCount += 1;
+    totalAmount += convertedAmount;
+
+    itemTotals.set(itemId, {
+      averageItemPrice: roundMoney(currentItemTotal / currentItemCount),
+      categoryId: currentItem?.categoryId ?? category.id,
+      categoryName: currentItem?.categoryName ?? category.name,
+      id: itemId,
+      itemCount: currentItemCount,
+      name: currentItem?.name ?? item.rawName,
+      totalAmount: currentItemTotal,
+    });
+
+    categoryTotals.set(category.id, {
+      averageItemPrice: roundMoney(currentCategoryTotal / currentCategoryCount),
+      color: category.color ?? fallbackCategory.color ?? "#64748b",
+      id: category.id,
+      itemCount: currentCategoryCount,
+      name: category.name,
+      totalAmount: currentCategoryTotal,
+    });
+  });
+
+  const roundedTotalAmount = roundMoney(totalAmount);
+
+  return {
+    averageItemPrice:
+      itemCount > 0 ? roundMoney(roundedTotalAmount / itemCount) : 0,
+    itemCount,
+    monthKey: period === "current_month" ? monthKey : undefined,
+    period,
+    topCategories: sortItemCategoryAnalytics([...categoryTotals.values()]),
+    topItems: sortItemAnalytics([...itemTotals.values()]),
+    totalAmount: roundedTotalAmount,
+  };
+}
+
 export function getTopProducts(
   items: ReceiptItem[],
   receipts: Receipt[] = [],
@@ -184,10 +321,16 @@ export function getTopProducts(
   const totals = new Map<string, ProductSpend>();
   const displayCurrency = currencySettings.displayCurrency;
   const receiptCurrencyById = new Map(
-    receipts.map((receipt) => [receipt.id, receipt.currency]),
+    receipts
+      .filter((receipt) => receipt.status === "confirmed")
+      .map((receipt) => [receipt.id, receipt.currency]),
   );
 
   items.forEach((item) => {
+    if (!receiptCurrencyById.has(item.receiptId)) {
+      return;
+    }
+
     const current = totals.get(item.normalizedName);
     const tag = item.tags[0] ?? "item";
     const sourceCurrency = receiptCurrencyById.get(item.receiptId) ?? "USD";
@@ -257,5 +400,23 @@ function sortRecurringByDueDate(
 ): RecurringExpense[] {
   return [...recurringExpenses].sort((left, right) =>
     left.nextDueDate.localeCompare(right.nextDueDate),
+  );
+}
+
+function sortItemAnalytics(
+  items: ReceiptItemAnalyticsItem[],
+): ReceiptItemAnalyticsItem[] {
+  return items.sort(
+    (left, right) =>
+      right.totalAmount - left.totalAmount || left.name.localeCompare(right.name),
+  );
+}
+
+function sortItemCategoryAnalytics(
+  categories: ReceiptItemCategoryAnalytics[],
+): ReceiptItemCategoryAnalytics[] {
+  return categories.sort(
+    (left, right) =>
+      right.totalAmount - left.totalAmount || left.name.localeCompare(right.name),
   );
 }

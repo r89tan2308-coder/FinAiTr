@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 6 React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, and recurring expense CRUD.
+The repository now has a Phase 7A React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, and confirmed receipt item analytics.
 
 Existing files:
 
@@ -20,11 +20,12 @@ Existing files:
 - receipt draft review/edit UI for saved drafts.
 - explicit reviewed-draft confirmation that creates one final receipt, final receipt items, and one receipt-linked transaction.
 - recurring expense create, edit, delete, list, validation, and display-only monthly estimate.
+- Dashboard item analytics from confirmed final receipt items only, with current-month/all-time filters.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
-- full item-level dashboard analytics and search/trends;
+- product search, monthly trend, and broader dashboard analytics polish;
 - backup/import/export and local data reset UI;
 
 ## Target stack
@@ -56,7 +57,7 @@ No backend is required for the first MVP.
 
 ## Implemented source layout
 
-Phase 6 uses this layout:
+Phase 7A uses this layout:
 
 ```text
 src/
@@ -83,6 +84,7 @@ src/
     transactionValidation.test.ts
   pages/
     DashboardPage.tsx
+    DashboardPage.test.tsx
     TransactionsPage.tsx
     ReceiptsPage.test.tsx
     ReceiptsPage.tsx
@@ -199,14 +201,17 @@ Dev/test browser data reset note: the local app database is the browser IndexedD
 - pending receipt count;
 - category spend;
 - merchant spend;
-- top receipt products/items;
+- confirmed receipt item analytics;
+- top confirmed receipt products/items;
 - recent transactions;
 - recent receipts;
 - recurring expenses sorted by due date.
 
-These helpers convert transactions, recurring expenses, and receipt item totals into the configured display currency before aggregation. Conversion is display-only: source records keep their original `amount` and `currency`, and `buildFinanceOverview` must not rewrite transaction, receipt, receipt draft, or recurring records.
+These helpers convert transactions, recurring expenses, and receipt item totals into the configured display currency before aggregation. Conversion is display-only: source records keep their original `amount`, `totalPrice`, and `currency`, and `buildFinanceOverview` must not rewrite transaction, receipt, receipt item, receipt draft, or recurring records.
 
 The Dashboard monthly spend remains transaction-based. The recurring monthly total is a separate active-recurring estimate and must not be added into transaction spend until a future phase explicitly creates normal transactions from recurring expenses.
+
+Confirmed receipt item analytics are a separate breakdown of final receipt data, not extra spending. They are derived from `receipts` with `status: confirmed` and the linked `receiptItems`; draft, reviewed-draft, needs-review, and rejected receipt data is excluded. Current-month item analytics use the final receipt date when available and exclude confirmed receipts without a date from the current-month filter. All-time item analytics include confirmed receipts even when a receipt date is missing.
 
 ## Manual transactions
 
@@ -566,6 +571,26 @@ Confirmed draft idempotency is enforced in the repository. A draft already marke
 
 Dashboard spend, category, and merchant totals update through the created transaction. Receipt items are persisted for receipt/product detail and must not independently add to Dashboard spend totals.
 
+## Confirmed receipt item analytics
+
+Phase 7A adds item analytics to the Dashboard as a receipt-detail section.
+
+The derived analytics aggregate confirmed final receipt items by:
+
+- normalized item name;
+- item category.
+
+Each aggregate reports:
+
+- total amount in the selected display currency;
+- item count;
+- average item price;
+- top items or categories sorted by total amount.
+
+Receipt items do not have their own currency field, so conversion uses the linked final receipt currency. The source `ReceiptItem.totalPrice` and linked `Receipt.currency` are preserved unchanged.
+
+The Dashboard UI labels this section as a confirmed receipt item breakdown and states that it is not extra spending. The section supports `This month` and `All time` filters and remains read-only in Phase 7A.
+
 ## Analytics rules
 
 Dashboard analytics must support:
@@ -575,7 +600,7 @@ Dashboard analytics must support:
 - combined spend without double-counting receipt-linked transactions.
 - a separate recurring expense estimate that does not change transaction spend.
 
-When a receipt is confirmed and linked to a transaction, category and item analytics should use receipt items for item-level detail while transaction totals remain a fallback for non-receipt expenses.
+When a receipt is confirmed and linked to a transaction, the created transaction remains the source for monthly spend, spend-by-category, and merchant spend. Receipt items provide a separate item-level breakdown for product and receipt-detail analytics only.
 
 ## Provider boundaries
 

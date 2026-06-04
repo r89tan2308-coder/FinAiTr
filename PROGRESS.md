@@ -1584,6 +1584,97 @@ Result: succeeded. Found 0 vulnerabilities.
 
 Phase 7: dashboard analytics MVP, including item-level analytics/search/trends and explicit double-counting protection around receipt-linked transactions.
 
+## 2026-06-04: Phase 7A confirmed receipt item analytics completed
+
+### Completed
+
+- Added item-level analytics derived from final confirmed receipts only.
+- Aggregated confirmed receipt items by:
+  - normalized item name;
+  - item category.
+- Added totals, item counts, average item price, top items, and top item categories.
+- Added current-month and all-time item analytics periods.
+- Current-month filtering uses final receipt date when available; all-time includes all confirmed final receipts.
+- Display amounts use existing manual FX conversion through the linked final receipt currency.
+- Preserved original `ReceiptItem.totalPrice` and linked `Receipt.currency`; conversion is display-only.
+- Added a mobile-friendly Dashboard `Item analytics` section.
+- Clearly labeled item analytics as a confirmed receipt breakdown, not extra spending.
+- Confirmed Dashboard monthly spend remains transaction-based and does not double-count receipt items.
+- Kept hard non-goals out of scope:
+  - no receipt confirmation behavior changes;
+  - no OCR, image upload, Google Drive, AI/LLM calls, bank APIs, crypto/brokerage, live FX, bank matching, or auto-created transactions;
+  - no recurring expense behavior changes.
+- Updated `ARCHITECTURE.md` and `DECISIONS.md`.
+
+### Files added
+
+- `src/pages/DashboardPage.test.tsx`
+
+### Files updated
+
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/domain/financeViews.ts`
+- `src/domain/financeViews.test.ts`
+- `src/pages/DashboardPage.tsx`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 11 test files passed, 54 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Browser verification
+
+- Started Vite at `http://127.0.0.1:5174/` after the first sandboxed dev-server attempt failed with `spawn EPERM`.
+- Opened Dashboard in the in-app browser.
+- Confirmed the `Item analytics` section rendered.
+- Confirmed the section label states it is a confirmed receipt item breakdown and not extra spending.
+- Confirmed top items and top item categories rendered.
+- Confirmed the `This month` and `All time` period controls rendered.
+- Switched to `All time` and confirmed the selected state changed.
+- Stopped the Vite listener on port `5174` after verification.
+
+Browser note: this browser's IndexedDB contains local verification receipt data from previous phases, so browser-visible totals can differ from seed-only test totals. Repository state and tests remain deterministic.
+
+### Next recommended phase
+
+Phase 7B: continue Dashboard analytics with product search, monthly trend, and broader double-counting coverage without adding external integrations.
+
 ## 2026-06-04: Phase 6 stabilization checkpoint
 
 ### Completed
@@ -1643,3 +1734,69 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 7: dashboard analytics MVP, including item-level analytics/search/trends and explicit double-counting protection around receipt-linked transactions.
+
+## 2026-06-04: Phase 7A stabilization checkpoint
+
+### Completed
+
+- Reviewed the Phase 7A working tree and confirmed it contains item-level Dashboard analytics, focused tests, CSS, and docs only.
+- Confirmed item analytics are derived from final `ReceiptItem` records linked to final `Receipt` records with `status: confirmed`.
+- Confirmed drafts, reviewed drafts, needs-review receipts, rejected receipts, and receipt draft items are excluded from Phase 7A analytics.
+- Confirmed Dashboard monthly spend, category spend, and merchant spend remain transaction-based and are not increased by receipt item totals.
+- Confirmed display currency conversion remains display-only:
+  - receipt item source amounts stay in `ReceiptItem.totalPrice`;
+  - source currency remains on the linked final `Receipt.currency`;
+  - transaction amounts and currencies are not rewritten.
+- Confirmed the `This month` and `All time` item analytics filters are implemented, documented, and covered by tests.
+- Added this stabilization entry so the latest `PROGRESS.md` recommendation now points to Phase 7B.
+- Kept hard non-goals out of scope:
+  - no CSV import/export;
+  - no OCR, image upload, Google Drive, AI/LLM calls, bank APIs, crypto/brokerage, live FX, bank matching, or auto-created transactions;
+  - no receipt confirmation or recurring expense behavior changes.
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 11 test files passed, 54 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- The browser used for manual verification may still contain local IndexedDB receipt verification data from earlier phases. That data is not stored in the repository and can be cleared through browser storage tools or `indexedDB.deleteDatabase("finaitr-local")` during development.
+
+### Next recommended phase
+
+Phase 7B: continue Dashboard analytics with product search, monthly trend, and broader double-counting coverage without adding external integrations.
