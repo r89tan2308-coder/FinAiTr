@@ -24,6 +24,27 @@ The first MVP is limited to local-first personal finance workflows:
 
 The MVP must be useful without bank access, server accounts, cloud storage, or real OCR.
 
+## Current analytics vs future AI ingestion
+
+Current Dashboard analytics are deterministic local app views. They are derived from:
+
+- local manual transactions;
+- confirmed final receipts;
+- confirmed final receipt items;
+- local recurring expense records;
+- manual display-currency settings.
+
+AI receipt ingestion is a planned future intake layer, not a Dashboard analytics source by itself. Its job is to find or receive receipt text, extract a structured receipt draft, and send that draft through the existing human review and confirm flow.
+
+Future receipt text sources are:
+
+- manual paste, already supported by the MVP parser UI;
+- Gmail messages that contain receipt text;
+- Google Drive files that contain receipt text;
+- Google Docs documents that contain receipt text.
+
+Future AI extraction must create receipt drafts only. It must not create transactions, confirm receipts, update Dashboard totals, or skip human review. Dashboard impact still happens only after the user reviews a draft and explicitly confirms it into one final receipt plus one linked transaction.
+
 ## Non-goals
 
 The first MVP must not include:
@@ -40,6 +61,8 @@ The first MVP must not include:
 - financial advice or tax advice automation.
 
 Future integrations may be planned, but not implemented, until the local-first MVP is stable.
+
+Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. It still must not add real Gmail, Google Drive, Google Docs, OAuth, backend jobs, scheduled sync, OCR APIs, or AI API calls.
 
 ## Primary user
 
@@ -86,4 +109,3 @@ The first MVP is successful when:
 - dashboard analytics update from local app data;
 - local data is not sent to external services;
 - validation commands pass.
-

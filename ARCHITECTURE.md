@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 7B React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, and searchable confirmed receipt item analytics.
+The repository now has a Phase 7C React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, searchable confirmed receipt item analytics, and contract-only planning for future AI receipt ingestion.
 
 Existing files:
 
@@ -21,11 +21,12 @@ Existing files:
 - explicit reviewed-draft confirmation that creates one final receipt, final receipt items, and one receipt-linked transaction.
 - recurring expense create, edit, delete, list, validation, and display-only monthly estimate.
 - Dashboard item analytics from confirmed final receipt items only, with current-month/all-time filters, item search, category filtering, and source receipt item drilldown.
+- future receipt ingestion contracts for manual paste, Gmail, Google Drive, Google Docs, and AI receipt extraction. These contracts are not wired into the app yet.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
-- monthly trend and broader dashboard analytics polish;
+- monthly trend and broader dashboard analytics polish in Phase 7D;
 - backup/import/export and local data reset UI;
 
 ## Target stack
@@ -57,7 +58,7 @@ No backend is required for the first MVP.
 
 ## Implemented source layout
 
-Phase 7B uses this layout:
+Phase 7C uses this layout:
 
 ```text
 src/
@@ -107,6 +108,9 @@ src/
     parser.ts
     parser.test.ts
     types.ts
+  receipt-ingestion/
+    receiptExtractionContract.ts
+    types.ts
   test/
     setup.ts
   main.tsx
@@ -139,6 +143,10 @@ src/
     categoryGuessing.ts
     fixtures/
   providers/
+    gmailReceiptSourceProvider.ts
+    googleDocsReceiptSourceProvider.ts
+    googleDriveReceiptSourceProvider.ts
+    manualPasteReceiptSourceProvider.ts
     ocrProvider.ts
     receiptExtractionProvider.ts
     mocks/
@@ -213,6 +221,37 @@ These helpers convert transactions, recurring expenses, and receipt item totals 
 The Dashboard monthly spend remains transaction-based. The recurring monthly total is a separate active-recurring estimate and must not be added into transaction spend until a future phase explicitly creates normal transactions from recurring expenses.
 
 Confirmed receipt item analytics are a separate breakdown of final receipt data, not extra spending. They are derived from `receipts` with `status: confirmed` and the linked `receiptItems`; draft, reviewed-draft, needs-review, and rejected receipt data is excluded. Current-month item analytics use the final receipt date when available and exclude confirmed receipts without a date from the current-month filter. All-time item analytics include confirmed receipts even when a receipt date is missing. Phase 7B adds filtering and drilldown by deriving source detail rows from the same confirmed final receipt items; filtering does not write to persistence and does not change transaction spend.
+
+## Deterministic analytics vs AI receipt ingestion
+
+Dashboard analytics and AI receipt ingestion are separate architectural concerns.
+
+Deterministic analytics are current product behavior. They read local persisted records and derive display data from:
+
+- manual and receipt-linked `transactions`;
+- final `receipts` with `status: confirmed`;
+- final `receiptItems` linked to confirmed receipts;
+- local `recurringExpenses`;
+- local manual `currencySettings`.
+
+Analytics helpers must remain pure derivation code. They do not call source providers, AI providers, OCR providers, Gmail, Google Drive, Google Docs, bank APIs, or live FX APIs. Item analytics must continue to treat receipt items as a confirmed receipt breakdown, not as extra spending.
+
+AI receipt ingestion is a future intake layer. It will take receipt text from a source provider, ask an extraction provider for structured draft data, and save that data to `receiptDrafts` and `receiptDraftItems` only. It must not write final `receipts`, final `receiptItems`, `transactions`, Dashboard analytics state, recurring expenses, or currency settings.
+
+The only path from AI-extracted data to Dashboard impact remains:
+
+```text
+receipt source provider
+  -> raw receipt text candidate
+  -> receipt extraction provider
+  -> receipt draft and draft items
+  -> human review/edit
+  -> explicit receipt confirmation
+  -> one final receipt + final receipt items + one linked transaction
+  -> Dashboard updates through the linked transaction and confirmed item breakdown
+```
+
+This means future Gmail, Google Drive, Google Docs, OCR, or AI extraction providers can improve intake accuracy and coverage without bypassing the existing review/confirm accounting boundary.
 
 ## Manual transactions
 
@@ -463,6 +502,110 @@ The Receipts screen now supports:
 
 Parsed receipt preview state starts inside `ReceiptsPage`. In Phase 5A, the user can explicitly save that preview as a local receipt draft. No transaction is created, and Dashboard analytics continue to use only existing persisted transaction/receipt analytics data.
 
+## Future receipt ingestion providers
+
+Phase 7C adds contract-only placeholders in `src/receipt-ingestion`. They are intentionally not wired into the app and do not change current product behavior.
+
+Future receipt text sources are represented by `ReceiptTextSourceProvider`:
+
+```ts
+export type ReceiptTextSourceKind =
+  | "manual_paste"
+  | "gmail"
+  | "google_drive"
+  | "google_docs";
+
+export interface ReceiptTextSourceProvider {
+  readonly kind: ReceiptTextSourceKind;
+  listCandidates(): Promise<ReceiptTextCandidate[]>;
+  getCandidateText(candidateId: string): Promise<ReceiptTextCandidate>;
+}
+```
+
+Provider responsibilities:
+
+- `manual_paste`: adapt the current pasted text intake into the common ingestion shape when a future orchestration layer exists.
+- `gmail`: future adapter for selected receipt-like Gmail messages. Not implemented in Phase 7C.
+- `google_drive`: future adapter for selected Drive files containing receipt text. Not implemented in Phase 7C.
+- `google_docs`: future adapter for selected Docs containing receipt text. Not implemented in Phase 7C.
+
+Source providers return text candidates only. They must not parse accounting meaning, create transactions, confirm receipts, or write Dashboard-impacting records.
+
+Current persisted receipt source values remain `pasted_text` and `manual_upload_mock`. Phase 7C does not widen the persisted `ReceiptSource` union or alter the Dexie schema. A later implementation phase should explicitly decide how source metadata from Gmail, Drive, and Docs is stored before those adapters write data.
+
+## Future AI receipt extraction
+
+`ReceiptExtractionProvider` is the future boundary between raw receipt text and structured draft data:
+
+```ts
+export interface ReceiptExtractionProvider {
+  readonly providerName: string;
+  extractReceiptDraft(
+    request: ReceiptExtractionRequest,
+  ): Promise<ReceiptExtractionResult>;
+}
+```
+
+The extraction request includes:
+
+- source metadata from the receipt text provider;
+- raw receipt text;
+- optional default currency;
+- optional locale hint;
+- local category hints.
+
+The extraction result includes provider metadata and one `AiExtractedReceiptDraft`. That draft maps to the existing receipt draft fields:
+
+- `merchantName` -> `ReceiptDraft.merchant`;
+- `receiptDate` -> `ReceiptDraft.date`;
+- `currency` -> `ReceiptDraft.currency`;
+- `totalAmount` -> `ReceiptDraft.total`;
+- `warnings` -> `ReceiptDraft.warnings`;
+- `confidence` -> `ReceiptDraft.confidence`;
+- extracted items -> `ReceiptDraftItem` rows.
+
+AI extraction must use `uncategorized` when a category is unclear and add flags such as `low_confidence`, `unclear_line`, or `uncategorized` instead of inventing certainty. It must preserve raw item evidence separately from normalized item names.
+
+The reusable prompt template and expected JSON schema live in `src/receipt-ingestion/receiptExtractionContract.ts`.
+
+Expected extraction JSON shape:
+
+```json
+{
+  "merchantName": "string, optional",
+  "receiptDate": "YYYY-MM-DD, optional",
+  "currency": "USD",
+  "totalAmount": 12.34,
+  "items": [
+    {
+      "rawLine": "Milk 1 x 2.50",
+      "rawName": "Milk",
+      "normalizedName": "milk",
+      "quantity": 1,
+      "unitPrice": 2.5,
+      "totalPrice": 2.5,
+      "categoryId": "groceries",
+      "tags": ["dairy"],
+      "confidence": 0.9,
+      "flags": [],
+      "kind": "item"
+    }
+  ],
+  "warnings": [],
+  "confidence": 0.86
+}
+```
+
+The JSON schema requires:
+
+- top-level `currency`, `items`, `warnings`, and `confidence`;
+- item-level `rawName`, `normalizedName`, `totalPrice`, `categoryId`, `tags`, `confidence`, `flags`, and `kind`;
+- confidence values between `0` and `1`;
+- item `kind` values from `item`, `discount`, `fee`, `tax`, `total`, or `unclear`;
+- flags from the existing receipt draft item flag set.
+
+The schema does not include transaction, account, Dashboard, recurring, bank, or FX fields. Those concerns remain outside extraction.
+
 ## Receipt Draft Persistence
 
 Phase 5A persists parsed receipt drafts in separate Dexie tables:
@@ -615,11 +758,28 @@ When a receipt is confirmed and linked to a transaction, the created transaction
 
 ## Provider boundaries
 
-Future integrations must use interfaces first:
+Future integrations must use interfaces first and stay behind service/repository boundaries.
 
-- `OcrProvider`: image or file to text;
-- `ReceiptExtractionProvider`: text to structured draft receipt;
-- `CategoryClassifier`: item text to category/tags;
-- source adapters for future bank, Google Drive, CSV, crypto, and brokerage data.
+Implemented Phase 7C contract-only boundaries:
 
-The first MVP uses deterministic local logic and mock providers only.
+- `ReceiptTextSourceProvider`: manual paste, Gmail, Google Drive, and Google Docs text candidate intake.
+- `ReceiptExtractionProvider`: raw receipt text plus local hints to structured AI-extracted receipt draft.
+- `receiptExtractionPromptTemplate`: reusable extraction prompt text.
+- `receiptExtractionJsonSchema`: expected AI extraction JSON schema.
+
+Still future boundaries:
+
+- `OcrProvider`: image or file to text.
+- `CategoryClassifier`: item text to category/tags if category hints outgrow the current parser heuristics.
+- source adapters for future bank, CSV, crypto, and brokerage data.
+
+Provider implementation rules:
+
+- no provider credentials in code, config, docs, or tests;
+- no source provider writes transactions or final receipts directly;
+- no extraction provider writes persistence directly;
+- no AI provider bypasses receipt review or confirmation;
+- no receipt item independently changes Dashboard spend totals;
+- no live FX provider updates local manual FX settings unless a later phase explicitly changes the currency architecture.
+
+The first MVP uses deterministic local logic and mock or contract-only providers only.

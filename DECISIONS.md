@@ -342,3 +342,25 @@ Consequences:
 - Manual FX conversion is still display-only; original receipt item totals and receipt currencies are not rewritten.
 - Dashboard monthly spend, category spend, and merchant spend remain transaction-based.
 - Receipt confirmation, recurring expenses, repository write paths, external integrations, live FX, bank matching, and transaction creation behavior are unchanged.
+
+## 2026-06-04: Phase 7C AI receipt ingestion is contract-only
+
+Decision:
+
+Define future AI receipt ingestion architecture, source providers, extraction contracts, prompt template, and JSON schema without wiring any real provider into the product.
+
+Rationale:
+
+The product needs a path toward receipt intake from Gmail, Google Drive, and Google Docs, but the current MVP value depends on keeping accounting effects deterministic, local, reviewable, and free of external credentials. Contract-first planning lets future AI work fit the existing receipt draft review/confirm boundary instead of creating a parallel accounting path.
+
+Consequences:
+
+- Current Dashboard analytics remain deterministic local derived views.
+- Future source providers are manual paste, Gmail, Google Drive, and Google Docs.
+- Future source providers produce raw receipt text candidates only.
+- Future AI extraction produces structured receipt draft data only.
+- AI extraction cannot create transactions, final receipts, Dashboard totals, recurring expenses, or FX changes.
+- Human review and explicit receipt confirmation remain required before Dashboard impact.
+- The existing service/repository boundary remains the only write path for receipt drafts and confirmation.
+- Phase 7C may add small exported TypeScript contracts and prompt/schema constants, but no runtime app wiring.
+- No Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, receipt confirmation, item analytics, recurring expense, or FX behavior change is included.

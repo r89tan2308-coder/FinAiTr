@@ -1909,7 +1909,7 @@ Result: succeeded. Found 0 vulnerabilities.
 
 ### Next recommended phase
 
-Phase 7C: add monthly trend analytics and broader Dashboard analytics polish without changing receipt confirmation, recurring behavior, or adding external integrations.
+Phase 7C: align architecture and roadmap for future AI receipt ingestion from manual paste, Gmail, Google Drive, and Google Docs without adding real integrations or changing current product behavior.
 
 ## 2026-06-04: Phase 7B stabilization checkpoint
 
@@ -1982,4 +1982,168 @@ Result: succeeded. Found 0 vulnerabilities.
 
 ### Next recommended phase
 
-Phase 7C: add monthly trend analytics and broader Dashboard analytics polish without changing receipt confirmation, recurring behavior, or adding external integrations.
+Phase 7C: align architecture and roadmap for future AI receipt ingestion from manual paste, Gmail, Google Drive, and Google Docs without adding real integrations or changing current product behavior.
+
+## 2026-06-04: Phase 7C AI receipt ingestion architecture aligned
+
+### Completed
+
+- Updated product, plan, architecture, and decision docs to separate current deterministic analytics from future AI receipt ingestion.
+- Defined future receipt text source providers:
+  - manual paste;
+  - Gmail;
+  - Google Drive;
+  - Google Docs.
+- Added small contract-only TypeScript placeholders for future ingestion:
+  - `ReceiptTextSourceProvider`;
+  - `ReceiptExtractionProvider`;
+  - source candidate/reference types;
+  - AI-extracted receipt draft/item types.
+- Added a reusable receipt extraction prompt template.
+- Added the expected JSON schema for AI-extracted receipt drafts and items.
+- Documented that future AI extraction creates receipt drafts only and must not create transactions, final receipts, Dashboard totals, recurring expenses, or FX changes.
+- Documented that human review and explicit receipt confirmation remain required before Dashboard impact.
+- Confirmed current product behavior is unchanged:
+  - no app UI wiring was added for ingestion contracts;
+  - no service or repository write path changed;
+  - receipt confirmation behavior is unchanged;
+  - confirmed receipt item analytics remain deterministic and confirmed-only;
+  - recurring expense behavior is unchanged;
+  - manual FX remains display-only.
+- Kept hard non-goals out of scope:
+  - no real Gmail, Google Drive, or Google Docs integration;
+  - no OAuth, backend, scheduled sync, OCR API, AI API, bank API, live FX, crypto, brokerage, bank matching, or payment execution;
+  - no direct transaction creation from AI extraction;
+  - no auto-confirmation of receipt drafts.
+
+### Files added
+
+- `src/receipt-ingestion/types.ts`
+- `src/receipt-ingestion/receiptExtractionContract.ts`
+
+### Files updated
+
+- `PRODUCT_SPEC.md`
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 11 test files passed, 62 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- Phase 7C is intentionally contract-only. Future Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR, and AI providers still require explicit implementation phases.
+
+### Next recommended phase
+
+Phase 7D: add monthly trend analytics and broader Dashboard analytics polish while keeping AI ingestion contract-only and without adding external integrations.
+
+## 2026-06-04: Phase 7C stabilization checkpoint
+
+### Completed
+
+- Reviewed the Phase 7C working tree and confirmed it contains documentation updates plus contract-only receipt ingestion files.
+- Rechecked the new contracts:
+  - `ReceiptTextSourceProvider` covers manual paste, Gmail, Google Drive, and Google Docs text candidates;
+  - `ReceiptExtractionProvider` returns structured AI-extracted receipt draft data;
+  - the prompt template tells extraction providers to return JSON only and create receipt drafts only;
+  - the JSON schema excludes transaction, account, Dashboard, recurring, bank, and FX fields.
+- Confirmed the new `src/receipt-ingestion` exports are not imported by current runtime app code.
+- Confirmed current product behavior is unchanged:
+  - receipt confirmation still runs through the existing review/confirm service and repository path;
+  - item analytics still use confirmed final receipt items only;
+  - Dashboard spending remains transaction-based;
+  - recurring expenses remain local estimates and do not create transactions;
+  - manual FX remains display-only.
+- Confirmed docs consistently describe AI ingestion as future draft-only intake with required human review and explicit confirmation before Dashboard impact.
+- Kept hard non-goals out of scope:
+  - no real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, live provider, bank API, live FX, crypto, brokerage, bank matching, or payment execution;
+  - no Phase 8A work;
+  - no receipt confirmation, item analytics, recurring expense, or FX behavior changes.
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 11 test files passed, 62 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- Phase 7C remains contract-only. Future Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR, and AI providers still require explicit implementation phases.
+
+### Next recommended phase
+
+Phase 7D: add monthly trend analytics and broader Dashboard analytics polish while keeping AI ingestion contract-only and without adding external integrations.

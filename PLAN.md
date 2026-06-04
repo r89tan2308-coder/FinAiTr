@@ -229,7 +229,7 @@ Deliver the main value of item-level finance analytics.
 - Spend by merchant.
 - Top products/items.
 - Product search analytics.
-- Monthly trend.
+- Monthly trend in a later analytics sub-phase.
 - Recurring expenses total.
 - Recent confirmed receipts.
 - Avoid double-counting receipt-linked transactions.
@@ -244,6 +244,52 @@ Deliver the main value of item-level finance analytics.
 - Analytics helper tests pass.
 - Typecheck and build pass.
 - `PROGRESS.md` is updated.
+
+### Phase 7C: Future AI receipt ingestion architecture
+
+#### Goal
+
+Align the architecture and roadmap for future AI-assisted receipt ingestion without changing current product behavior.
+
+#### Scope
+
+- Clearly separate deterministic Dashboard analytics from AI receipt ingestion.
+- Define future receipt text source providers:
+  - manual paste;
+  - Gmail;
+  - Google Drive;
+  - Google Docs.
+- Define a future receipt text source provider boundary.
+- Define a future AI receipt extraction provider boundary.
+- Define the receipt extraction contract and expected JSON schema for extracted draft receipts and items.
+- Add a reusable prompt template for receipt extraction.
+- Confirm that AI ingestion creates receipt drafts only.
+- Keep human review and explicit confirmation required before a transaction is created or Dashboard totals change.
+- Add placeholder TypeScript interfaces/types only when they are small and do not affect runtime behavior.
+
+#### Acceptance criteria
+
+- Product, plan, architecture, decisions, and progress docs describe AI ingestion as a future intake layer.
+- Docs state that current analytics remain deterministic local views.
+- Future provider contracts exist for manual paste, Gmail, Google Drive, and Google Docs sources.
+- Future AI extraction output maps to the existing receipt draft/review/confirm flow.
+- No real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR, AI API, bank API, live FX, crypto, or brokerage integration is added.
+- Receipt confirmation, item analytics, recurring expenses, and FX behavior are unchanged.
+- Typecheck, lint, tests, build, and audit pass.
+- `PROGRESS.md` is updated.
+
+### Phase 7D: Monthly trend and analytics polish
+
+#### Goal
+
+Finish the remaining Dashboard analytics MVP items after the AI ingestion architecture is documented.
+
+#### Scope
+
+- Monthly trend analytics from local transactions.
+- Broader Dashboard analytics polish.
+- Continued double-counting protection around receipt-linked transactions.
+- No external integrations.
 
 ## Phase 8: Core MVP polish and backup
 
@@ -275,6 +321,9 @@ Stabilize the local-first MVP before any deferred integrations.
 - CSV import/export.
 - Real OCR provider.
 - Real Google Drive adapter.
+- Real Gmail adapter.
+- Real Google Docs adapter.
+- Real AI receipt extraction API calls.
 - Real bank transaction aggregation.
 - Crypto tracking.
 - Brokerage or investment tracking.
