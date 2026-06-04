@@ -8,6 +8,7 @@ import { buildFinanceOverview } from "../../domain/financeViews";
 import { groceryReceiptText } from "../../receipt-parser/fixtures";
 import {
   confirmReceiptDraftAndReload,
+  createRecurringExpenseAndReload,
   deleteReceiptDraftAndReload,
   getReceiptDraftById,
   listReceiptDrafts,
@@ -18,14 +19,17 @@ import { parsePastedReceiptText } from "../../services/receiptParserService";
 import { financeDb } from "../db";
 import {
   addManualTransaction,
+  addRecurringExpense,
   confirmReceiptDraft,
   deleteReceiptDraft,
+  deleteRecurringExpense,
   deleteTransaction,
   getFinanceSnapshot,
   getReceiptDraftRecordById,
   listReceiptDraftRecords,
   saveReceiptDraft,
   updateCurrencySettings,
+  updateRecurringExpense,
   updateTransaction,
 } from "./financeRepository";
 
@@ -467,6 +471,133 @@ describe("finance repository transaction CRUD", () => {
         (item) => item.receiptId === first.receipt.id,
       ),
     ).toHaveLength(first.items.length);
+  });
+
+  it("creates, updates, lists, and deletes recurring expenses without changing transaction spend", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    const created = await addRecurringExpense({
+      accountId: "account-card",
+      amount: 100,
+      categoryId: "software",
+      currency: "EUR",
+      frequency: "monthly",
+      merchant: "Euro SaaS",
+      name: "Euro SaaS",
+      nextDueDate: "2026-07-04",
+      note: "Team workspace",
+      status: "active",
+      tags: ["software", "recurring"],
+    });
+    const afterCreateSnapshot = (await getFinanceSnapshot()).snapshot;
+    const afterCreateOverview = buildFinanceOverview(afterCreateSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(created).toMatchObject({
+      amount: 100,
+      currency: "EUR",
+      note: "Team workspace",
+      tags: ["software", "recurring"],
+    });
+    expect(afterCreateSnapshot.recurringExpenses).toContainEqual(created);
+    expect(afterCreateSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterCreateOverview.monthlySpend).toBe(beforeOverview.monthlySpend);
+    expect(afterCreateOverview.recurringMonthlyTotal).toBe(
+      roundMoney(
+        beforeOverview.recurringMonthlyTotal +
+          convertMoney(100, "EUR", "RUB", defaultCurrencySettings),
+      ),
+    );
+
+    const updated = await updateRecurringExpense(created.id, {
+      accountId: "account-cash",
+      amount: 24,
+      categoryId: "gym",
+      currency: "GBP",
+      frequency: "weekly",
+      merchant: "Updated Club",
+      name: "Updated Weekly Club",
+      nextDueDate: "2026-07-11",
+      note: "Paused for summer",
+      status: "paused",
+      tags: ["health"],
+    });
+    const afterUpdateSnapshot = (await getFinanceSnapshot()).snapshot;
+    const afterUpdateOverview = buildFinanceOverview(afterUpdateSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(updated).toMatchObject({
+      accountId: "account-cash",
+      amount: 24,
+      categoryId: "gym",
+      currency: "GBP",
+      frequency: "weekly",
+      name: "Updated Weekly Club",
+      note: "Paused for summer",
+      status: "paused",
+      tags: ["health"],
+    });
+    expect(
+      afterUpdateSnapshot.recurringExpenses.find(
+        (expense) => expense.id === created.id,
+      ),
+    ).toMatchObject(updated);
+    expect(afterUpdateSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterUpdateOverview.monthlySpend).toBe(beforeOverview.monthlySpend);
+    expect(afterUpdateOverview.recurringMonthlyTotal).toBe(
+      beforeOverview.recurringMonthlyTotal,
+    );
+
+    await deleteRecurringExpense(created.id);
+
+    const afterDeleteSnapshot = (await getFinanceSnapshot()).snapshot;
+    const afterDeleteOverview = buildFinanceOverview(afterDeleteSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(
+      afterDeleteSnapshot.recurringExpenses.some(
+        (expense) => expense.id === created.id,
+      ),
+    ).toBe(false);
+    expect(afterDeleteSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterDeleteOverview.monthlySpend).toBe(beforeOverview.monthlySpend);
+    expect(afterDeleteOverview.recurringMonthlyTotal).toBe(
+      beforeOverview.recurringMonthlyTotal,
+    );
+  });
+
+  it("returns recurring validation errors through the service boundary", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const result = await createRecurringExpenseAndReload({
+      accountId: "",
+      amount: 0,
+      currency: "",
+      frequency: "daily" as never,
+      name: "",
+      nextDueDate: "not-a-date",
+      status: "active",
+      tags: [],
+    });
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toMatchObject({
+      accountId: "Account is required.",
+      amount: "Amount must be greater than zero.",
+      frequency: "Frequency is invalid.",
+      name: "Name is required.",
+      nextDueDate: "Next due date must be a valid date.",
+    });
+    expect(afterSnapshot.recurringExpenses).toEqual(
+      beforeSnapshot.recurringExpenses,
+    );
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
   });
 
   it("saves, lists, gets, and deletes parsed drafts through the service boundary", async () => {

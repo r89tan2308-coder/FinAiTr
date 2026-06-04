@@ -163,7 +163,9 @@ export interface RecurringExpense {
   nextDueDate: ISODateString;
   categoryId?: string;
   accountId?: string;
+  note?: string;
   status: RecurringStatus;
+  tags: string[];
   createdAt: ISODateTimeString;
   updatedAt: ISODateTimeString;
 }

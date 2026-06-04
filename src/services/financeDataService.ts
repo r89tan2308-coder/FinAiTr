@@ -11,7 +11,9 @@ import {
 } from "../domain/transactionValidation";
 import { type ParsedReceiptDraft } from "../receipt-parser/types";
 import {
+  addRecurringExpense,
   confirmReceiptDraft,
+  deleteRecurringExpense,
   addManualTransaction,
   deleteReceiptDraft,
   deleteTransaction,
@@ -20,6 +22,7 @@ import {
   listReceiptDraftRecords,
   saveReceiptDraft,
   updateReceiptDraft,
+  updateRecurringExpense,
   updateCurrencySettings,
   updateTransaction,
   type ReceiptDraftConfirmationInput,
@@ -28,6 +31,11 @@ import {
   type ReceiptDraftRecord,
   type RepositoryStorageMode,
 } from "../persistence/repositories/financeRepository";
+import {
+  RecurringExpenseValidationError,
+  type RecurringExpenseInput,
+  type RecurringExpenseValidationErrors,
+} from "../domain/recurringValidation";
 
 export type FinanceLoadStatus = "loading" | "ready" | "error";
 export type FinanceStorageMode = RepositoryStorageMode;
@@ -89,6 +97,13 @@ export interface TransactionActionResult {
   ok: boolean;
 }
 
+export interface RecurringExpenseActionResult {
+  data?: FinanceDataState;
+  errors?: RecurringExpenseValidationErrors;
+  errorMessage?: string;
+  ok: boolean;
+}
+
 export interface ReceiptDraftActionResult {
   confirmation?: ReceiptDraftConfirmationRecord;
   data?: FinanceDataState;
@@ -125,6 +140,31 @@ export async function deleteTransactionAndReload(
 ): Promise<TransactionActionResult> {
   return runTransactionAction(async () => {
     await deleteTransaction(transactionId);
+  });
+}
+
+export async function createRecurringExpenseAndReload(
+  input: RecurringExpenseInput,
+): Promise<RecurringExpenseActionResult> {
+  return runRecurringExpenseAction(async () => {
+    await addRecurringExpense(input);
+  });
+}
+
+export async function updateRecurringExpenseAndReload(
+  recurringExpenseId: string,
+  input: RecurringExpenseInput,
+): Promise<RecurringExpenseActionResult> {
+  return runRecurringExpenseAction(async () => {
+    await updateRecurringExpense(recurringExpenseId, input);
+  });
+}
+
+export async function deleteRecurringExpenseAndReload(
+  recurringExpenseId: string,
+): Promise<RecurringExpenseActionResult> {
+  return runRecurringExpenseAction(async () => {
+    await deleteRecurringExpense(recurringExpenseId);
   });
 }
 
@@ -272,6 +312,34 @@ async function runTransactionAction(
         error instanceof Error
           ? error.message
           : "Transaction action could not be completed.",
+      ok: false,
+    };
+  }
+}
+
+async function runRecurringExpenseAction(
+  action: () => Promise<void>,
+): Promise<RecurringExpenseActionResult> {
+  try {
+    await action();
+
+    return {
+      data: await loadFinanceData(),
+      ok: true,
+    };
+  } catch (error) {
+    if (error instanceof RecurringExpenseValidationError) {
+      return {
+        errors: error.errors,
+        ok: false,
+      };
+    }
+
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Recurring expense action could not be completed.",
       ok: false,
     };
   }

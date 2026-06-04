@@ -17,8 +17,13 @@ import {
   type ReceiptDraftStatus,
   type ReceiptItem,
   type ReceiptSource,
+  type RecurringExpense,
   type Transaction,
 } from "../../domain/models";
+import {
+  assertValidRecurringExpenseInput,
+  type RecurringExpenseInput,
+} from "../../domain/recurringValidation";
 import {
   assertValidTransactionInput,
   type TransactionInput,
@@ -302,6 +307,79 @@ export async function deleteTransaction(transactionId: string): Promise<void> {
   assertIndexedDbWritable("local transaction writes");
   await ensureSeedData();
   await financeDb.transactions.delete(transactionId);
+}
+
+export async function addRecurringExpense(
+  input: RecurringExpenseInput,
+): Promise<RecurringExpense> {
+  assertIndexedDbWritable("local recurring expense writes");
+  assertValidRecurringExpenseInput(input);
+  await ensureSeedData();
+
+  const now = new Date().toISOString();
+  const recurringExpense: RecurringExpense = {
+    id: createRecordId("rec"),
+    accountId: normalizeRequiredText(input.accountId, "Account is required."),
+    amount: roundMoney(input.amount),
+    categoryId: normalizeOptionalText(input.categoryId),
+    createdAt: now,
+    currency: normalizeRequiredText(input.currency, "Currency is required."),
+    frequency: input.frequency,
+    merchant: normalizeOptionalText(input.merchant),
+    name: normalizeRequiredText(input.name, "Name is required."),
+    nextDueDate: input.nextDueDate,
+    note: normalizeOptionalText(input.note),
+    status: input.status,
+    tags: [...input.tags],
+    updatedAt: now,
+  };
+
+  await financeDb.recurringExpenses.put(recurringExpense);
+
+  return recurringExpense;
+}
+
+export async function updateRecurringExpense(
+  recurringExpenseId: string,
+  input: RecurringExpenseInput,
+): Promise<RecurringExpense> {
+  assertIndexedDbWritable("local recurring expense writes");
+  assertValidRecurringExpenseInput(input);
+  await ensureSeedData();
+
+  const existing = await financeDb.recurringExpenses.get(recurringExpenseId);
+
+  if (!existing) {
+    throw new Error("Recurring expense was not found.");
+  }
+
+  const updated: RecurringExpense = {
+    ...existing,
+    accountId: normalizeRequiredText(input.accountId, "Account is required."),
+    amount: roundMoney(input.amount),
+    categoryId: normalizeOptionalText(input.categoryId),
+    currency: normalizeRequiredText(input.currency, "Currency is required."),
+    frequency: input.frequency,
+    merchant: normalizeOptionalText(input.merchant),
+    name: normalizeRequiredText(input.name, "Name is required."),
+    nextDueDate: input.nextDueDate,
+    note: normalizeOptionalText(input.note),
+    status: input.status,
+    tags: [...input.tags],
+    updatedAt: new Date().toISOString(),
+  };
+
+  await financeDb.recurringExpenses.put(updated);
+
+  return updated;
+}
+
+export async function deleteRecurringExpense(
+  recurringExpenseId: string,
+): Promise<void> {
+  assertIndexedDbWritable("local recurring expense writes");
+  await ensureSeedData();
+  await financeDb.recurringExpenses.delete(recurringExpenseId);
 }
 
 export async function saveReceiptDraft(

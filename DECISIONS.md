@@ -283,3 +283,22 @@ Consequences:
 - Reconfirming an already confirmed draft returns existing linked records instead of creating duplicates.
 - Dashboard spend totals update through the created transaction only; receipt items do not independently add spend totals.
 - Real bank matching/reconciliation, OCR, image upload, Google Drive, AI/LLM, bank APIs, crypto/brokerage, and live FX remain out of scope.
+
+## 2026-06-04: Phase 6 recurring expenses are local estimates only
+
+Decision:
+
+Recurring expenses are managed as local records through the existing finance service and repository boundary. Create, edit, delete, validation, active/inactive status, and the monthly estimate write only to `recurringExpenses`.
+
+Rationale:
+
+Recurring bills are useful for planning, but automatically generating payments or transactions would add scheduling, reconciliation, and undo semantics that are outside the current MVP phase.
+
+Consequences:
+
+- Recurring expense CRUD reloads the shared finance snapshot after each write.
+- Original recurring amount and currency are preserved.
+- Manual FX conversion is display-only for per-row monthly equivalents and the dashboard recurring estimate.
+- Active recurring expenses contribute to the separate Dashboard recurring metric only.
+- Recurring expenses do not create transactions, do not alter monthly transaction spend, and do not affect receipt confirmation behavior.
+- No scheduling jobs, notifications, subscription detection, bank APIs, OCR, Google Drive, AI/LLM calls, crypto/brokerage integration, or live FX refresh is added.

@@ -191,24 +191,28 @@ Add human-in-the-loop review before receipt data affects analytics.
 
 ### Goal
 
-Track subscriptions and repeating charges.
+Track subscriptions and repeating charges as local planning records.
 
 ### Scope
 
 - Add recurring expense list.
-- Add create, edit, pause, and cancel.
+- Add create, edit, delete, and active/inactive status.
+- Support name, merchant/description, amount, currency, account, category, frequency, next due date, note, and tags.
 - Support weekly, monthly, and yearly frequencies.
-- Calculate next due date.
-- Show upcoming charges.
-- Optionally support "mark paid" only if it remains small and creates a normal transaction.
+- Show upcoming charges sorted by next due date.
+- Show a monthly recurring estimate in the selected display currency.
+- Preserve original amount and currency; currency conversion remains display-only.
+- Do not create transactions from recurring expenses in this phase.
+- Do not add scheduling, notifications, auto-pay, or subscription detection.
 
 ### Acceptance criteria
 
 - User can manage recurring expenses.
-- Next due date is calculated.
+- Validation covers required fields, positive amount, valid date, and valid frequency.
 - Upcoming charges list works.
-- Monthly recurring total is available to dashboard.
-- Helper tests cover due-date calculations.
+- Monthly recurring total is available to Dashboard as a separate estimate.
+- Dashboard transaction spend is not changed by recurring CRUD.
+- Tests cover create, edit, delete, persistence, validation, display-currency conversion, and no transaction-spend impact.
 - Tests, typecheck, and build pass.
 - `PROGRESS.md` is updated.
 

@@ -783,6 +783,49 @@ button {
   grid-template-columns: 1fr auto;
 }
 
+.recurring-summary-panel {
+  background: #ffffff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.recurring-summary-panel span,
+.recurring-summary-panel small {
+  color: #697386;
+  font-weight: 800;
+}
+
+.recurring-summary-panel strong {
+  color: #111827;
+  font-size: 1.55rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.recurring-row {
+  align-items: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.recurring-row small {
+  color: #697386;
+  font-size: 0.82rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.recurring-row b {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+}
+
 .receipt-draft-row {
   align-items: start;
   display: grid;
@@ -883,6 +926,11 @@ button {
   }
 
   .transaction-row {
+    align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .recurring-row {
     align-items: center;
     grid-template-columns: minmax(0, 1fr) auto auto;
   }

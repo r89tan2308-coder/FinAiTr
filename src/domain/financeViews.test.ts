@@ -135,6 +135,7 @@ describe("finance view helpers", () => {
       frequency: "weekly",
       nextDueDate: "2026-06-10",
       status: "active",
+      tags: [],
       createdAt: "2026-06-03T00:00:00.000Z",
       updatedAt: "2026-06-03T00:00:00.000Z",
     };
@@ -148,6 +149,49 @@ describe("finance view helpers", () => {
 
     expect(toMonthlyRecurringAmount(weeklyExpense)).toBe(52);
     expect(toMonthlyRecurringAmount(yearlyExpense)).toBe(10);
+  });
+
+  it("converts active recurring estimates without changing monthly spend", () => {
+    const snapshot = createSeedFinanceSnapshot();
+    snapshot.transactions = [];
+    snapshot.recurringExpenses = [
+      {
+        ...snapshot.recurringExpenses[0],
+        amount: 100,
+        currency: "EUR",
+        frequency: "monthly",
+        id: "active-eur",
+        status: "active",
+      },
+      {
+        ...snapshot.recurringExpenses[0],
+        amount: 120,
+        currency: "GBP",
+        frequency: "yearly",
+        id: "active-gbp",
+        status: "active",
+      },
+      {
+        ...snapshot.recurringExpenses[0],
+        amount: 500,
+        currency: "RUB",
+        frequency: "monthly",
+        id: "paused-rub",
+        status: "paused",
+      },
+    ];
+
+    const overview = buildFinanceOverview(snapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(overview.monthlySpend).toBe(0);
+    expect(overview.recurringMonthlyTotal).toBe(
+      roundMoney(
+        convertMoney(100, "EUR", "RUB", defaultCurrencySettings) +
+          convertMoney(10, "GBP", "RUB", defaultCurrencySettings),
+      ),
+    );
   });
 });
 

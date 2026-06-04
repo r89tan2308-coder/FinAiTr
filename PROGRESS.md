@@ -1455,3 +1455,191 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 6: recurring expense CRUD through the existing service/repository boundary, keeping all deferred integrations out of scope.
+
+## 2026-06-04: Phase 6 recurring expense CRUD completed
+
+### Completed
+
+- Added recurring expense create, edit, delete, list, validation, and persistence.
+- Kept recurring writes inside the existing boundary:
+  - `RecurringPage`
+  - `financeDataService`
+  - `financeRepository`
+  - Dexie `recurringExpenses`
+  - refreshed `FinanceSnapshot`
+- Added recurring form fields:
+  - name;
+  - merchant/description;
+  - amount;
+  - currency;
+  - account;
+  - category;
+  - frequency;
+  - next due date;
+  - active/inactive status;
+  - note;
+  - tags.
+- Added delete confirmation.
+- Added recurring validation for required name, positive amount, currency, account, valid frequency, and valid ISO date.
+- Added a Dashboard/Recurring monthly estimate for active recurring expenses only.
+- Preserved original recurring amount and currency; conversion remains display-only.
+- Confirmed recurring expense CRUD does not create transactions and does not change Dashboard transaction spend.
+- Added note/tags to seeded recurring expenses and the recurring model.
+- Updated `ARCHITECTURE.md`, `DECISIONS.md`, and `PLAN.md`.
+
+### Files added
+
+- `src/domain/recurringValidation.ts`
+- `src/domain/recurringValidation.test.ts`
+- `src/pages/RecurringPage.test.tsx`
+
+### Files updated
+
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/data/seedData.ts`
+- `src/domain/financeViews.test.ts`
+- `src/domain/models.ts`
+- `src/pages/RecurringPage.tsx`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/services/financeDataService.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Initial result: failed because one UI test compared `Intl` currency output with non-breaking spaces through Testing Library's default text normalizer.
+
+Fix:
+
+- Changed the recurring page currency assertions to compare exact `textContent`.
+
+Final result: succeeded. 10 test files passed, 49 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Browser verification
+
+- Started Vite at `http://127.0.0.1:5175/` after the first sandboxed dev-server attempt failed with `spawn EPERM`.
+- Opened the app in the in-app browser.
+- Navigated to Recurring.
+- Confirmed the recurring form, list, source currency amounts, and display-currency monthly estimate rendered.
+- Confirmed validation appears when the required next due date is missing.
+- Edited `OpenAI` from active to inactive and confirmed:
+  - `Recurring expense updated.` appeared;
+  - the row changed to `Inactive`;
+  - the recurring estimate decreased;
+  - reload preserved the change.
+- Deleted `Adobe` through `Delete Adobe` then `Confirm delete` and confirmed:
+  - the row was removed;
+  - reload preserved the deletion.
+- Navigated to Dashboard after recurring changes and confirmed:
+  - transaction monthly spend remained `10 556,72 ₽`;
+  - the separate recurring metric updated to `3 555,43 ₽`.
+
+### Scope notes
+
+- No transactions are created from recurring expenses.
+- No scheduling/background jobs were added.
+- No notifications were added.
+- No bank APIs, OCR, Google Drive, AI/LLM calls, crypto/brokerage, live FX, or subscription detection was added.
+- Receipt confirmation behavior was not changed.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Non-blocking test note: in-app browser automation could not complete the full create form because the browser runtime could not fill the native date input reliably; create behavior is covered by `RecurringPage` UI tests and repository/service persistence tests.
+- The browser used for manual verification contains local IndexedDB verification edits to recurring seed data. That data is not stored in the repository and can be cleared through browser storage tools or `indexedDB.deleteDatabase("finaitr-local")` during development.
+
+### Next recommended phase
+
+Phase 7: dashboard analytics MVP, including item-level analytics/search/trends and explicit double-counting protection around receipt-linked transactions.
+
+## 2026-06-04: Phase 6 stabilization checkpoint
+
+### Completed
+
+- Reviewed the Phase 6 working tree and confirmed it contains the expected recurring CRUD implementation and docs/tests only.
+- Rechecked recurring write paths:
+  - create, update, and delete write only to `recurringExpenses`;
+  - recurring service actions reload the shared finance snapshot;
+  - recurring CRUD does not write to `transactions`.
+- Rechecked analytics separation:
+  - Dashboard monthly spend is still derived from transactions;
+  - active recurring expenses feed only `recurringMonthlyTotal`;
+  - paused recurring expenses are excluded from the recurring estimate.
+- Rechecked currency behavior:
+  - recurring records preserve original `amount` and `currency`;
+  - display currency conversion is applied only when deriving overview/list amounts.
+- Confirmed docs include the non-blocking browser date input automation limitation and keep Phase 7 as the next recommended phase.
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 10 test files passed, 49 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Next recommended phase
+
+Phase 7: dashboard analytics MVP, including item-level analytics/search/trends and explicit double-counting protection around receipt-linked transactions.

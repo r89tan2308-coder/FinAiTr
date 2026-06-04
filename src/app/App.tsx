@@ -10,14 +10,18 @@ import {
   createInitialFinanceDataState,
   confirmReceiptDraftAndReload,
   createManualTransactionAndReload,
+  createRecurringExpenseAndReload,
   deleteReceiptDraftAndReload,
+  deleteRecurringExpenseAndReload,
   deleteTransactionAndReload,
   loadFinanceData,
   saveParsedReceiptDraftAndReload,
   updateCurrencySettingsAndReload,
+  updateRecurringExpenseAndReload,
   updateReceiptDraftAndReload,
   type CurrencySettingsActionResult,
   type ReceiptDraftActionResult,
+  type RecurringExpenseActionResult,
   type TransactionActionResult,
   updateTransactionAndReload,
 } from "../services/financeDataService";
@@ -55,6 +59,14 @@ export function App() {
   }
 
   function applyReceiptDraftActionResult(result: ReceiptDraftActionResult) {
+    if (result.ok && result.data) {
+      setFinanceData(result.data);
+    }
+
+    return result;
+  }
+
+  function applyRecurringExpenseActionResult(result: RecurringExpenseActionResult) {
     if (result.ok && result.data) {
       setFinanceData(result.data);
     }
@@ -138,7 +150,25 @@ export function App() {
       )}
       {currentRouteId === "recurring" && (
         <RecurringPage
+          accounts={financeData.snapshot.accounts}
+          categories={financeData.snapshot.categories}
           currencySettings={financeData.snapshot.currencySettings}
+          monthlyEstimate={financeData.overview.recurringMonthlyTotal}
+          onCreate={async (input) =>
+            applyRecurringExpenseActionResult(
+              await createRecurringExpenseAndReload(input),
+            )
+          }
+          onDelete={async (recurringExpenseId) =>
+            applyRecurringExpenseActionResult(
+              await deleteRecurringExpenseAndReload(recurringExpenseId),
+            )
+          }
+          onUpdate={async (recurringExpenseId, input) =>
+            applyRecurringExpenseActionResult(
+              await updateRecurringExpenseAndReload(recurringExpenseId, input),
+            )
+          }
           recurringExpenses={financeData.snapshot.recurringExpenses}
         />
       )}

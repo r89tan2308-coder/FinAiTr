@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 5C-A React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, and reviewed-draft confirmation into final receipt data plus one linked transaction.
+The repository now has a Phase 6 React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, and recurring expense CRUD.
 
 Existing files:
 
@@ -19,12 +19,13 @@ Existing files:
 - Settings controls for display currency and manual USD/RUB/EUR/GBP rates.
 - receipt draft review/edit UI for saved drafts.
 - explicit reviewed-draft confirmation that creates one final receipt, final receipt items, and one receipt-linked transaction.
+- recurring expense create, edit, delete, list, validation, and display-only monthly estimate.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
-- recurring expense CRUD;
-- full dashboard analytics;
+- full item-level dashboard analytics and search/trends;
+- backup/import/export and local data reset UI;
 
 ## Target stack
 
@@ -55,7 +56,7 @@ No backend is required for the first MVP.
 
 ## Implemented source layout
 
-Phase 5C-A uses this layout:
+Phase 6 uses this layout:
 
 ```text
 src/
@@ -76,6 +77,8 @@ src/
     financeViews.ts
     financeViews.test.ts
     models.ts
+    recurringValidation.ts
+    recurringValidation.test.ts
     transactionValidation.ts
     transactionValidation.test.ts
   pages/
@@ -83,6 +86,7 @@ src/
     TransactionsPage.tsx
     ReceiptsPage.test.tsx
     ReceiptsPage.tsx
+    RecurringPage.test.tsx
     RecurringPage.tsx
     CategoriesPage.tsx
     SettingsPage.tsx
@@ -152,6 +156,18 @@ TransactionsPage
   -> Dashboard and lists rerender
 ```
 
+Recurring expense writes use the same boundary and intentionally do not create transactions:
+
+```text
+RecurringPage
+  -> financeDataService recurring expense action
+  -> financeRepository recurring expense write
+  -> Dexie recurringExpenses table
+  -> loadFinanceData
+  -> rebuilt FinanceOverview
+  -> Recurring screen and Dashboard recurring estimate rerender
+```
+
 ## Local persistence
 
 The local database is `finaitr-local`.
@@ -188,7 +204,9 @@ Dev/test browser data reset note: the local app database is the browser IndexedD
 - recent receipts;
 - recurring expenses sorted by due date.
 
-These helpers convert transactions, recurring expenses, and receipt item totals into the configured display currency before aggregation. Conversion is display-only: source records keep their original `amount` and `currency`, and `buildFinanceOverview` must not rewrite transaction, receipt, receipt draft, or recurring records. These helpers are intentionally lightweight. Phase 6 should expand them into the full analytics layer and add double-counting tests for receipt-linked transactions.
+These helpers convert transactions, recurring expenses, and receipt item totals into the configured display currency before aggregation. Conversion is display-only: source records keep their original `amount` and `currency`, and `buildFinanceOverview` must not rewrite transaction, receipt, receipt draft, or recurring records.
+
+The Dashboard monthly spend remains transaction-based. The recurring monthly total is a separate active-recurring estimate and must not be added into transaction spend until a future phase explicitly creates normal transactions from recurring expenses.
 
 ## Manual transactions
 
@@ -223,6 +241,37 @@ The transaction list supports:
 - newest, oldest, amount high, and amount low sorting;
 - inline edit;
 - delete with an explicit confirm step.
+
+## Recurring expenses
+
+Phase 6 supports recurring expense CRUD through `RecurringPage`.
+
+Create/edit fields:
+
+- name;
+- merchant or description;
+- amount;
+- currency;
+- account;
+- category;
+- frequency: weekly, monthly, or yearly;
+- next due date;
+- status: active or inactive;
+- note;
+- tags.
+
+Validation lives in `src/domain/recurringValidation.ts` and requires:
+
+- name;
+- positive amount;
+- currency;
+- account;
+- valid frequency;
+- valid ISO next due date.
+
+The recurring list is sorted by next due date and shows each source amount/currency alongside a display-currency monthly equivalent. Active recurring expenses are normalized to a monthly estimate with weekly values multiplied by `52 / 12` and yearly values divided by `12`.
+
+Recurring CRUD writes only to `recurringExpenses`. It does not create transactions, schedule background jobs, send notifications, detect subscriptions, or affect Dashboard transaction spend.
 
 ## Core data model
 
@@ -335,7 +384,9 @@ The transaction list supports:
 - `nextDueDate`
 - `categoryId`
 - `accountId`
+- `note`
 - `status`: `active`, `paused`, `cancelled`
+- `tags`
 
 ### CurrencySettings
 
@@ -522,6 +573,7 @@ Dashboard analytics must support:
 - transaction-level spend;
 - receipt item-level spend;
 - combined spend without double-counting receipt-linked transactions.
+- a separate recurring expense estimate that does not change transaction spend.
 
 When a receipt is confirmed and linked to a transaction, category and item analytics should use receipt items for item-level detail while transaction totals remain a fallback for non-receipt expenses.
 
