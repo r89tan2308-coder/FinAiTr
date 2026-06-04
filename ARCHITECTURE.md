@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 7C React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, searchable confirmed receipt item analytics, and contract-only planning for future AI receipt ingestion.
+The repository now has a Phase 8A React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, searchable confirmed receipt item analytics, future receipt ingestion contracts, and a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only.
 
 Existing files:
 
@@ -21,7 +21,8 @@ Existing files:
 - explicit reviewed-draft confirmation that creates one final receipt, final receipt items, and one receipt-linked transaction.
 - recurring expense create, edit, delete, list, validation, and display-only monthly estimate.
 - Dashboard item analytics from confirmed final receipt items only, with current-month/all-time filters, item search, category filtering, and source receipt item drilldown.
-- future receipt ingestion contracts for manual paste, Gmail, Google Drive, Google Docs, and AI receipt extraction. These contracts are not wired into the app yet.
+- future receipt ingestion contracts for manual paste, Gmail, Google Drive, Google Docs, and AI receipt extraction.
+- a Phase 8A local manual AI extraction simulator on the Receipts screen that accepts email-like or document-like text, preserves source metadata, and opens the saved draft in the existing review flow.
 
 Still missing by design until later phases:
 
@@ -58,7 +59,7 @@ No backend is required for the first MVP.
 
 ## Implemented source layout
 
-Phase 7C uses this layout:
+Phase 8A uses this layout:
 
 ```text
 src/
@@ -109,6 +110,9 @@ src/
     parser.test.ts
     types.ts
   receipt-ingestion/
+    fixtures.ts
+    manualAiExtractionSimulator.test.ts
+    manualAiExtractionSimulator.ts
     receiptExtractionContract.ts
     types.ts
   test/
@@ -236,7 +240,7 @@ Deterministic analytics are current product behavior. They read local persisted 
 
 Analytics helpers must remain pure derivation code. They do not call source providers, AI providers, OCR providers, Gmail, Google Drive, Google Docs, bank APIs, or live FX APIs. Item analytics must continue to treat receipt items as a confirmed receipt breakdown, not as extra spending.
 
-AI receipt ingestion is a future intake layer. It will take receipt text from a source provider, ask an extraction provider for structured draft data, and save that data to `receiptDrafts` and `receiptDraftItems` only. It must not write final `receipts`, final `receiptItems`, `transactions`, Dashboard analytics state, recurring expenses, or currency settings.
+AI receipt ingestion is an intake layer. Phase 8A implements only a local manual simulator: the user pastes email-like or document-like receipt text, a mock extraction provider returns structured draft data, and the app saves that data to `receiptDrafts` and `receiptDraftItems` only. It must not write final `receipts`, final `receiptItems`, `transactions`, Dashboard analytics state, recurring expenses, or currency settings.
 
 The only path from AI-extracted data to Dashboard impact remains:
 
@@ -251,7 +255,7 @@ receipt source provider
   -> Dashboard updates through the linked transaction and confirmed item breakdown
 ```
 
-This means future Gmail, Google Drive, Google Docs, OCR, or AI extraction providers can improve intake accuracy and coverage without bypassing the existing review/confirm accounting boundary.
+This means the current mock simulator and any future Gmail, Google Drive, Google Docs, OCR, or AI extraction providers can improve intake accuracy and coverage without bypassing the existing review/confirm accounting boundary.
 
 ## Manual transactions
 
@@ -355,7 +359,8 @@ Recurring CRUD writes only to `recurringExpenses`. It does not create transactio
 - `currency`
 - `rawText`
 - `status`: `draft`, `needs_review`, `confirmed`, `rejected`
-- `source`: `pasted_text`, `manual_upload_mock`
+- `source`: `pasted_text`, `manual_upload_mock`, `ai_extraction_mock`
+- `sourceMetadata`: optional draft/source metadata for simulated AI extraction and future source adapters
 - `transactionId`
 - `confidence`
 - `warnings`
@@ -385,7 +390,8 @@ Recurring CRUD writes only to `recurringExpenses`. It does not create transactio
 - `currency`
 - `rawText`
 - `status`: `draft`, `reviewed`, `confirmed`
-- `source`: `pasted_text`, `manual_upload_mock`
+- `source`: `pasted_text`, `manual_upload_mock`, `ai_extraction_mock`
+- `sourceMetadata`: optional source type, source id, title, sender, url, received/fetched/extracted timestamps, provider name, and model name
 - `confidence`
 - `warnings`
 - `confirmedReceiptId`
@@ -504,7 +510,7 @@ Parsed receipt preview state starts inside `ReceiptsPage`. In Phase 5A, the user
 
 ## Future receipt ingestion providers
 
-Phase 7C adds contract-only placeholders in `src/receipt-ingestion`. They are intentionally not wired into the app and do not change current product behavior.
+Phase 7C added contract-only placeholders in `src/receipt-ingestion`. Phase 8A wires only a local manual simulator into the Receipts screen. Real source adapters remain future work.
 
 Future receipt text sources are represented by `ReceiptTextSourceProvider`:
 
@@ -525,15 +531,15 @@ export interface ReceiptTextSourceProvider {
 Provider responsibilities:
 
 - `manual_paste`: adapt the current pasted text intake into the common ingestion shape when a future orchestration layer exists.
-- `gmail`: future adapter for selected receipt-like Gmail messages. Not implemented in Phase 7C.
-- `google_drive`: future adapter for selected Drive files containing receipt text. Not implemented in Phase 7C.
-- `google_docs`: future adapter for selected Docs containing receipt text. Not implemented in Phase 7C.
+- `gmail`: future adapter for selected receipt-like Gmail messages. Not implemented as a real source adapter in Phase 8A.
+- `google_drive`: future adapter for selected Drive files containing receipt text. Not implemented as a real source adapter in Phase 8A.
+- `google_docs`: future adapter for selected Docs containing receipt text. Not implemented as a real source adapter in Phase 8A.
 
 Source providers return text candidates only. They must not parse accounting meaning, create transactions, confirm receipts, or write Dashboard-impacting records.
 
-Current persisted receipt source values remain `pasted_text` and `manual_upload_mock`. Phase 7C does not widen the persisted `ReceiptSource` union or alter the Dexie schema. A later implementation phase should explicitly decide how source metadata from Gmail, Drive, and Docs is stored before those adapters write data.
+Current persisted receipt source values are `pasted_text`, `manual_upload_mock`, and `ai_extraction_mock`. Phase 8A stores optional source metadata on receipt drafts and final receipts as normal object fields; it does not add a Dexie schema version because the metadata is not indexed. Real Gmail, Drive, and Docs adapters still require explicit implementation phases before they can write data.
 
-## Future AI receipt extraction
+## AI receipt extraction contract and simulator
 
 `ReceiptExtractionProvider` is the future boundary between raw receipt text and structured draft data:
 
@@ -567,6 +573,15 @@ The extraction result includes provider metadata and one `AiExtractedReceiptDraf
 AI extraction must use `uncategorized` when a category is unclear and add flags such as `low_confidence`, `unclear_line`, or `uncategorized` instead of inventing certainty. It must preserve raw item evidence separately from normalized item names.
 
 The reusable prompt template and expected JSON schema live in `src/receipt-ingestion/receiptExtractionContract.ts`.
+
+Phase 8A adds `src/receipt-ingestion/manualAiExtractionSimulator.ts`:
+
+- `buildManualAiReceiptCandidate` validates raw source text and extracts optional header metadata such as `From`, `Subject`, `Date`, `Received`, and `Title`.
+- `mockAiReceiptExtractionProvider` implements `ReceiptExtractionProvider` locally by stripping source headers and reusing the deterministic receipt parser as a mock extraction engine.
+- `simulateAiReceiptExtractionAndSaveDraftAndReload` in `financeDataService` converts the extraction result to the existing `ReceiptDraftInput`, calls `saveReceiptDraft`, and reloads finance data.
+- The Receipts page opens the saved result in the existing draft review form.
+
+The simulator preserves source type, title, sender, received date, provider name, model name, fetch time, and extraction time when available. It writes only receipt drafts and receipt draft items. Human review and explicit receipt confirmation remain required before one final receipt, final receipt items, and one linked transaction are created.
 
 Expected extraction JSON shape:
 
@@ -632,9 +647,10 @@ Receipt draft records store:
 - date;
 - total;
 - currency;
-- raw pasted text;
+- raw pasted/source text;
 - status: `draft`, `reviewed`, or `confirmed`;
 - source;
+- optional source metadata;
 - confidence;
 - parser warnings;
 - created and updated timestamps.
@@ -760,12 +776,13 @@ When a receipt is confirmed and linked to a transaction, the created transaction
 
 Future integrations must use interfaces first and stay behind service/repository boundaries.
 
-Implemented Phase 7C contract-only boundaries:
+Implemented provider boundaries:
 
-- `ReceiptTextSourceProvider`: manual paste, Gmail, Google Drive, and Google Docs text candidate intake.
-- `ReceiptExtractionProvider`: raw receipt text plus local hints to structured AI-extracted receipt draft.
-- `receiptExtractionPromptTemplate`: reusable extraction prompt text.
-- `receiptExtractionJsonSchema`: expected AI extraction JSON schema.
+- Phase 7C `ReceiptTextSourceProvider`: manual paste, Gmail, Google Drive, and Google Docs text candidate intake contracts.
+- Phase 7C `ReceiptExtractionProvider`: raw receipt text plus local hints to structured AI-extracted receipt draft contract.
+- Phase 7C `receiptExtractionPromptTemplate`: reusable extraction prompt text.
+- Phase 7C `receiptExtractionJsonSchema`: expected AI extraction JSON schema.
+- Phase 8A `mockAiReceiptExtractionProvider`: local-only simulator implementation of the extraction provider contract.
 
 Still future boundaries:
 

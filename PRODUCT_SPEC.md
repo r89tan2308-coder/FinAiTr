@@ -34,7 +34,7 @@ Current Dashboard analytics are deterministic local app views. They are derived 
 - local recurring expense records;
 - manual display-currency settings.
 
-AI receipt ingestion is a planned future intake layer, not a Dashboard analytics source by itself. Its job is to find or receive receipt text, extract a structured receipt draft, and send that draft through the existing human review and confirm flow.
+AI receipt ingestion is an intake layer, not a Dashboard analytics source by itself. Phase 8A includes a local-only manual simulator for email-like and document-like receipt text. Its job is to receive receipt text, extract a structured receipt draft through a mock provider, and send that draft through the existing human review and confirm flow.
 
 Future receipt text sources are:
 
@@ -43,7 +43,7 @@ Future receipt text sources are:
 - Google Drive files that contain receipt text;
 - Google Docs documents that contain receipt text.
 
-Future AI extraction must create receipt drafts only. It must not create transactions, confirm receipts, update Dashboard totals, or skip human review. Dashboard impact still happens only after the user reviews a draft and explicitly confirms it into one final receipt plus one linked transaction.
+Current mock AI extraction and future real AI extraction must create receipt drafts only. They must not create transactions, confirm receipts, update Dashboard totals, or skip human review. Dashboard impact still happens only after the user reviews a draft and explicitly confirms it into one final receipt plus one linked transaction.
 
 ## Non-goals
 
@@ -62,7 +62,7 @@ The first MVP must not include:
 
 Future integrations may be planned, but not implemented, until the local-first MVP is stable.
 
-Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. It still must not add real Gmail, Google Drive, Google Docs, OAuth, backend jobs, scheduled sync, OCR APIs, or AI API calls.
+Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. Phase 8A may use those contracts through a local manual simulator. Neither phase may add real Gmail, Google Drive, Google Docs, OAuth, backend jobs, scheduled sync, OCR APIs, or AI API calls.
 
 ## Primary user
 
@@ -86,6 +86,10 @@ The user opens the app, adds an expense with amount, date, merchant, account, ca
 
 The user pastes raw receipt text, such as text copied from an OCR app. The app parses merchant, date, total, line items, prices, guessed categories, tags, confidence, and warnings.
 
+### Manual AI extraction simulator
+
+The user pastes raw email-like or document-like receipt text, optionally adds source metadata, and runs the local simulator. The app creates a receipt draft only. The user must still review and confirm the draft before a transaction is created or Dashboard analytics change.
+
 ### Receipt review
 
 The user edits the parsed receipt, adjusts item names, categories, tags, and prices, sees a mismatch warning if item totals do not match receipt total, then confirms the receipt. The confirmed receipt contributes to analytics and creates or links a transaction.
@@ -104,6 +108,7 @@ The first MVP is successful when:
 
 - manual transactions can be created, edited, deleted, and filtered;
 - pasted receipt text can produce editable receipt drafts;
+- mock AI extraction can produce editable receipt drafts without changing Dashboard totals before confirmation;
 - confirmed receipts produce item-level analytics;
 - recurring expenses can be managed and included in the dashboard;
 - dashboard analytics update from local app data;

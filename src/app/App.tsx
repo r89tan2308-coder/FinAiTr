@@ -16,6 +16,7 @@ import {
   deleteTransactionAndReload,
   loadFinanceData,
   saveParsedReceiptDraftAndReload,
+  simulateAiReceiptExtractionAndSaveDraftAndReload,
   updateCurrencySettingsAndReload,
   updateRecurringExpenseAndReload,
   updateReceiptDraftAndReload,
@@ -135,6 +136,11 @@ export function App() {
           onSaveDraft={async (draft) =>
             applyReceiptDraftActionResult(
               await saveParsedReceiptDraftAndReload(draft),
+            )
+          }
+          onSimulateAiExtraction={async (input) =>
+            applyReceiptDraftActionResult(
+              await simulateAiReceiptExtractionAndSaveDraftAndReload(input),
             )
           }
           onUpdateDraft={async (draftId, input) =>

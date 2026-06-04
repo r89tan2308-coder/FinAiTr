@@ -364,3 +364,24 @@ Consequences:
 - The existing service/repository boundary remains the only write path for receipt drafts and confirmation.
 - Phase 7C may add small exported TypeScript contracts and prompt/schema constants, but no runtime app wiring.
 - No Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, receipt confirmation, item analytics, recurring expense, or FX behavior change is included.
+
+## 2026-06-04: Phase 8A manual AI extraction simulator writes drafts only
+
+Decision:
+
+Use the Phase 7C receipt ingestion contracts through a local-only manual simulator. The simulator accepts raw email-like or document-like receipt text, uses a mock extraction provider, and saves the result as existing receipt draft and draft item records.
+
+Rationale:
+
+This validates the AI-ingestion accounting boundary without introducing OAuth, provider credentials, backend jobs, model unpredictability, or external data movement. The existing draft review and confirm flow remains the only path from extracted receipt text to Dashboard-impacting transactions.
+
+Consequences:
+
+- `ai_extraction_mock` is a persisted receipt source for locally simulated extraction results.
+- Drafts and final receipts can store optional source metadata such as source kind, title, sender, received date, provider, model, and extraction time.
+- The mock provider implements `ReceiptExtractionProvider` but reuses deterministic local parsing; it does not call an AI API.
+- Simulated extraction writes only `receiptDrafts` and `receiptDraftItems` through the existing finance service and repository boundary.
+- Simulated extraction does not create transactions, final receipts, final receipt items, Dashboard totals, recurring expenses, or FX changes.
+- Human review and explicit confirmation remain required before Dashboard impact.
+- Receipt items from simulated drafts affect item analytics only after confirmation creates final receipt items.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.

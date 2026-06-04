@@ -25,9 +25,31 @@ export type TransactionSource =
 
 export type ReceiptStatus = "draft" | "needs_review" | "confirmed" | "rejected";
 
-export type ReceiptSource = "pasted_text" | "manual_upload_mock";
+export type ReceiptSource =
+  | "pasted_text"
+  | "manual_upload_mock"
+  | "ai_extraction_mock";
 
 export type ReceiptDraftStatus = "draft" | "reviewed" | "confirmed";
+
+export type ReceiptDraftSourceKind =
+  | "manual_paste"
+  | "gmail"
+  | "google_drive"
+  | "google_docs";
+
+export interface ReceiptDraftSourceMetadata {
+  kind: ReceiptDraftSourceKind;
+  sourceId?: string;
+  title?: string;
+  sender?: string;
+  url?: string;
+  receivedAt?: ISODateTimeString;
+  fetchedAt?: ISODateTimeString;
+  providerName?: string;
+  modelName?: string;
+  extractedAt?: ISODateTimeString;
+}
 
 export type ReceiptDraftLineKind =
   | "item"
@@ -90,6 +112,7 @@ export interface Receipt {
   rawText: string;
   status: ReceiptStatus;
   source: ReceiptSource;
+  sourceMetadata?: ReceiptDraftSourceMetadata;
   transactionId?: string;
   confidence?: number;
   warnings: string[];
@@ -120,6 +143,7 @@ export interface ReceiptDraft {
   rawText: string;
   status: ReceiptDraftStatus;
   source: ReceiptSource;
+  sourceMetadata?: ReceiptDraftSourceMetadata;
   confidence: number;
   warnings: string[];
   confirmedReceiptId?: string;

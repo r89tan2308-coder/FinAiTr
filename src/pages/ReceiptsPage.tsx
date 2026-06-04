@@ -7,6 +7,7 @@ import {
   Link2,
   RefreshCcw,
   Save,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -27,12 +28,14 @@ import {
   type ReceiptDraftItem,
   type ReceiptDraftItemFlag,
   type ReceiptDraftLineKind,
+  type ReceiptDraftSourceMetadata,
   type ReceiptDraftStatus,
   type ReceiptItem,
   type ReceiptStatus,
   type SupportedCurrencyCode,
   type Transaction,
 } from "../domain/models";
+import { mockEmailReceiptText } from "../receipt-ingestion/fixtures";
 import { groceryReceiptText } from "../receipt-parser/fixtures";
 import {
   type ParsedReceiptDraft,
@@ -40,6 +43,7 @@ import {
 } from "../receipt-parser/types";
 import { parsePastedReceiptText } from "../services/receiptParserService";
 import {
+  type ManualAiExtractionInput,
   type ReceiptDraftConfirmationInput,
   type ReceiptDraftConfirmationRecord,
   type ReceiptDraftActionResult,
@@ -56,6 +60,9 @@ interface ReceiptsPageProps {
   ) => Promise<ReceiptDraftActionResult>;
   onDeleteDraft: (draftId: string) => Promise<ReceiptDraftActionResult>;
   onSaveDraft: (draft: ParsedReceiptDraft) => Promise<ReceiptDraftActionResult>;
+  onSimulateAiExtraction: (
+    input: ManualAiExtractionInput,
+  ) => Promise<ReceiptDraftActionResult>;
   onUpdateDraft: (
     draftId: string,
     input: ReceiptDraftUpdateInput,
@@ -98,6 +105,7 @@ export function ReceiptsPage({
   onConfirmDraft,
   onDeleteDraft,
   onSaveDraft,
+  onSimulateAiExtraction,
   onUpdateDraft,
   receiptDraftItems,
   receiptDrafts,
@@ -106,17 +114,27 @@ export function ReceiptsPage({
   transactions,
 }: ReceiptsPageProps) {
   const [rawReceiptText, setRawReceiptText] = useState("");
+  const [aiRawText, setAiRawText] = useState("");
+  const [aiSourceKind, setAiSourceKind] =
+    useState<ManualAiExtractionInput["sourceKind"]>("gmail");
+  const [aiSourceReceivedAt, setAiSourceReceivedAt] = useState("");
+  const [aiSourceSender, setAiSourceSender] = useState("");
+  const [aiSourceTitle, setAiSourceTitle] = useState("");
   const [parsedDraft, setParsedDraft] = useState<ParsedReceiptDraft>();
   const [draftActionError, setDraftActionError] = useState<string>();
   const [draftActionMessage, setDraftActionMessage] = useState<string>();
   const [draftActionStatus, setDraftActionStatus] = useState<
-    "idle" | "saving" | "deleting" | "updating" | "confirming"
+    "idle" | "saving" | "deleting" | "updating" | "confirming" | "extracting"
   >("idle");
   const [confirmationAccountId, setConfirmationAccountId] = useState("");
   const [confirmationCategoryId, setConfirmationCategoryId] = useState("");
   const [confirmedSummary, setConfirmedSummary] =
     useState<ReceiptDraftConfirmationRecord>();
   const [deleteDraftCandidateId, setDeleteDraftCandidateId] = useState<string>();
+  const [optimisticDraftRecord, setOptimisticDraftRecord] = useState<{
+    draft: ReceiptDraft;
+    items: ReceiptDraftItem[];
+  }>();
   const [reviewForm, setReviewForm] = useState<DraftReviewFormValues>();
   const [reviewFormError, setReviewFormError] = useState<string>();
   const [selectedDraftId, setSelectedDraftId] = useState<string>();
@@ -145,7 +163,13 @@ export function ReceiptsPage({
       ),
     [receiptDrafts],
   );
-  const selectedDraft = receiptDrafts.find((draft) => draft.id === selectedDraftId);
+  const selectedDraft =
+    selectedDraftId === undefined
+      ? undefined
+      : receiptDrafts.find((draft) => draft.id === selectedDraftId) ??
+        (optimisticDraftRecord?.draft.id === selectedDraftId
+          ? optimisticDraftRecord.draft
+          : undefined);
   const activeAccounts = useMemo(
     () => accounts.filter((account) => !account.isArchived),
     [accounts],
@@ -227,6 +251,11 @@ export function ReceiptsPage({
 
   function handleClear() {
     setRawReceiptText("");
+    setAiRawText("");
+    setAiSourceKind("gmail");
+    setAiSourceReceivedAt("");
+    setAiSourceSender("");
+    setAiSourceTitle("");
     setParsedDraft(undefined);
     setDraftActionError(undefined);
     setDraftActionMessage(undefined);
@@ -237,15 +266,29 @@ export function ReceiptsPage({
     setReviewForm(undefined);
     setReviewFormError(undefined);
     setSelectedDraftId(undefined);
+    setOptimisticDraftRecord(undefined);
     setParseError(undefined);
     setParseStatus("idle");
   }
 
-  function openDraftReview(draft: ReceiptDraft): void {
-    const draftItems = receiptDraftItems.filter((item) => item.draftId === draft.id);
+  function handleUseAiSample() {
+    setAiRawText(mockEmailReceiptText);
+    setAiSourceKind("gmail");
+    setAiSourceTitle("Fresh Market receipt");
+    setAiSourceSender("receipts@fresh.example");
+    setAiSourceReceivedAt("2026-06-04T10:15:00.000Z");
+    setDraftActionError(undefined);
+    setDraftActionMessage(undefined);
+  }
 
+  function openDraftRecordReview(record: {
+    draft: ReceiptDraft;
+    items: ReceiptDraftItem[];
+  }): void {
+    const { draft, items } = record;
+    setOptimisticDraftRecord(record);
     setSelectedDraftId(draft.id);
-    setReviewForm(draftToReviewFormValues(draft, draftItems));
+    setReviewForm(draftToReviewFormValues(draft, items));
     setConfirmationAccountId(getDefaultConfirmationAccountId(accounts, draft.currency));
     setConfirmationCategoryId(getDefaultReceiptTransactionCategoryId(categories));
     setConfirmedSummary(undefined);
@@ -255,8 +298,16 @@ export function ReceiptsPage({
     setDeleteDraftCandidateId(undefined);
   }
 
+  function openDraftReview(draft: ReceiptDraft): void {
+    openDraftRecordReview({
+      draft,
+      items: receiptDraftItems.filter((item) => item.draftId === draft.id),
+    });
+  }
+
   function closeDraftReview(): void {
     setSelectedDraftId(undefined);
+    setOptimisticDraftRecord(undefined);
     setReviewForm(undefined);
     setReviewFormError(undefined);
     setConfirmedSummary(undefined);
@@ -327,6 +378,7 @@ export function ReceiptsPage({
     setDraftActionStatus("idle");
 
     if (result.ok && result.draft) {
+      setOptimisticDraftRecord(result.draft);
       setSelectedDraftId(result.draft.draft.id);
       setReviewForm(draftToReviewFormValues(result.draft.draft, result.draft.items));
       setDraftActionMessage(
@@ -406,6 +458,7 @@ export function ReceiptsPage({
       setConfirmedSummary(result.confirmation);
 
       if (result.draft) {
+        setOptimisticDraftRecord(result.draft);
         setSelectedDraftId(result.draft.draft.id);
         setReviewForm(draftToReviewFormValues(result.draft.draft, result.draft.items));
       } else {
@@ -446,6 +499,42 @@ export function ReceiptsPage({
     }
 
     setDraftActionError(result.errorMessage ?? "Receipt draft could not be saved.");
+  }
+
+  async function handleSimulateAiExtraction(): Promise<void> {
+    if (!aiRawText.trim()) {
+      setDraftActionError(
+        "Paste email or document receipt text before simulating AI extraction.",
+      );
+      setDraftActionMessage(undefined);
+      return;
+    }
+
+    setDraftActionStatus("extracting");
+    setDraftActionError(undefined);
+    setDraftActionMessage(undefined);
+    setReviewFormError(undefined);
+
+    const result = await onSimulateAiExtraction({
+      rawText: aiRawText,
+      sourceKind: aiSourceKind,
+      sourceReceivedAt: aiSourceReceivedAt,
+      sourceSender: aiSourceSender,
+      sourceTitle: aiSourceTitle,
+    });
+
+    setDraftActionStatus("idle");
+
+    if (result.ok && result.draft) {
+      setAiRawText("");
+      openDraftRecordReview(result.draft);
+      setDraftActionMessage("AI draft saved for review.");
+      return;
+    }
+
+    setDraftActionError(
+      result.errorMessage ?? "AI receipt extraction could not be simulated.",
+    );
   }
 
   async function confirmDeleteDraft(draftId: string) {
@@ -512,6 +601,92 @@ export function ReceiptsPage({
         </div>
       </PageSection>
 
+      <PageSection title="AI extraction simulator">
+        <div className="form-panel receipt-input-panel">
+          <div className="form-grid">
+            <label className="field">
+              <span>Source type</span>
+              <select
+                aria-label="AI source type"
+                onChange={(event) =>
+                  setAiSourceKind(
+                    event.target.value as ManualAiExtractionInput["sourceKind"],
+                  )
+                }
+                value={aiSourceKind}
+              >
+                <option value="manual_paste">Manual paste</option>
+                <option value="gmail">Gmail</option>
+                <option value="google_drive">Google Drive</option>
+                <option value="google_docs">Google Docs</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Source title</span>
+              <input
+                onChange={(event) => setAiSourceTitle(event.target.value)}
+                placeholder="Subject or document title"
+                value={aiSourceTitle}
+              />
+            </label>
+
+            <label className="field">
+              <span>Source from</span>
+              <input
+                onChange={(event) => setAiSourceSender(event.target.value)}
+                placeholder="Sender or owner"
+                value={aiSourceSender}
+              />
+            </label>
+
+            <label className="field">
+              <span>Received date</span>
+              <input
+                onChange={(event) => setAiSourceReceivedAt(event.target.value)}
+                placeholder="2026-06-04T10:15:00.000Z"
+                value={aiSourceReceivedAt}
+              />
+            </label>
+          </div>
+
+          <label className="field field-wide" htmlFor="ai-source-receipt-text">
+            <span>Email or document receipt text</span>
+            <textarea
+              id="ai-source-receipt-text"
+              name="aiSourceReceiptText"
+              onChange={(event) => setAiRawText(event.target.value)}
+              placeholder="From, subject, date, then receipt body..."
+              rows={8}
+              value={aiRawText}
+            />
+          </label>
+
+          <div className="form-actions">
+            <button
+              className="primary-button"
+              disabled={draftActionStatus === "extracting"}
+              onClick={() => void handleSimulateAiExtraction()}
+              type="button"
+            >
+              <Sparkles aria-hidden="true" size={18} />
+              {draftActionStatus === "extracting"
+                ? "Simulating"
+                : "Simulate AI extraction"}
+            </button>
+            <button
+              className="secondary-button"
+              disabled={draftActionStatus === "extracting"}
+              onClick={handleUseAiSample}
+              type="button"
+            >
+              <RefreshCcw aria-hidden="true" size={18} />
+              Use email sample
+            </button>
+          </div>
+        </div>
+      </PageSection>
+
       <PageSection title="Parser preview">
         {draftActionMessage && (
           <div className="success-banner" role="status">
@@ -557,6 +732,9 @@ export function ReceiptsPage({
                     items · {formatReceiptDraftStatus(draft.status)} ·{" "}
                     {formatConfidence(draft.confidence)}
                   </span>
+                  {draft.sourceMetadata && (
+                    <small>{formatSourceMetadata(draft.sourceMetadata)}</small>
+                  )}
                 </div>
                 <b>
                   {formatOptionalDisplayAmount(
@@ -645,6 +823,13 @@ export function ReceiptsPage({
                 <X aria-hidden="true" size={18} />
               </button>
             </div>
+
+            {selectedDraft.sourceMetadata && (
+              <div className="receipt-source-panel">
+                <strong>Source</strong>
+                <span>{formatSourceMetadata(selectedDraft.sourceMetadata)}</span>
+              </div>
+            )}
 
             <div className="form-grid">
               <label className="field">
@@ -1400,6 +1585,28 @@ function formatReceiptStatus(status: ReceiptStatus): string {
 
 function formatReceiptDraftStatus(status: ReceiptDraftStatus): string {
   return formatTitle(status);
+}
+
+function formatSourceMetadata(metadata: ReceiptDraftSourceMetadata): string {
+  const parts = [formatTitle(metadata.kind)];
+
+  if (metadata.title) {
+    parts.push(metadata.title);
+  }
+
+  if (metadata.sender) {
+    parts.push(`From ${metadata.sender}`);
+  }
+
+  if (metadata.receivedAt) {
+    parts.push(`Received ${metadata.receivedAt}`);
+  }
+
+  if (metadata.providerName) {
+    parts.push(metadata.providerName);
+  }
+
+  return parts.join(" · ");
 }
 
 function formatAmount(amount: number | undefined, currencyCode: string): string {

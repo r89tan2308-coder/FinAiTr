@@ -3,13 +3,28 @@ import {
   buildFinanceOverview,
   type FinanceOverview,
 } from "../domain/financeViews";
-import { type CurrencySettings, type FinanceSnapshot } from "../domain/models";
+import {
+  type Category,
+  type CurrencySettings,
+  type FinanceSnapshot,
+} from "../domain/models";
 import {
   type TransactionInput,
   type TransactionValidationErrors,
   TransactionValidationError,
 } from "../domain/transactionValidation";
 import { type ParsedReceiptDraft } from "../receipt-parser/types";
+import {
+  buildManualAiReceiptCandidate,
+  buildReceiptExtractionRequest,
+  type ManualAiExtractionInput,
+  mockAiReceiptExtractionProvider,
+} from "../receipt-ingestion/manualAiExtractionSimulator";
+import {
+  type ReceiptExtractionCategoryHint,
+  type ReceiptExtractionResult,
+  type ReceiptTextCandidate,
+} from "../receipt-ingestion/types";
 import {
   addRecurringExpense,
   confirmReceiptDraft,
@@ -40,6 +55,7 @@ import {
 export type FinanceLoadStatus = "loading" | "ready" | "error";
 export type FinanceStorageMode = RepositoryStorageMode;
 export type {
+  ManualAiExtractionInput,
   ReceiptDraftConfirmationInput,
   ReceiptDraftConfirmationRecord,
   ReceiptDraftUpdateInput,
@@ -108,6 +124,7 @@ export interface ReceiptDraftActionResult {
   confirmation?: ReceiptDraftConfirmationRecord;
   data?: FinanceDataState;
   draft?: ReceiptDraftRecord;
+  extraction?: ReceiptExtractionResult;
   errorMessage?: string;
   ok: boolean;
 }
@@ -185,6 +202,39 @@ export async function saveParsedReceiptDraftAndReload(
         error instanceof Error
           ? error.message
           : "Receipt draft could not be saved.",
+      ok: false,
+    };
+  }
+}
+
+export async function simulateAiReceiptExtractionAndSaveDraftAndReload(
+  input: ManualAiExtractionInput,
+): Promise<ReceiptDraftActionResult> {
+  try {
+    const candidate = buildManualAiReceiptCandidate(input);
+    const { snapshot } = await getFinanceSnapshot();
+    const extraction = await mockAiReceiptExtractionProvider.extractReceiptDraft(
+      buildReceiptExtractionRequest(
+        candidate,
+        categoriesToExtractionHints(snapshot.categories),
+      ),
+    );
+    const draft = await saveReceiptDraft(
+      aiExtractionResultToReceiptDraftInput(candidate, extraction),
+    );
+
+    return {
+      data: await loadFinanceData(),
+      draft,
+      extraction,
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "AI receipt extraction could not be simulated.",
       ok: false,
     };
   }
@@ -369,4 +419,53 @@ function parsedReceiptDraftToInput(parsedDraft: ParsedReceiptDraft) {
     total: parsedDraft.totalAmount,
     warnings: parsedDraft.warnings,
   };
+}
+
+function aiExtractionResultToReceiptDraftInput(
+  candidate: ReceiptTextCandidate,
+  extraction: ReceiptExtractionResult,
+) {
+  return {
+    confidence: extraction.draft.confidence,
+    currency: extraction.draft.currency,
+    date: extraction.draft.receiptDate,
+    items: extraction.draft.items.map((item) => ({
+      categoryId: item.categoryId,
+      confidence: item.confidence,
+      flags: [...item.flags],
+      kind: item.kind,
+      normalizedName: item.normalizedName,
+      quantity: item.quantity,
+      rawLine: item.rawLine ?? item.rawName,
+      rawName: item.rawName,
+      tags: [...item.tags],
+      totalPrice: item.totalPrice,
+      unitPrice: item.unitPrice,
+    })),
+    merchant: extraction.draft.merchantName,
+    rawText: candidate.rawText,
+    source: "ai_extraction_mock" as const,
+    sourceMetadata: {
+      ...candidate.source,
+      extractedAt: extraction.extractedAt,
+      fetchedAt: candidate.source.fetchedAt ?? candidate.detectedAt,
+      modelName: extraction.modelName,
+      providerName: extraction.providerName,
+    },
+    status: "draft" as const,
+    total: extraction.draft.totalAmount,
+    warnings: [...candidate.warnings, ...extraction.draft.warnings],
+  };
+}
+
+function categoriesToExtractionHints(
+  categories: Category[],
+): ReceiptExtractionCategoryHint[] {
+  return categories
+    .filter((category) => category.type === "expense")
+    .map((category) => ({
+      id: category.id,
+      keywords: [category.id, category.name.toLowerCase()],
+      name: category.name,
+    }));
 }

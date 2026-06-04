@@ -812,6 +812,24 @@ button {
   font-weight: 800;
 }
 
+.receipt-source-panel {
+  background: #f8fafc;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.receipt-source-panel span,
+.receipt-draft-row small {
+  color: #697386;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .receipt-confirm-panel,
 .receipt-confirmed-panel {
   background: #ffffff;

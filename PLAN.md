@@ -291,7 +291,36 @@ Finish the remaining Dashboard analytics MVP items after the AI ingestion archit
 - Continued double-counting protection around receipt-linked transactions.
 - No external integrations.
 
-## Phase 8: Core MVP polish and backup
+## Phase 8: Mock AI intake and core MVP polish
+
+### Phase 8A: Manual AI extraction simulator
+
+#### Goal
+
+Use the Phase 7C receipt-ingestion contracts in a local-only manual simulator without adding real external integrations.
+
+#### Scope
+
+- Add a Receipts screen input for raw email-like or document-like receipt text.
+- Use a mock/local extraction provider only.
+- Produce extraction output shaped like the Phase 7C receipt extraction contract.
+- Convert the extraction result into the existing receipt draft and draft item records.
+- Preserve useful source metadata, such as source type, title, sender, received date, provider, model, and extraction time.
+- Keep saved output in `receiptDrafts` and `receiptDraftItems` only.
+- Keep human review and explicit confirmation required before any final receipt, transaction, or Dashboard impact.
+- Add tests for mock extraction, draft persistence, metadata, validation errors, and unchanged Dashboard data before confirmation.
+
+#### Acceptance criteria
+
+- Raw email/document-like receipt text can create a saved draft through the mock AI extraction simulator.
+- The saved draft opens in the existing receipt review flow.
+- Source metadata is persisted with the draft.
+- No transaction, final receipt, final receipt item, recurring expense, FX setting, or Dashboard total changes before explicit confirmation.
+- No real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR, AI API, bank API, live FX, crypto, or brokerage integration is added.
+- Typecheck, lint, tests, build, and audit pass.
+- `PROGRESS.md` is updated.
+
+### Phase 8B: Core MVP polish and backup
 
 ### Goal
 

@@ -10,9 +10,11 @@ import {
 } from "../data/seedData";
 import { defaultCurrencySettings } from "../domain/currencySettings";
 import { type ReceiptDraft, type ReceiptDraftItem } from "../domain/models";
+import { mockEmailReceiptText } from "../receipt-ingestion/fixtures";
 import { groceryReceiptText, mismatchReceiptText } from "../receipt-parser/fixtures";
 import { type ParsedReceiptDraft } from "../receipt-parser/types";
 import {
+  type ManualAiExtractionInput,
   type ReceiptDraftActionResult,
   type ReceiptDraftConfirmationInput,
   type ReceiptDraftUpdateInput,
@@ -54,6 +56,41 @@ const savedDraftItem: ReceiptDraftItem = {
   unitPrice: 4.2,
 };
 
+const aiDraft: ReceiptDraft = {
+  ...savedDraft,
+  confidence: 0.84,
+  currency: "USD",
+  date: "2026-06-04",
+  id: "receipt-draft-ai-test",
+  merchant: "Fresh Market",
+  rawText: mockEmailReceiptText,
+  source: "ai_extraction_mock",
+  sourceMetadata: {
+    kind: "gmail",
+    providerName: "local-mock-ai-extractor",
+    receivedAt: "2026-06-04T10:15:00.000Z",
+    sender: "receipts@fresh.example",
+    title: "Fresh Market receipt",
+  },
+  total: 5,
+  warnings: ["Simulated AI extraction from Gmail."],
+};
+
+const aiDraftItem: ReceiptDraftItem = {
+  ...savedDraftItem,
+  categoryId: "dairy",
+  confidence: 0.78,
+  draftId: aiDraft.id,
+  id: "receipt-draft-item-ai-test",
+  normalizedName: "milk",
+  quantity: 2,
+  rawLine: "Milk 2 x 3.00",
+  rawName: "Milk",
+  tags: ["dairy", "groceries"],
+  totalPrice: 3,
+  unitPrice: 1.5,
+};
+
 const reviewedDraft: ReceiptDraft = {
   ...savedDraft,
   status: "reviewed",
@@ -85,6 +122,9 @@ interface RenderReceiptsPageOptions {
     input: ReceiptDraftConfirmationInput,
   ) => Promise<ReceiptDraftActionResult>;
   onSaveDraft?: (draft: ParsedReceiptDraft) => Promise<ReceiptDraftActionResult>;
+  onSimulateAiExtraction?: (
+    input: ManualAiExtractionInput,
+  ) => Promise<ReceiptDraftActionResult>;
   onUpdateDraft?: (
     draftId: string,
     input: ReceiptDraftUpdateInput,
@@ -102,6 +142,9 @@ function renderReceiptsPage(options: RenderReceiptsPageOptions = {}) {
       onConfirmDraft={options.onConfirmDraft ?? (async () => ({ ok: true }))}
       onDeleteDraft={options.onDeleteDraft ?? (async () => ({ ok: true }))}
       onSaveDraft={options.onSaveDraft ?? (async () => ({ ok: true }))}
+      onSimulateAiExtraction={
+        options.onSimulateAiExtraction ?? (async () => ({ ok: true }))
+      }
       onUpdateDraft={options.onUpdateDraft ?? (async () => ({ ok: true }))}
       receiptDraftItems={options.receiptDraftItems ?? []}
       receiptDrafts={options.receiptDrafts ?? []}
@@ -241,6 +284,60 @@ describe("ReceiptsPage parser preview", () => {
     expect(onSaveDraft.mock.calls[0]?.[0].merchantName).toBe("GREEN MARKET");
     expect(screen.getByRole("status")).toHaveTextContent("Draft saved.");
     expect(screen.getByLabelText("Raw receipt text")).toHaveValue("");
+  });
+
+  it("shows a validation error before simulating AI extraction without source text", async () => {
+    const user = userEvent.setup();
+    renderReceiptsPage();
+
+    await user.click(
+      screen.getByRole("button", { name: "Simulate AI extraction" }),
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Paste email or document receipt text before simulating AI extraction.",
+    );
+  });
+
+  it("saves mock AI extraction as a draft and opens the existing review flow", async () => {
+    const user = userEvent.setup();
+    const onSimulateAiExtraction = vi.fn(
+      async (): Promise<ReceiptDraftActionResult> => ({
+        draft: {
+          draft: aiDraft,
+          items: [aiDraftItem],
+        },
+        ok: true,
+      }),
+    );
+    renderReceiptsPage({ onSimulateAiExtraction });
+
+    await user.click(screen.getByRole("button", { name: "Use email sample" }));
+    expect(screen.getByLabelText("Email or document receipt text")).toHaveValue(
+      mockEmailReceiptText,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Simulate AI extraction" }),
+    );
+
+    expect(onSimulateAiExtraction).toHaveBeenCalledWith({
+      rawText: mockEmailReceiptText,
+      sourceKind: "gmail",
+      sourceReceivedAt: "2026-06-04T10:15:00.000Z",
+      sourceSender: "receipts@fresh.example",
+      sourceTitle: "Fresh Market receipt",
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "AI draft saved for review.",
+    );
+    expect(screen.getByRole("heading", { name: "Fresh Market" })).toBeVisible();
+    expect(
+      screen.getByText(/Gmail · Fresh Market receipt · From receipts@fresh.example/),
+    ).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Raw receipt text")[1]).toHaveValue(
+      mockEmailReceiptText,
+    );
   });
 
   it("surfaces mismatch parser warnings for review", async () => {

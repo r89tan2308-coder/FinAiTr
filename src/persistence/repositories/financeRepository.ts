@@ -14,6 +14,7 @@ import {
   type ReceiptDraftItem,
   type ReceiptDraftItemFlag,
   type ReceiptDraftLineKind,
+  type ReceiptDraftSourceMetadata,
   type ReceiptDraftStatus,
   type ReceiptItem,
   type ReceiptSource,
@@ -62,6 +63,7 @@ export interface ReceiptDraftInput {
   merchant?: string;
   rawText: string;
   source?: ReceiptSource;
+  sourceMetadata?: ReceiptDraftSourceMetadata;
   status?: ReceiptDraftStatus;
   total?: number;
   warnings: string[];
@@ -402,6 +404,7 @@ export async function saveReceiptDraft(
     merchant: normalizeOptionalText(input.merchant),
     rawText: input.rawText,
     source: input.source ?? "pasted_text",
+    sourceMetadata: normalizeReceiptSourceMetadata(input.sourceMetadata),
     status: input.status ?? "draft",
     total: input.total === undefined ? undefined : roundMoney(input.total),
     warnings: [...input.warnings],
@@ -591,6 +594,7 @@ export async function confirmReceiptDraft(
         merchant,
         rawText: draft.rawText,
         source: draft.source,
+        sourceMetadata: normalizeReceiptSourceMetadata(draft.sourceMetadata),
         status: "confirmed",
         total: amount,
         transactionId,
@@ -855,4 +859,25 @@ function normalizeRequiredText(value: string, message: string): string {
   }
 
   return normalized;
+}
+
+function normalizeReceiptSourceMetadata(
+  metadata: ReceiptDraftSourceMetadata | undefined,
+): ReceiptDraftSourceMetadata | undefined {
+  if (!metadata) {
+    return undefined;
+  }
+
+  return {
+    kind: metadata.kind,
+    extractedAt: normalizeOptionalText(metadata.extractedAt),
+    fetchedAt: normalizeOptionalText(metadata.fetchedAt),
+    modelName: normalizeOptionalText(metadata.modelName),
+    providerName: normalizeOptionalText(metadata.providerName),
+    receivedAt: normalizeOptionalText(metadata.receivedAt),
+    sender: normalizeOptionalText(metadata.sender),
+    sourceId: normalizeOptionalText(metadata.sourceId),
+    title: normalizeOptionalText(metadata.title),
+    url: normalizeOptionalText(metadata.url),
+  };
 }

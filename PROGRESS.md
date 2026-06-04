@@ -2147,3 +2147,178 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 7D: add monthly trend analytics and broader Dashboard analytics polish while keeping AI ingestion contract-only and without adding external integrations.
+
+## 2026-06-04: Phase 8A manual AI extraction simulator implemented
+
+### Completed
+
+- Added a local-only manual AI extraction simulator that uses the Phase 7C receipt-ingestion contracts without calling any real AI, Gmail, Drive, Docs, OCR, backend, or OAuth provider.
+- Added email-like and document-like mock receipt fixtures for simulator tests and UI sample input.
+- Added source metadata support for receipt drafts and final receipts:
+  - source kind;
+  - source id;
+  - source title;
+  - sender;
+  - received/fetched/extracted timestamps;
+  - mock provider and model names.
+- Added `ai_extraction_mock` as a persisted receipt source for simulated extraction output.
+- Wired the Receipts page to accept raw email/document-like receipt text, run the local simulator, save the result as a receipt draft, and open the saved draft in the existing review flow.
+- Kept simulated extraction draft-only:
+  - writes only `receiptDrafts` and `receiptDraftItems`;
+  - does not create transactions;
+  - does not create final receipts or final receipt items;
+  - does not change Dashboard totals before explicit receipt confirmation;
+  - does not change recurring expenses or FX settings.
+- Preserved the existing service/repository write boundary through `financeDataService` and `financeRepository`.
+- Added tests for:
+  - mock extraction contract-shaped output;
+  - header stripping and metadata extraction;
+  - validation errors for empty/metadata-only input;
+  - draft creation and persisted source metadata;
+  - unchanged Dashboard/transaction/final receipt data before confirmation;
+  - Receipts UI validation and opening the saved AI draft in the existing review flow.
+- Updated product, plan, architecture, decision, and progress docs to describe Phase 8A as a local simulator, not a real external integration.
+
+### Changed files
+
+- `PRODUCT_SPEC.md`
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/domain/models.ts`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/receipt-ingestion/fixtures.ts`
+- `src/receipt-ingestion/manualAiExtractionSimulator.ts`
+- `src/receipt-ingestion/manualAiExtractionSimulator.test.ts`
+- `src/receipt-ingestion/types.ts`
+- `src/services/financeDataService.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded after fixing one unused callback parameter in the new Receipts page test.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 12 test files passed, 69 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- The manual AI extraction simulator is heuristic and local-only. It reuses deterministic parser logic and is not a real AI extractor.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+- Dashboard impact still requires human review and explicit receipt confirmation.
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 7D: add monthly trend analytics and broader Dashboard analytics polish, then continue to Phase 8B local backup/import/export and reset once the remaining Dashboard MVP analytics are stable.
+
+## 2026-06-04: Phase 8A stabilization checkpoint
+
+### Completed
+
+- Reviewed the Phase 8A working tree and confirmed the manual AI extraction simulator is local-only.
+- Confirmed the simulator write path stays inside the existing service/repository boundary:
+  - `simulateAiReceiptExtractionAndSaveDraftAndReload`;
+  - `saveReceiptDraft`;
+  - `receiptDrafts`;
+  - `receiptDraftItems`.
+- Confirmed simulated extraction does not write transactions, final receipts, final receipt items, recurring expenses, Dashboard state, or FX settings before explicit review and confirmation.
+- Confirmed Dashboard impact still happens only through `confirmReceiptDraft`, which creates one receipt-linked transaction after human review.
+- Confirmed existing receipt parser, receipt review/edit, confirmation idempotency, confirmed item analytics, recurring expense, and display-only FX behavior remain unchanged.
+- Fixed the architecture core data model docs so `Receipt` and `ReceiptDraft` list `ai_extraction_mock` and optional source metadata.
+- Added one repository stabilization test proving AI source metadata is normalized and copied onto the final receipt only when a reviewed draft is explicitly confirmed.
+- Confirmed product, plan, architecture, decision, and progress docs describe Phase 8A as a mock/local simulator, not a real external integration.
+- Did not start Phase 7D or Phase 8B work.
+
+### Changed files
+
+- `ARCHITECTURE.md`
+- `PROGRESS.md`
+- `src/persistence/repositories/financeRepository.test.ts`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 12 test files passed, 70 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- The manual AI extraction simulator remains heuristic and local-only. It reuses deterministic parser logic and is not a real AI extractor.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+- Dashboard impact still requires human review and explicit receipt confirmation.
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 7D: add monthly trend analytics and broader Dashboard analytics polish. Do not begin Phase 8B local backup/import/export/reset until the remaining Dashboard MVP analytics are stable.

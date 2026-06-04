@@ -4,23 +4,13 @@ import {
   type ISODateTimeString,
   type ReceiptDraftItemFlag,
   type ReceiptDraftLineKind,
+  type ReceiptDraftSourceKind,
+  type ReceiptDraftSourceMetadata,
 } from "../domain/models";
 
-export type ReceiptTextSourceKind =
-  | "manual_paste"
-  | "gmail"
-  | "google_drive"
-  | "google_docs";
+export type ReceiptTextSourceKind = ReceiptDraftSourceKind;
 
-export interface ReceiptTextSourceReference {
-  kind: ReceiptTextSourceKind;
-  sourceId?: string;
-  title?: string;
-  sender?: string;
-  url?: string;
-  receivedAt?: ISODateTimeString;
-  fetchedAt?: ISODateTimeString;
-}
+export type ReceiptTextSourceReference = ReceiptDraftSourceMetadata;
 
 export interface ReceiptTextCandidate {
   id: string;

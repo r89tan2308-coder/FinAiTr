@@ -6,6 +6,7 @@ import {
 } from "../../domain/currencySettings";
 import { buildFinanceOverview } from "../../domain/financeViews";
 import { groceryReceiptText } from "../../receipt-parser/fixtures";
+import { mockEmailReceiptText } from "../../receipt-ingestion/fixtures";
 import {
   confirmReceiptDraftAndReload,
   createRecurringExpenseAndReload,
@@ -13,6 +14,7 @@ import {
   getReceiptDraftById,
   listReceiptDrafts,
   saveParsedReceiptDraftAndReload,
+  simulateAiReceiptExtractionAndSaveDraftAndReload,
   updateReceiptDraftAndReload,
 } from "../../services/financeDataService";
 import { parsePastedReceiptText } from "../../services/receiptParserService";
@@ -431,6 +433,69 @@ describe("finance repository transaction CRUD", () => {
     });
   });
 
+  it("preserves AI source metadata when a reviewed draft is confirmed", async () => {
+    const saved = await saveReceiptDraft({
+      confidence: 0.84,
+      currency: "USD",
+      date: "2026-06-04",
+      items: [
+        {
+          categoryId: "dairy",
+          confidence: 0.78,
+          flags: [],
+          kind: "item",
+          normalizedName: "milk",
+          quantity: 2,
+          rawLine: "Milk 2 x 3.00",
+          rawName: "Milk",
+          tags: ["dairy", "groceries"],
+          totalPrice: 3,
+          unitPrice: 1.5,
+        },
+      ],
+      merchant: "Fresh Market",
+      rawText: mockEmailReceiptText,
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        extractedAt: "2026-06-04T10:16:00.000Z",
+        fetchedAt: "2026-06-04T10:15:30.000Z",
+        kind: "gmail",
+        modelName: "local-heuristic-simulator",
+        providerName: "local-mock-ai-extractor",
+        receivedAt: "2026-06-04T10:15:00.000Z",
+        sender: " receipts@fresh.example ",
+        title: " Fresh Market receipt ",
+      },
+      status: "reviewed",
+      total: 5,
+      warnings: ["Simulated AI extraction from Gmail."],
+    });
+
+    const confirmation = await confirmReceiptDraft(saved.draft.id, {
+      accountId: "account-card",
+      categoryId: "groceries",
+    });
+
+    expect(confirmation.receipt).toMatchObject({
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        extractedAt: "2026-06-04T10:16:00.000Z",
+        fetchedAt: "2026-06-04T10:15:30.000Z",
+        kind: "gmail",
+        modelName: "local-heuristic-simulator",
+        providerName: "local-mock-ai-extractor",
+        receivedAt: "2026-06-04T10:15:00.000Z",
+        sender: "receipts@fresh.example",
+        title: "Fresh Market receipt",
+      },
+    });
+    expect(confirmation.transaction).toMatchObject({
+      amount: 5,
+      currency: "USD",
+      source: "receipt",
+    });
+  });
+
   it("uses a safe default transaction category when none is provided", async () => {
     const saved = await saveConfirmationDraft("reviewed");
 
@@ -629,6 +694,68 @@ describe("finance repository transaction CRUD", () => {
     expect(deleteResult.data?.snapshot.receiptDrafts).toHaveLength(0);
     expect(deleteResult.data?.snapshot.receiptDraftItems).toHaveLength(0);
     expect(deleteResult.data?.overview).toEqual(beforeOverview);
+  });
+
+  it("saves mock AI extraction as draft metadata without dashboard impact", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    const result = await simulateAiReceiptExtractionAndSaveDraftAndReload({
+      rawText: mockEmailReceiptText,
+      sourceKind: "gmail",
+      sourceReceivedAt: "2026-06-04T10:15:00.000Z",
+      sourceSender: "receipts@fresh.example",
+      sourceTitle: "Fresh Market receipt",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.extraction).toMatchObject({
+      providerName: "local-mock-ai-extractor",
+      modelName: "local-heuristic-simulator",
+    });
+    expect(result.draft?.draft).toMatchObject({
+      merchant: "Fresh Market",
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        kind: "gmail",
+        providerName: "local-mock-ai-extractor",
+        receivedAt: "2026-06-04T10:15:00.000Z",
+        sender: "receipts@fresh.example",
+        title: "Fresh Market receipt",
+      },
+      status: "draft",
+      total: 5,
+    });
+    expect(result.draft?.items.length).toBeGreaterThan(0);
+    expect(result.data?.snapshot.receiptDrafts).toHaveLength(
+      beforeSnapshot.receiptDrafts.length + 1,
+    );
+    expect(result.data?.snapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(result.data?.snapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(result.data?.snapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+    expect(result.data?.overview).toEqual(beforeOverview);
+  });
+
+  it("returns validation errors for mock AI extraction without changing data", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    const result = await simulateAiReceiptExtractionAndSaveDraftAndReload({
+      rawText: "",
+      sourceKind: "gmail",
+    });
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toBe(
+      "Receipt source text is required for AI extraction.",
+    );
+    expect(afterSnapshot.receiptDrafts).toEqual(beforeSnapshot.receiptDrafts);
+    expect(afterSnapshot.receiptDraftItems).toEqual(
+      beforeSnapshot.receiptDraftItems,
+    );
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
   });
 });
 
