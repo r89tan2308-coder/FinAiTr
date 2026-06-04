@@ -8,9 +8,10 @@ The first MVP is limited to:
 - pasted receipt text parsing;
 - receipt review and confirmation;
 - recurring expenses;
-- dashboard analytics.
+- dashboard analytics;
+- manual local currency conversion settings for USD, RUB, EUR, and GBP.
 
-Real bank APIs, Google Drive, OCR APIs, crypto, brokerage, payment execution, and credentials are out of scope.
+Real bank APIs, Google Drive, OCR APIs, crypto, brokerage, payment execution, live exchange-rate fetching, and credentials are out of scope.
 
 ## Validation baseline
 
@@ -180,7 +181,8 @@ Add human-in-the-loop review before receipt data affects analytics.
 - Draft receipt can be edited.
 - User can confirm receipt.
 - Confirmed receipt creates or links a transaction.
-- Dashboard can include confirmed receipt item data.
+- Dashboard updates through the created or linked transaction.
+- Confirmed receipt items are persisted for review/detail; item-level dashboard analytics are deferred to Phase 7.
 - Mismatch warning works.
 - Typecheck and build pass.
 - `PROGRESS.md` is updated.
@@ -272,10 +274,9 @@ Stabilize the local-first MVP before any deferred integrations.
 - Real bank transaction aggregation.
 - Crypto tracking.
 - Brokerage or investment tracking.
-- Multi-currency market rates.
+- Live multi-currency market rates.
 - Backend sync.
 - Multi-user auth.
 - Payment execution.
 
 These items require explicit planning updates before implementation.
-

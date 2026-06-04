@@ -818,3 +818,640 @@ Final rerun after removing the inert `Add receipt` control:
 ### Next step
 
 Phase 5: add receipt review and confirmation so parsed drafts can be edited by the user, then explicitly confirmed before persistence, transaction linking, or dashboard item analytics.
+
+## 2026-06-03: Phase 5A completed
+
+### Completed
+
+- Confirmed the folder is now a Git repository on branch `master`.
+- Added dedicated local-first receipt draft models:
+  - `ReceiptDraft`
+  - `ReceiptDraftItem`
+  - `ReceiptDraftStatus`
+  - draft item flags and line kind types.
+- Added separate Dexie v2 tables:
+  - `receiptDrafts`
+  - `receiptDraftItems`
+- Added repository methods for:
+  - saving receipt drafts;
+  - listing receipt draft records;
+  - getting a receipt draft by id;
+  - deleting a receipt draft and its draft items.
+- Added service methods for:
+  - saving a parsed receipt draft and reloading app data;
+  - listing receipt drafts;
+  - getting a receipt draft by id;
+  - deleting a receipt draft and reloading app data.
+- Updated App wiring so receipt draft actions go through `financeDataService`.
+- Updated Receipts screen so parsed preview can be saved as a persisted draft.
+- Added a simple saved drafts list on Receipts.
+- Added two-step delete confirmation for saved drafts.
+- Kept saved receipt drafts separate from `receipts`, `receiptItems`, transactions, and Dashboard analytics.
+- Added persistence tests proving drafts save/list/get/delete through repository and service boundaries.
+- Added Receipts screen tests for save and delete UI behavior.
+- Updated `ARCHITECTURE.md`.
+- Updated `DECISIONS.md`.
+
+### Files updated
+
+- `src/domain/models.ts`
+- `src/data/seedData.ts`
+- `src/persistence/db.ts`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/services/financeDataService.ts`
+- `src/app/App.tsx`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/styles.css`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Initial result: failed because `ReceiptsPage.test.tsx` still rendered `ReceiptsPage` without the new draft props.
+
+Fix:
+
+- Updated the test helper to pass `receiptDrafts`, `receiptDraftItems`, `onSaveDraft`, and `onDeleteDraft`.
+- Added typed draft fixtures and typed mock callbacks.
+
+Final result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Initial result: failed because a typed mock callback parameter in `ReceiptsPage.test.tsx` was unused.
+
+Fix:
+
+- Used the mock parameter as part of the mock result.
+
+Final result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 7 test files passed, 21 tests passed. npm printed the existing `--run` warning.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Browser verification
+
+- Confirmed the dev server responded at `http://127.0.0.1:5174/`.
+- Opened the app in the in-app browser.
+- Set a temporary 390 x 844 viewport.
+- Captured Dashboard monthly spend before saving a draft: `$145.49`.
+- Navigated to Receipts.
+- Used `Use sample`, then `Parse receipt`, then `Save draft`.
+- Confirmed `Draft saved.` appeared.
+- Confirmed saved draft list contained `GREEN MARKET`.
+- Confirmed saved draft row count changed from `0` to `1`.
+- Reloaded the page.
+- Navigated back to Receipts.
+- Confirmed the saved draft persisted after reload with row count still `1`.
+- Navigated to Dashboard.
+- Confirmed monthly spend remained `$145.49`.
+- Returned to Receipts.
+- Deleted the saved draft through `Delete draft` then `Confirm delete`.
+- Confirmed `Draft deleted.` appeared and saved draft row count returned to `0`.
+- Confirmed no horizontal overflow at 390 px width.
+- Reset the temporary viewport override.
+
+### Scope notes
+
+- No transactions are created from receipt drafts.
+- Receipt drafts do not affect Dashboard.
+- Receipt drafts are not written into `receipts` or `receiptItems`.
+- No OCR was added.
+- No image upload was added.
+- No Google Drive integration was added.
+- No real AI/LLM API calls were added.
+- No real bank API integration was added.
+- No bank credentials are stored.
+- No crypto or brokerage integration was added.
+- The parser was not rewritten.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Phase 5A persists drafts but does not provide a review/edit screen yet.
+- Draft status values include `reviewed` and `confirmed` for forward compatibility, but the current UI only creates `draft` records.
+
+### Next step
+
+Phase 5B: add receipt draft review/edit UI, then explicit confirmation that promotes a reviewed draft into confirmed receipt data and links or creates a transaction without double-counting.
+
+## 2026-06-03: Manual local currency conversion added
+
+### Completed
+
+- Added manual local currency settings for USD, RUB, EUR, and GBP.
+- Seeded default local rates to RUB from Bank of Russia official rates for 2026-06-03:
+  - USD: 72.5597 RUB
+  - RUB: 1
+  - EUR: 84.6096 RUB
+  - GBP: 97.4985 RUB
+- Added `CurrencySettings` to the local finance snapshot.
+- Stored persisted currency settings in Dexie `appMeta`.
+- Added Settings controls for:
+  - display currency;
+  - USD to RUB rate;
+  - EUR to RUB rate;
+  - GBP to RUB rate.
+- Updated Dashboard, Transactions, Receipts, Recurring, and Categories to display amounts in the selected display currency.
+- Updated transaction amount sorting to compare converted display amounts.
+- Kept live exchange-rate fetching and online FX providers out of scope.
+- Updated `PLAN.md`, `ARCHITECTURE.md`, and `DECISIONS.md` for the manual FX scope.
+
+### Files added
+
+- `src/domain/currencySettings.ts`
+- `src/domain/currencySettings.test.ts`
+
+### Files updated
+
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/data/seedData.ts`
+- `src/domain/financeViews.ts`
+- `src/domain/financeViews.test.ts`
+- `src/domain/models.ts`
+- `src/pages/CategoriesPage.tsx`
+- `src/pages/DashboardPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/RecurringPage.tsx`
+- `src/pages/SettingsPage.tsx`
+- `src/pages/TransactionsPage.tsx`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/services/financeDataService.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Initial result: failed because two tests expected conversion after aggregating USD totals, while the implementation converts and rounds each record before summing. The test expectations were corrected to match the mixed-currency aggregation rule.
+
+Final result: succeeded. 8 test files passed, 26 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Browser verification
+
+- Confirmed the existing dev server responded at `http://127.0.0.1:5174/`.
+- Opened the app in the in-app browser.
+- Confirmed Dashboard default display currency was RUB:
+  - This month: `10 556,72 ₽`
+  - Recurring: `5 006,62 ₽`
+- Navigated to Settings.
+- Confirmed Settings showed the Currency section, display currency control, seeded USD/EUR/GBP rates, and the Bank of Russia source note.
+- Changed display currency to USD and saved.
+- Confirmed Settings showed `Currency settings saved.`.
+- Navigated back to Dashboard and confirmed:
+  - This month: `$145.49`
+  - Recurring: `$69.00`
+- Navigated to Transactions and confirmed transaction currency options are `USD`, `RUB`, `EUR`, and `GBP`.
+- Reset display currency to RUB after verification.
+
+### Scope notes
+
+- No live exchange-rate fetching was added.
+- No online currency provider was added.
+- No bank, Google Drive, OCR, crypto, brokerage, or payment integration was added.
+- No credentials or API keys were added.
+
+## 2026-06-04: Phase 5A and manual currency stabilization completed
+
+### Completed
+
+- Reviewed the manual multi-currency implementation for consistency.
+- Confirmed currency conversion remains display-only:
+  - original transaction `amount` and `currency` are persisted unchanged;
+  - Dashboard totals are converted derived values only;
+  - recent transaction records still expose their source amount and currency.
+- Confirmed receipt drafts remain isolated:
+  - saved drafts preserve their parsed receipt currency;
+  - drafts do not create transactions;
+  - drafts do not mutate `receipts` or `receiptItems`;
+  - drafts do not affect Dashboard overview totals.
+- Confirmed Settings display currency is persisted through Dexie `appMeta` and survives snapshot reload.
+- Clarified in `ARCHITECTURE.md` and `DECISIONS.md` that local FX rates are manual/static MVP rates and conversion must not overwrite source records.
+- Updated `.gitignore` to ignore `*.err`, `vite-*.err`, and `vite-*.log`.
+- Removed `vite-dev-escalated.err` from git tracking while leaving any local ignored runtime copy alone.
+- Added tests for transaction source-currency preservation and display-only dashboard conversion.
+- Adjusted receipt draft persistence coverage to prove draft currency preservation while Dashboard remains unchanged.
+
+### Files updated
+
+- `.gitignore`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/domain/financeViews.test.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+
+### Runtime log cleanup
+
+- `vite-dev-escalated.err` is staged for removal from the repository.
+- `.gitignore` now prevents future runtime `.err` and Vite log files from being added by `git add .`.
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 8 test files passed, 28 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Readiness
+
+Phase 5A receipt draft persistence and manual multi-currency support are stable enough to start Phase 5B. Phase 5B should begin with receipt draft review/edit UI and explicit confirmation, without adding OCR, image upload, Google Drive, live FX, or external provider integrations.
+
+## 2026-06-04: Phase 5B receipt draft review/edit UI completed
+
+### Completed
+
+- Added a draft-only review/edit flow on the Receipts screen.
+- Saved drafts can be opened from the Saved drafts list with `Review draft`.
+- Review form supports editing:
+  - merchant;
+  - receipt date;
+  - receipt currency;
+  - receipt total;
+  - item normalized name;
+  - item quantity;
+  - item unit price;
+  - item total price;
+  - item category suggestion;
+  - item flags.
+- Raw receipt text, raw item line, and raw item name stay read-only.
+- Added item sum vs receipt total display.
+- Added mismatch warning when item sum differs from receipt total.
+- Added `Save changes` for persisting draft edits.
+- Added `Mark reviewed` for persisting `reviewed` status.
+- Added repository and service update paths for existing receipt drafts.
+- Kept updates scoped to `receiptDrafts` and `receiptDraftItems`.
+- Confirmed reviewed drafts still do not create transactions, do not write to final `receipts` or `receiptItems`, and do not affect Dashboard.
+- Updated `ARCHITECTURE.md` and `DECISIONS.md`.
+
+### Files updated
+
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/services/financeDataService.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 8 test files passed, 33 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Browser verification
+
+- Started Vite at `http://127.0.0.1:5174/` after the first sandboxed dev-server attempt failed with `spawn EPERM`.
+- Set a temporary mobile viewport override.
+- Captured Dashboard monthly spend before reviewing a draft: `10 556,72 ₽`.
+- Opened Receipts.
+- Confirmed the Draft review section rendered and prompted to open a saved draft.
+- Ensured a saved draft existed by using the existing parser sample flow when needed.
+- Opened a saved draft with `Review draft`.
+- Confirmed the review UI showed raw receipt evidence, item sum, normalized-name fields, and `Mark reviewed`.
+- Edited merchant, receipt currency, receipt total, first item normalized name, first item total price, and first item flags.
+- Saved changes and confirmed `Draft changes saved.` appeared.
+- Marked the draft reviewed and confirmed `Draft marked reviewed.` appeared.
+- Reloaded the app, returned to Receipts, and confirmed the edited merchant and `Reviewed` status persisted.
+- Confirmed no horizontal overflow in the mobile viewport.
+- Returned to Dashboard and confirmed monthly spend stayed `10 556,72 ₽`.
+- Reset the temporary viewport override.
+
+### Scope notes
+
+- No transactions are created from receipt drafts.
+- Reviewed drafts do not affect Dashboard.
+- Reviewed drafts are not written into `receipts` or `receiptItems`.
+- No OCR was added.
+- No image upload was added.
+- No Google Drive integration was added.
+- No real AI/LLM API calls were added.
+- No bank API integration was added.
+- No crypto or brokerage integration was added.
+- No live FX API or FX auto-refresh was added.
+- The parser was not rewritten.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Phase 5B reviews and edits drafts only. Confirmation/promotion into final receipt data remains intentionally unimplemented.
+
+### Next recommended phase
+
+Phase 5C: explicit receipt confirmation/promotion from reviewed draft into final `receipts` and `receiptItems`, plus transaction creation/linking and double-counting protection tests.
+
+## 2026-06-04: Phase 5C-A reviewed receipt confirmation completed
+
+### Completed
+
+- Added explicit confirmation for reviewed receipt drafts only.
+- Confirmation creates, in one repository-level Dexie transaction:
+  - one final `Receipt`;
+  - final `ReceiptItem` records;
+  - one linked `Transaction` for the receipt total.
+- Added final receipt linkage:
+  - `Receipt.transactionId`;
+  - `Transaction.receiptId`;
+  - `ReceiptDraft.confirmedReceiptId`;
+  - `ReceiptDraft.linkedTransactionId`.
+- Added final receipt item `flags` so reviewed parser flags are preserved after confirmation.
+- Added repository idempotency:
+  - unreviewed drafts cannot be confirmed;
+  - normal draft save/update cannot set `confirmed`;
+  - already confirmed drafts return their existing linked receipt, items, and transaction instead of creating duplicates.
+- Added service-layer confirmation with snapshot reload so Dashboard updates from persisted data.
+- Added Receipts review UI confirmation controls:
+  - `Confirm receipt` appears only for reviewed drafts;
+  - account selection is required;
+  - transaction category defaults to groceries/food when available;
+  - warning explains that confirmation creates a transaction and affects Dashboard;
+  - confirmed drafts show a linked transaction summary;
+  - confirmed drafts hide the confirm action after click and after reload.
+- Confirmed Dashboard spend updates through the created transaction, while receipt items do not independently add Dashboard spend totals.
+- Kept hard non-goals out of scope:
+  - no bank matching or reconciliation;
+  - no OCR or image upload;
+  - no Google Drive;
+  - no AI/LLM API calls;
+  - no bank APIs;
+  - no crypto or brokerage integrations;
+  - no live FX API or FX auto-refresh.
+- Updated `ARCHITECTURE.md` and `DECISIONS.md`.
+
+### Files updated
+
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/data/seedData.ts`
+- `src/domain/models.ts`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/services/financeDataService.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Initial result: failed because the new ReceiptsPage confirm mock had an unused parameter.
+
+Fix:
+
+- Used the confirmation input inside the mock linked transaction.
+
+Final result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Initial result: failed because two repository assertions assumed Dexie would preserve missing `undefined` fields and receipt draft item ordering.
+
+Fixes:
+
+- Checked missing linkage fields with `toBeUndefined()`.
+- Matched the confirmed final receipt item by normalized name instead of array position.
+
+Final result: succeeded. 8 test files passed, 39 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Browser verification
+
+- Confirmed the dev server responded at `http://127.0.0.1:5174/`.
+- Opened the app in the in-app browser.
+- Set a temporary 390 x 844 viewport override.
+- Navigated to Receipts.
+- Created a new draft from the sample pasted receipt flow.
+- Opened the saved draft for review.
+- Changed the merchant to a temporary unique browser verification value.
+- Marked the draft reviewed.
+- Confirmed the warning text appeared before confirmation.
+- Selected `Everyday card` and `Groceries` for the linked transaction.
+- Confirmed the receipt.
+- Verified the UI showed `Confirmed receipt` and a linked transaction summary.
+- Verified `Confirm receipt` was no longer visible after confirmation.
+- Reloaded the app.
+- Returned to Receipts and confirmed the temporary browser verification merchant persisted with `Confirmed` status.
+- Opened the confirmed draft after reload and verified:
+  - linked transaction summary was still shown;
+  - `Confirm receipt` was still hidden.
+- Navigated to Dashboard and verified the temporary browser verification merchant appeared from the created receipt transaction.
+- Reset the temporary viewport override.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- The MVP still has no final receipt or receipt-linked transaction delete/undo flow. The browser verification therefore leaves one local confirmed demo receipt/transaction in this browser's IndexedDB.
+
+### Next recommended phase
+
+Phase 6: recurring expense CRUD through the existing service/repository boundary, keeping external integrations deferred.
+
+## 2026-06-04: Phase 5C-A stabilization checkpoint
+
+### Completed
+
+- Reviewed the dirty working tree after Phase 5C-A.
+- Confirmed the only untracked source files are the manual currency settings module and tests intended for this checkpoint.
+- Confirmed the staged deletion of `vite-dev-escalated.err` removes a runtime log from version control.
+- Confirmed no concrete browser verification merchant value remains in source/docs after cleanup.
+- Aligned `PLAN.md` with the Phase 5C-A rule that Dashboard spend updates through the linked transaction while item-level dashboard analytics remain deferred to Phase 7.
+- Added an architecture dev/test reset note for the local IndexedDB database `finaitr-local`; no product reset UI was added because the in-app backup/reset workflow belongs to Phase 8.
+- Rechecked receipt confirmation coverage:
+  - unreviewed drafts cannot be confirmed;
+  - reviewed drafts can be confirmed through the service boundary;
+  - confirmation creates one transaction;
+  - confirmation creates final receipt and final receipt items;
+  - final receipt links to the transaction;
+  - Dashboard monthly spend updates after confirmation through the created transaction;
+  - duplicate confirmation does not create duplicate records;
+  - original amount and currency are preserved;
+  - safe default transaction category is selected when no category is provided.
+- Confirmed no OCR, image upload, Google Drive, AI/LLM, bank API, crypto/brokerage, live FX, bank matching, item-level Dashboard totals, or subscription automation was added during stabilization.
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Initial stabilization rerun result: failed because the duplicate-confirmation test compared final receipt item ids in Dexie read order.
+
+Fix:
+
+- Changed the assertion to compare sorted final receipt item ids, keeping the idempotency check order-independent.
+
+Final result: succeeded. 8 test files passed, 39 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- The browser used for manual verification may still contain local IndexedDB verification data. That data is not stored in the repository and can be cleared through browser storage tools or `indexedDB.deleteDatabase("finaitr-local")` during development.
+
+### Next recommended phase
+
+Phase 6: recurring expense CRUD through the existing service/repository boundary, keeping all deferred integrations out of scope.

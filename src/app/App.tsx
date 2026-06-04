@@ -8,9 +8,16 @@ import { SettingsPage } from "../pages/SettingsPage";
 import { TransactionsPage } from "../pages/TransactionsPage";
 import {
   createInitialFinanceDataState,
+  confirmReceiptDraftAndReload,
   createManualTransactionAndReload,
+  deleteReceiptDraftAndReload,
   deleteTransactionAndReload,
   loadFinanceData,
+  saveParsedReceiptDraftAndReload,
+  updateCurrencySettingsAndReload,
+  updateReceiptDraftAndReload,
+  type CurrencySettingsActionResult,
+  type ReceiptDraftActionResult,
   type TransactionActionResult,
   updateTransactionAndReload,
 } from "../services/financeDataService";
@@ -47,6 +54,22 @@ export function App() {
     return result;
   }
 
+  function applyReceiptDraftActionResult(result: ReceiptDraftActionResult) {
+    if (result.ok && result.data) {
+      setFinanceData(result.data);
+    }
+
+    return result;
+  }
+
+  function applyCurrencySettingsActionResult(result: CurrencySettingsActionResult) {
+    if (result.ok && result.data) {
+      setFinanceData(result.data);
+    }
+
+    return result;
+  }
+
   return (
     <AppShell
       activeRoute={activeRoute}
@@ -54,12 +77,16 @@ export function App() {
       onRouteChange={setCurrentRouteId}
     >
       {currentRouteId === "dashboard" && (
-        <DashboardPage overview={financeData.overview} />
+        <DashboardPage
+          currencySettings={financeData.snapshot.currencySettings}
+          overview={financeData.overview}
+        />
       )}
       {currentRouteId === "transactions" && (
         <TransactionsPage
           accounts={financeData.snapshot.accounts}
           categories={financeData.snapshot.categories}
+          currencySettings={financeData.snapshot.currencySettings}
           loadStatus={financeData.status}
           onCreate={async (input) =>
             applyTransactionActionResult(
@@ -81,22 +108,56 @@ export function App() {
       )}
       {currentRouteId === "receipts" && (
         <ReceiptsPage
+          accounts={financeData.snapshot.accounts}
+          categories={financeData.snapshot.categories}
+          currencySettings={financeData.snapshot.currencySettings}
+          onConfirmDraft={async (draftId, input) =>
+            applyReceiptDraftActionResult(
+              await confirmReceiptDraftAndReload(draftId, input),
+            )
+          }
+          onDeleteDraft={async (draftId) =>
+            applyReceiptDraftActionResult(await deleteReceiptDraftAndReload(draftId))
+          }
+          onSaveDraft={async (draft) =>
+            applyReceiptDraftActionResult(
+              await saveParsedReceiptDraftAndReload(draft),
+            )
+          }
+          onUpdateDraft={async (draftId, input) =>
+            applyReceiptDraftActionResult(
+              await updateReceiptDraftAndReload(draftId, input),
+            )
+          }
+          receiptDraftItems={financeData.snapshot.receiptDraftItems}
+          receiptDrafts={financeData.snapshot.receiptDrafts}
           receiptItems={financeData.snapshot.receiptItems}
           receipts={financeData.snapshot.receipts}
+          transactions={financeData.snapshot.transactions}
         />
       )}
       {currentRouteId === "recurring" && (
-        <RecurringPage recurringExpenses={financeData.snapshot.recurringExpenses} />
+        <RecurringPage
+          currencySettings={financeData.snapshot.currencySettings}
+          recurringExpenses={financeData.snapshot.recurringExpenses}
+        />
       )}
       {currentRouteId === "categories" && (
         <CategoriesPage
           categories={financeData.snapshot.categories}
           categorySpend={financeData.overview.categorySpend}
+          displayCurrency={financeData.overview.displayCurrency}
         />
       )}
       {currentRouteId === "settings" && (
         <SettingsPage
+          currencySettings={financeData.snapshot.currencySettings}
           errorMessage={financeData.errorMessage}
+          onUpdateCurrencySettings={async (settings) =>
+            applyCurrencySettingsActionResult(
+              await updateCurrencySettingsAndReload(settings),
+            )
+          }
           snapshot={financeData.snapshot}
           status={financeData.status}
           storageMode={financeData.storageMode}

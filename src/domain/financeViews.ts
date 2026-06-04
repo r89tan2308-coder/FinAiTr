@@ -1,5 +1,11 @@
 import {
+  convertMoney,
+  defaultCurrencySettings,
+  roundMoney,
+} from "./currencySettings";
+import {
   type Category,
+  type CurrencySettings,
   type FinanceSnapshot,
   type Receipt,
   type ReceiptItem,
@@ -27,6 +33,7 @@ export interface ProductSpend {
 }
 
 export interface FinanceOverview {
+  displayCurrency: CurrencySettings["displayCurrency"];
   monthKey: string;
   monthlySpend: number;
   recurringMonthlyTotal: number;
@@ -51,11 +58,6 @@ const fallbackCategory: Category = {
   icon: "circle",
 };
 
-export const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
-
 export function getCurrentMonthKey(date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -67,24 +69,45 @@ export function buildFinanceOverview(
   options: OverviewOptions = {},
 ): FinanceOverview {
   const monthKey = options.monthKey ?? getCurrentMonthKey();
+  const currencySettings = snapshot.currencySettings ?? defaultCurrencySettings;
+  const displayCurrency = currencySettings.displayCurrency;
   const monthTransactions = snapshot.transactions.filter((transaction) =>
     transaction.date.startsWith(monthKey),
   );
 
   return {
+    displayCurrency,
     monthKey,
-    monthlySpend: roundMoney(sumAmounts(monthTransactions)),
+    monthlySpend: roundMoney(sumAmounts(monthTransactions, currencySettings)),
     recurringMonthlyTotal: roundMoney(
       snapshot.recurringExpenses
         .filter((expense) => expense.status === "active")
-        .reduce((sum, expense) => sum + toMonthlyRecurringAmount(expense), 0),
+        .reduce(
+          (sum, expense) =>
+            sum +
+            convertMoney(
+              toMonthlyRecurringAmount(expense),
+              expense.currency,
+              displayCurrency,
+              currencySettings,
+            ),
+          0,
+        ),
     ),
     pendingReceiptCount: snapshot.receipts.filter(
       (receipt) => receipt.status !== "confirmed",
     ).length,
-    categorySpend: getCategorySpend(monthTransactions, snapshot.categories),
-    merchantSpend: getMerchantSpend(monthTransactions),
-    topProducts: getTopProducts(snapshot.receiptItems),
+    categorySpend: getCategorySpend(
+      monthTransactions,
+      snapshot.categories,
+      currencySettings,
+    ),
+    merchantSpend: getMerchantSpend(monthTransactions, currencySettings),
+    topProducts: getTopProducts(
+      snapshot.receiptItems,
+      snapshot.receipts,
+      currencySettings,
+    ),
     recentTransactions: sortByDateDesc(snapshot.transactions).slice(0, 4),
     recentReceipts: sortReceiptsByDateDesc(snapshot.receipts).slice(0, 4),
     recurringExpenses: sortRecurringByDueDate(snapshot.recurringExpenses),
@@ -94,13 +117,24 @@ export function buildFinanceOverview(
 export function getCategorySpend(
   transactions: Transaction[],
   categories: Category[],
+  currencySettings: CurrencySettings = defaultCurrencySettings,
 ): CategorySpend[] {
   const categoryMap = new Map(categories.map((category) => [category.id, category]));
   const totals = new Map<string, number>();
+  const displayCurrency = currencySettings.displayCurrency;
 
   transactions.forEach((transaction) => {
     const categoryId = transaction.categoryId ?? fallbackCategory.id;
-    totals.set(categoryId, (totals.get(categoryId) ?? 0) + transaction.amount);
+    totals.set(
+      categoryId,
+      (totals.get(categoryId) ?? 0) +
+        convertMoney(
+          transaction.amount,
+          transaction.currency,
+          displayCurrency,
+          currencySettings,
+        ),
+    );
   });
 
   return [...totals.entries()]
@@ -117,13 +151,23 @@ export function getCategorySpend(
     .sort((left, right) => right.amount - left.amount);
 }
 
-export function getMerchantSpend(transactions: Transaction[]): MerchantSpend[] {
+export function getMerchantSpend(
+  transactions: Transaction[],
+  currencySettings: CurrencySettings = defaultCurrencySettings,
+): MerchantSpend[] {
   const totals = new Map<string, number>();
+  const displayCurrency = currencySettings.displayCurrency;
 
   transactions.forEach((transaction) => {
     totals.set(
       transaction.merchant,
-      (totals.get(transaction.merchant) ?? 0) + transaction.amount,
+      (totals.get(transaction.merchant) ?? 0) +
+        convertMoney(
+          transaction.amount,
+          transaction.currency,
+          displayCurrency,
+          currencySettings,
+        ),
     );
   });
 
@@ -132,17 +176,34 @@ export function getMerchantSpend(transactions: Transaction[]): MerchantSpend[] {
     .sort((left, right) => right.amount - left.amount);
 }
 
-export function getTopProducts(items: ReceiptItem[]): ProductSpend[] {
+export function getTopProducts(
+  items: ReceiptItem[],
+  receipts: Receipt[] = [],
+  currencySettings: CurrencySettings = defaultCurrencySettings,
+): ProductSpend[] {
   const totals = new Map<string, ProductSpend>();
+  const displayCurrency = currencySettings.displayCurrency;
+  const receiptCurrencyById = new Map(
+    receipts.map((receipt) => [receipt.id, receipt.currency]),
+  );
 
   items.forEach((item) => {
     const current = totals.get(item.normalizedName);
     const tag = item.tags[0] ?? "item";
+    const sourceCurrency = receiptCurrencyById.get(item.receiptId) ?? "USD";
 
     totals.set(item.normalizedName, {
       id: item.normalizedName,
       name: item.rawName,
-      amount: roundMoney((current?.amount ?? 0) + item.totalPrice),
+      amount: roundMoney(
+        (current?.amount ?? 0) +
+          convertMoney(
+            item.totalPrice,
+            sourceCurrency,
+            displayCurrency,
+            currencySettings,
+          ),
+      ),
       tag: current?.tag ?? tag,
     });
   });
@@ -162,8 +223,23 @@ export function toMonthlyRecurringAmount(expense: RecurringExpense): number {
   return roundMoney(expense.amount);
 }
 
-function sumAmounts(transactions: Transaction[]): number {
-  return transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+function sumAmounts(
+  transactions: Transaction[],
+  currencySettings: CurrencySettings,
+): number {
+  const displayCurrency = currencySettings.displayCurrency;
+
+  return transactions.reduce(
+    (sum, transaction) =>
+      sum +
+      convertMoney(
+        transaction.amount,
+        transaction.currency,
+        displayCurrency,
+        currencySettings,
+      ),
+    0,
+  );
 }
 
 function sortByDateDesc(transactions: Transaction[]): Transaction[] {
@@ -183,8 +259,3 @@ function sortRecurringByDueDate(
     left.nextDueDate.localeCompare(right.nextDueDate),
   );
 }
-
-function roundMoney(amount: number): number {
-  return Math.round((amount + Number.EPSILON) * 100) / 100;
-}
-

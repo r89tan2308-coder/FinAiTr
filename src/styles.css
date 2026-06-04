@@ -493,6 +493,15 @@ button {
   gap: 4px;
 }
 
+.settings-note {
+  color: #697386;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .empty-state {
   background: #ffffff;
   border: 1px dashed #cbd5df;
@@ -508,6 +517,15 @@ button {
   border: 1px solid #fed7aa;
   border-radius: 8px;
   color: #9a3412;
+  font-weight: 700;
+  padding: 12px 14px;
+}
+
+.success-banner {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  color: #047857;
   font-weight: 700;
   padding: 12px 14px;
 }
@@ -594,6 +612,106 @@ button {
   border-color: #f59e0b;
 }
 
+.receipt-review-panel {
+  gap: 16px;
+}
+
+.receipt-review-total-panel,
+.receipt-review-item-card {
+  background: #ffffff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
+}
+
+.receipt-review-total-panel {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.receipt-review-total-panel[data-mismatch="true"] {
+  border-color: #f59e0b;
+}
+
+.receipt-review-total-panel span {
+  color: #697386;
+  font-weight: 700;
+}
+
+.receipt-review-total-panel em {
+  color: #9a3412;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.receipt-confirm-panel,
+.receipt-confirmed-panel {
+  background: #ffffff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.receipt-confirm-warning {
+  align-items: start;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  color: #9a3412;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 10px 12px;
+}
+
+.receipt-confirm-warning span {
+  font-weight: 800;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.receipt-confirmed-panel {
+  align-items: start;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.receipt-confirmed-panel div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.receipt-confirmed-panel span,
+.receipt-confirmed-panel small {
+  color: #065f46;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.receipt-review-item-list {
+  display: grid;
+  gap: 12px;
+}
+
+.receipt-review-item-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.receipt-review-item-grid {
+  min-width: 0;
+}
+
 .receipt-item-heading {
   align-items: start;
   display: grid;
@@ -663,6 +781,12 @@ button {
   align-items: start;
   display: grid;
   grid-template-columns: 1fr auto;
+}
+
+.receipt-draft-row {
+  align-items: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .transaction-row small {

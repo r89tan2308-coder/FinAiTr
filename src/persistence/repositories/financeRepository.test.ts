@@ -1,10 +1,31 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  convertMoney,
+  defaultCurrencySettings,
+  roundMoney,
+} from "../../domain/currencySettings";
 import { buildFinanceOverview } from "../../domain/financeViews";
+import { groceryReceiptText } from "../../receipt-parser/fixtures";
+import {
+  confirmReceiptDraftAndReload,
+  deleteReceiptDraftAndReload,
+  getReceiptDraftById,
+  listReceiptDrafts,
+  saveParsedReceiptDraftAndReload,
+  updateReceiptDraftAndReload,
+} from "../../services/financeDataService";
+import { parsePastedReceiptText } from "../../services/receiptParserService";
 import { financeDb } from "../db";
 import {
   addManualTransaction,
+  confirmReceiptDraft,
+  deleteReceiptDraft,
   deleteTransaction,
   getFinanceSnapshot,
+  getReceiptDraftRecordById,
+  listReceiptDraftRecords,
+  saveReceiptDraft,
+  updateCurrencySettings,
   updateTransaction,
 } from "./financeRepository";
 
@@ -44,7 +65,7 @@ describe("finance repository transaction CRUD", () => {
 
     expect(afterCreateSnapshot.transactions).toContainEqual(created);
     expect(afterCreateOverview.monthlySpend).toBe(
-      beforeOverview.monthlySpend + 10.25,
+      beforeOverview.monthlySpend + usdToRub(10.25),
     );
 
     const updated = await updateTransaction(created.id, {
@@ -68,7 +89,7 @@ describe("finance repository transaction CRUD", () => {
     });
 
     expect(afterUpdateOverview.monthlySpend).toBe(
-      beforeOverview.monthlySpend + 25.5,
+      beforeOverview.monthlySpend + usdToRub(25.5),
     );
 
     await deleteTransaction(created.id);
@@ -85,4 +106,441 @@ describe("finance repository transaction CRUD", () => {
     ).toBe(false);
     expect(afterDeleteOverview.monthlySpend).toBe(beforeOverview.monthlySpend);
   });
+
+  it("persists display currency after reloading app metadata", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(beforeSnapshot.currencySettings.displayCurrency).toBe("RUB");
+
+    const updatedSettings = await updateCurrencySettings({
+      ...beforeSnapshot.currencySettings,
+      displayCurrency: "EUR",
+      ratesToRub: {
+        USD: 70,
+        RUB: 1,
+        EUR: 80,
+        GBP: 95,
+      },
+    });
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+    const afterOverview = buildFinanceOverview(afterSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(updatedSettings.displayCurrency).toBe("EUR");
+    expect(afterSnapshot.currencySettings.ratesToRub.USD).toBe(70);
+    expect(afterOverview.displayCurrency).toBe("EUR");
+    expect(afterOverview.monthlySpend).toBe(127.31);
+  });
+
+  it("preserves original transaction currency while dashboard totals are converted", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    const created = await addManualTransaction({
+      accountId: "account-card",
+      amount: 100,
+      categoryId: "software",
+      currency: "EUR",
+      date: "2026-06-13",
+      description: "Euro transaction preservation test",
+      merchant: "Euro Merchant",
+      tags: ["manual", "currency"],
+    });
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+    const persisted = afterSnapshot.transactions.find(
+      (transaction) => transaction.id === created.id,
+    );
+    const afterOverview = buildFinanceOverview(afterSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(created).toMatchObject({
+      amount: 100,
+      currency: "EUR",
+    });
+    expect(persisted).toMatchObject({
+      amount: 100,
+      currency: "EUR",
+    });
+    expect(afterOverview.monthlySpend).toBe(
+      beforeOverview.monthlySpend +
+        convertMoney(100, "EUR", "RUB", defaultCurrencySettings),
+    );
+  });
+
+  it("persists receipt drafts separately from dashboard analytics", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    const saved = await saveReceiptDraft({
+      confidence: 0.61,
+      currency: "GBP",
+      date: "2026-06-03",
+      items: [
+        {
+          categoryId: "uncategorized",
+          confidence: 0.45,
+          flags: ["uncategorized", "low_confidence"],
+          kind: "item",
+          normalizedName: "blue widget",
+          rawLine: "Blue Widget 9.99",
+          rawName: "Blue Widget",
+          tags: [],
+          totalPrice: 9.99,
+        },
+      ],
+      merchant: "Odd Shop",
+      rawText: "Odd Shop\n2026-06-03\nBlue Widget 9.99\nTOTAL 9.99",
+      total: 9.99,
+      warnings: ["Saved draft test warning."],
+    });
+
+    expect(saved.draft.status).toBe("draft");
+    expect(saved.draft.currency).toBe("GBP");
+    expect(saved.draft.total).toBe(9.99);
+    expect(saved.items).toHaveLength(1);
+
+    const listed = await listReceiptDraftRecords();
+    const found = await getReceiptDraftRecordById(saved.draft.id);
+
+    expect(listed[0]?.draft.id).toBe(saved.draft.id);
+    expect(found?.items[0]?.flags).toContain("low_confidence");
+
+    const afterSaveSnapshot = (await getFinanceSnapshot()).snapshot;
+    const afterSaveOverview = buildFinanceOverview(afterSaveSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(afterSaveSnapshot.receiptDrafts).toContainEqual(saved.draft);
+    expect(afterSaveSnapshot.receiptDraftItems).toContainEqual(saved.items[0]);
+    expect(afterSaveSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterSaveSnapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(afterSaveSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+    expect(afterSaveOverview).toEqual(beforeOverview);
+
+    await deleteReceiptDraft(saved.draft.id);
+
+    expect(await getReceiptDraftRecordById(saved.draft.id)).toBeUndefined();
+    expect(await listReceiptDraftRecords()).toHaveLength(0);
+  });
+
+  it("updates receipt draft review fields without promoting data to dashboard", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const saved = await saveReceiptDraft({
+      confidence: 0.66,
+      currency: "USD",
+      date: "2026-06-03",
+      items: [
+        {
+          categoryId: "uncategorized",
+          confidence: 0.45,
+          flags: ["uncategorized"],
+          kind: "item",
+          normalizedName: "blue widget",
+          rawLine: "Blue Widget 1 x 9.99",
+          rawName: "Blue Widget",
+          tags: ["review"],
+          totalPrice: 9.99,
+          unitPrice: 9.99,
+        },
+      ],
+      merchant: "Odd Shop",
+      rawText: "Odd Shop\n2026-06-03\nBlue Widget 1 x 9.99\nTOTAL 9.99",
+      total: 9.99,
+      warnings: ["Saved draft test warning."],
+    });
+    const updateResult = await updateReceiptDraftAndReload(saved.draft.id, {
+      currency: "EUR",
+      date: "2026-06-04",
+      items: [
+        {
+          categoryId: "groceries",
+          confidence: saved.items[0].confidence,
+          flags: [],
+          id: saved.items[0].id,
+          kind: saved.items[0].kind,
+          normalizedName: "reviewed blue widget",
+          quantity: 2,
+          tags: saved.items[0].tags,
+          totalPrice: 12.5,
+          unitPrice: 6.25,
+        },
+      ],
+      merchant: "Reviewed Odd Shop",
+      status: "reviewed",
+      total: 12.5,
+    });
+    const found = await getReceiptDraftRecordById(saved.draft.id);
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+    const afterOverview = buildFinanceOverview(afterSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(updateResult.ok).toBe(true);
+    expect(updateResult.draft?.draft).toMatchObject({
+      currency: "EUR",
+      date: "2026-06-04",
+      merchant: "Reviewed Odd Shop",
+      status: "reviewed",
+      total: 12.5,
+    });
+    expect(found?.draft.rawText).toBe(saved.draft.rawText);
+    expect(found?.items[0]).toMatchObject({
+      categoryId: "groceries",
+      flags: [],
+      normalizedName: "reviewed blue widget",
+      quantity: 2,
+      rawLine: saved.items[0].rawLine,
+      rawName: saved.items[0].rawName,
+      totalPrice: 12.5,
+      unitPrice: 6.25,
+    });
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterSnapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(afterSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+    expect(afterOverview).toEqual(beforeOverview);
+  });
+
+  it("does not confirm unreviewed receipt drafts", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const saved = await saveConfirmationDraft("draft");
+
+    await expect(
+      confirmReceiptDraft(saved.draft.id, {
+        accountId: "account-card",
+        categoryId: "groceries",
+      }),
+    ).rejects.toThrow("reviewed");
+
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterSnapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(afterSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+    const unconfirmedDraft = afterSnapshot.receiptDrafts.find(
+      (draft) => draft.id === saved.draft.id,
+    );
+
+    expect(unconfirmedDraft?.status).toBe("draft");
+    expect(unconfirmedDraft?.confirmedReceiptId).toBeUndefined();
+    expect(unconfirmedDraft?.linkedTransactionId).toBeUndefined();
+  });
+
+  it("confirms a reviewed draft through the service boundary", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const saved = await saveConfirmationDraft("reviewed");
+
+    const result = await confirmReceiptDraftAndReload(saved.draft.id, {
+      accountId: "account-card",
+      categoryId: "groceries",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.confirmation).toBeDefined();
+
+    const confirmation = result.confirmation;
+
+    if (!confirmation) {
+      throw new Error("Expected receipt confirmation result.");
+    }
+
+    expect(confirmation.draft).toMatchObject({
+      confirmedReceiptId: confirmation.receipt.id,
+      linkedTransactionId: confirmation.transaction.id,
+      status: "confirmed",
+    });
+    expect(confirmation.receipt).toMatchObject({
+      currency: "GBP",
+      date: "2026-06-14",
+      merchant: "London Grocer",
+      status: "confirmed",
+      total: 30,
+      transactionId: confirmation.transaction.id,
+      warnings: ["Review preserved before confirmation."],
+    });
+    expect(confirmation.transaction).toMatchObject({
+      accountId: "account-card",
+      amount: 30,
+      categoryId: "groceries",
+      currency: "GBP",
+      date: "2026-06-14",
+      merchant: "London Grocer",
+      receiptId: confirmation.receipt.id,
+      source: "receipt",
+    });
+    expect(confirmation.transaction.description).toContain(saved.draft.id);
+    expect(confirmation.items).toHaveLength(2);
+    expect(
+      confirmation.items.find((item) => item.normalizedName === "tea"),
+    ).toMatchObject({
+      categoryId: "groceries",
+      flags: ["low_confidence"],
+      normalizedName: "tea",
+      quantity: 2,
+      rawName: "Tea",
+      receiptId: confirmation.receipt.id,
+      totalPrice: 10,
+      unitPrice: 5,
+    });
+
+    const afterSnapshot = result.data?.snapshot;
+    const afterOverview = result.data?.overview;
+
+    expect(afterSnapshot?.transactions).toHaveLength(
+      beforeSnapshot.transactions.length + 1,
+    );
+    expect(
+      afterSnapshot?.transactions.filter(
+        (transaction) => transaction.id === confirmation.transaction.id,
+      ),
+    ).toHaveLength(1);
+    expect(
+      afterSnapshot?.receipts.filter(
+        (receipt) => receipt.id === confirmation.receipt.id,
+      ),
+    ).toHaveLength(1);
+    expect(
+      afterSnapshot?.receiptItems.filter(
+        (item) => item.receiptId === confirmation.receipt.id,
+      ),
+    ).toHaveLength(2);
+    expect(afterOverview?.monthlySpend).toBe(
+      roundMoney(
+        beforeOverview.monthlySpend +
+          convertMoney(30, "GBP", "RUB", defaultCurrencySettings),
+      ),
+    );
+    expect(confirmation.transaction).toMatchObject({
+      amount: 30,
+      currency: "GBP",
+    });
+  });
+
+  it("uses a safe default transaction category when none is provided", async () => {
+    const saved = await saveConfirmationDraft("reviewed");
+
+    const result = await confirmReceiptDraft(saved.draft.id, {
+      accountId: "account-card",
+    });
+
+    expect(result.transaction.categoryId).toBe("groceries");
+  });
+
+  it("does not create duplicate receipt confirmation records", async () => {
+    const saved = await saveConfirmationDraft("reviewed");
+    const first = await confirmReceiptDraft(saved.draft.id, {
+      accountId: "account-card",
+      categoryId: "groceries",
+    });
+    const second = await confirmReceiptDraft(saved.draft.id, {
+      accountId: "account-cash",
+      categoryId: "games",
+    });
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(second.receipt.id).toBe(first.receipt.id);
+    expect(second.transaction.id).toBe(first.transaction.id);
+    expect(second.items.map((item) => item.id).sort()).toEqual(
+      first.items.map((item) => item.id).sort(),
+    );
+    expect(
+      afterSnapshot.transactions.filter(
+        (transaction) => transaction.receiptId === first.receipt.id,
+      ),
+    ).toHaveLength(1);
+    expect(
+      afterSnapshot.receipts.filter((receipt) => receipt.id === first.receipt.id),
+    ).toHaveLength(1);
+    expect(
+      afterSnapshot.receiptItems.filter(
+        (item) => item.receiptId === first.receipt.id,
+      ),
+    ).toHaveLength(first.items.length);
+  });
+
+  it("saves, lists, gets, and deletes parsed drafts through the service boundary", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const parsedDraft = parsePastedReceiptText(groceryReceiptText);
+
+    const saveResult = await saveParsedReceiptDraftAndReload(parsedDraft);
+
+    expect(saveResult.ok).toBe(true);
+    expect(saveResult.draft?.draft.merchant).toBe("GREEN MARKET");
+    expect(saveResult.draft?.items).toHaveLength(3);
+    expect(saveResult.data?.snapshot.receiptDrafts).toHaveLength(1);
+    expect(saveResult.data?.overview).toEqual(beforeOverview);
+
+    const listed = await listReceiptDrafts();
+    const found = await getReceiptDraftById(saveResult.draft?.draft.id ?? "");
+
+    expect(listed).toHaveLength(1);
+    expect(found?.draft.id).toBe(saveResult.draft?.draft.id);
+
+    const deleteResult = await deleteReceiptDraftAndReload(
+      saveResult.draft?.draft.id ?? "",
+    );
+
+    expect(deleteResult.ok).toBe(true);
+    expect(deleteResult.data?.snapshot.receiptDrafts).toHaveLength(0);
+    expect(deleteResult.data?.snapshot.receiptDraftItems).toHaveLength(0);
+    expect(deleteResult.data?.overview).toEqual(beforeOverview);
+  });
 });
+
+function usdToRub(amount: number): number {
+  return convertMoney(amount, "USD", "RUB", defaultCurrencySettings);
+}
+
+function saveConfirmationDraft(status: "draft" | "reviewed") {
+  return saveReceiptDraft({
+    confidence: 0.88,
+    currency: "GBP",
+    date: "2026-06-14",
+    items: [
+      {
+        categoryId: "groceries",
+        confidence: 0.7,
+        flags: ["low_confidence"],
+        kind: "item",
+        normalizedName: "tea",
+        quantity: 2,
+        rawLine: "Tea 2 x 5.00",
+        rawName: "Tea",
+        tags: ["groceries"],
+        totalPrice: 10,
+        unitPrice: 5,
+      },
+      {
+        categoryId: "groceries",
+        confidence: 0.92,
+        flags: [],
+        kind: "item",
+        normalizedName: "bread",
+        quantity: 1,
+        rawLine: "Bread 20.00",
+        rawName: "Bread",
+        tags: ["groceries"],
+        totalPrice: 20,
+      },
+    ],
+    merchant: "London Grocer",
+    rawText: "London Grocer\n2026-06-14\nTea 2 x 5.00\nBread 20.00\nTOTAL 30.00",
+    status,
+    total: 30,
+    warnings: ["Review preserved before confirmation."],
+  });
+}

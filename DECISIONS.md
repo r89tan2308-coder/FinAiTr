@@ -206,3 +206,80 @@ Consequences:
 - The parser preview can show merchant, date, total, warnings, item confidence, flags, and category suggestions.
 - Dashboard remains unaffected by parsed receipt previews.
 - Phase 5 must add the review and confirmation workflow before parsed receipts affect transactions or analytics.
+
+## 2026-06-03: Phase 5A stores receipt drafts separately
+
+Decision:
+
+Persist saved parsed receipt drafts in `receiptDrafts` and `receiptDraftItems` instead of writing them directly into `receipts` and `receiptItems`.
+
+Rationale:
+
+`receipts` and `receiptItems` already feed dashboard-adjacent views such as pending receipt count, recent receipts, and top products. Phase 5A only needs durable draft storage, not analytics participation. Separate draft tables make it clear that saved parser output is still pre-review evidence.
+
+Consequences:
+
+- Saved drafts survive refresh and can be listed/deleted on the Receipts screen.
+- Draft writes go through `financeDataService` and `financeRepository`.
+- Dashboard remains unchanged by saving or deleting a receipt draft.
+- Receipt review/confirmation must explicitly promote a draft into confirmed receipt data in a later phase.
+- No transaction is created from a receipt draft in Phase 5A.
+
+## 2026-06-03: Currency conversion is manual and local for MVP
+
+Decision:
+
+Support USD, RUB, EUR, and GBP for manual transaction, receipt, and recurring-expense display by storing user-editable local rates to RUB in Settings. Seed the initial manual rates from Bank of Russia official rates for 2026-06-03: USD 72.5597 RUB, EUR 84.6096 RUB, and GBP 97.4985 RUB.
+
+Rationale:
+
+The app needs mixed-currency entry and single-currency reporting, but repeatedly checking current exchange rates would add a live external data dependency and broaden the MVP beyond local-first finance tracking.
+
+Consequences:
+
+- `currencySettings` becomes part of `FinanceSnapshot`.
+- Settings owns the display currency and manual RUB rates.
+- Dashboard, category, receipt, transaction, and recurring displays convert through local settings.
+- Currency conversion is display-only; persisted transaction, receipt, receipt draft, and recurring records keep their original amount and currency fields.
+- No online FX provider, rate polling, API key, or background sync is added for the first MVP.
+
+## 2026-06-04: Phase 5B reviews drafts without promoting them
+
+Decision:
+
+Add receipt draft review/edit UI for saved drafts, but keep reviewed drafts in `receiptDrafts` and `receiptDraftItems` only.
+
+Rationale:
+
+Draft review needs to make parser output correct before any final receipt, transaction linking, or item-level analytics behavior exists. Promoting reviewed drafts in the same step would couple editing with accounting effects and increase the risk of double-counting.
+
+Consequences:
+
+- Saved drafts can be opened, edited, saved, and marked `reviewed`.
+- Raw receipt text, raw item line, and raw item name remain read-only evidence.
+- Review updates go through `financeDataService` and `financeRepository`.
+- Review updates write only to `receiptDrafts` and `receiptDraftItems`.
+- Reviewed drafts do not create transactions.
+- Reviewed drafts do not write to final `receipts` or `receiptItems`.
+- Reviewed drafts do not affect Dashboard analytics.
+- Confirmation, promotion, and transaction linking remain a later phase.
+
+## 2026-06-04: Phase 5C-A confirms reviewed drafts through one local transaction
+
+Decision:
+
+Reviewed receipt drafts are confirmed through a dedicated repository/service action that creates one final receipt, final receipt items, and one linked transaction in a single Dexie transaction. Normal draft save/update paths cannot set `confirmed`.
+
+Rationale:
+
+Confirmation is the first step where receipt review affects accounting totals. Keeping it as a separate explicit action makes the Dashboard impact visible to the user and prevents partial promotion or duplicate transactions.
+
+Consequences:
+
+- `Receipt` stores `transactionId`; `Transaction` already stores `receiptId`.
+- `ReceiptDraft` stores `confirmedReceiptId` and `linkedTransactionId` for idempotency.
+- Final `ReceiptItem` records preserve reviewed item names, quantities, prices, categories, tags, confidence, and flags.
+- Confirm can run only from `reviewed` drafts.
+- Reconfirming an already confirmed draft returns existing linked records instead of creating duplicates.
+- Dashboard spend totals update through the created transaction only; receipt items do not independently add spend totals.
+- Real bank matching/reconciliation, OCR, image upload, Google Drive, AI/LLM, bank APIs, crypto/brokerage, and live FX remain out of scope.

@@ -1,8 +1,17 @@
 import { Edit3, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PageSection } from "../components/PageSection";
-import { currency } from "../domain/financeViews";
-import { type Account, type Category, type Transaction } from "../domain/models";
+import {
+  convertMoney,
+  formatDisplayMoney,
+  supportedCurrencyCodes,
+} from "../domain/currencySettings";
+import {
+  type Account,
+  type Category,
+  type CurrencySettings,
+  type Transaction,
+} from "../domain/models";
 import {
   emptyTransactionFormValues,
   formValuesToTransactionInput,
@@ -19,6 +28,7 @@ import {
 interface TransactionsPageProps {
   accounts: Account[];
   categories: Category[];
+  currencySettings: CurrencySettings;
   loadStatus: FinanceLoadStatus;
   onCreate: (input: TransactionInput) => Promise<TransactionActionResult>;
   onDelete: (transactionId: string) => Promise<TransactionActionResult>;
@@ -32,6 +42,7 @@ interface TransactionsPageProps {
 export function TransactionsPage({
   accounts,
   categories,
+  currencySettings,
   loadStatus,
   onCreate,
   onDelete,
@@ -49,7 +60,10 @@ export function TransactionsPage({
   const [editingTransactionId, setEditingTransactionId] = useState<string>();
   const [formErrors, setFormErrors] = useState<TransactionValidationErrors>({});
   const [formValues, setFormValues] = useState(() =>
-    emptyTransactionFormValues({ accountId: accounts[0]?.id ?? "" }),
+    emptyTransactionFormValues({
+      accountId: accounts[0]?.id ?? "",
+      currency: currencySettings.displayCurrency,
+    }),
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -65,12 +79,21 @@ export function TransactionsPage({
       filterAndSortTransactions({
         categoryFilter,
         categoryNames,
+        currencySettings,
         dateFilter,
         searchText,
         sortMode,
         transactions,
       }),
-    [categoryFilter, categoryNames, dateFilter, searchText, sortMode, transactions],
+    [
+      categoryFilter,
+      categoryNames,
+      currencySettings,
+      dateFilter,
+      searchText,
+      sortMode,
+      transactions,
+    ],
   );
 
   const editingTransaction = transactions.find(
@@ -90,7 +113,12 @@ export function TransactionsPage({
     setDeleteCandidateId(undefined);
     setEditingTransactionId(undefined);
     setFormErrors({});
-    setFormValues(emptyTransactionFormValues({ accountId: accounts[0]?.id ?? "" }));
+    setFormValues(
+      emptyTransactionFormValues({
+        accountId: accounts[0]?.id ?? "",
+        currency: currencySettings.displayCurrency,
+      }),
+    );
   }
 
   function beginEdit(transaction: Transaction): void {
@@ -189,13 +217,17 @@ export function TransactionsPage({
 
           <label className="field">
             <span>Currency</span>
-            <input
-              maxLength={3}
-              onChange={(event) =>
-                updateFormValue("currency", event.target.value.toUpperCase())
-              }
+            <select
+              aria-label="Transaction currency"
+              onChange={(event) => updateFormValue("currency", event.target.value)}
               value={formValues.currency}
-            />
+            >
+              {supportedCurrencyCodes.map((currencyCode) => (
+                <option key={currencyCode} value={currencyCode}>
+                  {currencyCode}
+                </option>
+              ))}
+            </select>
             {formErrors.currency && <em>{formErrors.currency}</em>}
           </label>
 
@@ -347,7 +379,13 @@ export function TransactionsPage({
                     <small>{transaction.description}</small>
                   )}
                 </div>
-                <b>{currency.format(transaction.amount)}</b>
+                <b>
+                  {formatDisplayMoney(
+                    transaction.amount,
+                    transaction.currency,
+                    currencySettings,
+                  )}
+                </b>
                 <div className="row-actions">
                   <button
                     className="icon-button"
@@ -399,6 +437,7 @@ export function TransactionsPage({
 interface FilterAndSortInput {
   categoryFilter: string;
   categoryNames: Map<string, string>;
+  currencySettings: CurrencySettings;
   dateFilter: string;
   searchText: string;
   sortMode: string;
@@ -408,6 +447,7 @@ interface FilterAndSortInput {
 function filterAndSortTransactions({
   categoryFilter,
   categoryNames,
+  currencySettings,
   dateFilter,
   searchText,
   sortMode,
@@ -447,11 +487,37 @@ function filterAndSortTransactions({
       }
 
       if (sortMode === "amount-desc") {
-        return right.amount - left.amount;
+        return (
+          convertMoney(
+            right.amount,
+            right.currency,
+            currencySettings.displayCurrency,
+            currencySettings,
+          ) -
+          convertMoney(
+            left.amount,
+            left.currency,
+            currencySettings.displayCurrency,
+            currencySettings,
+          )
+        );
       }
 
       if (sortMode === "amount-asc") {
-        return left.amount - right.amount;
+        return (
+          convertMoney(
+            left.amount,
+            left.currency,
+            currencySettings.displayCurrency,
+            currencySettings,
+          ) -
+          convertMoney(
+            right.amount,
+            right.currency,
+            currencySettings.displayCurrency,
+            currencySettings,
+          )
+        );
       }
 
       return right.date.localeCompare(left.date);

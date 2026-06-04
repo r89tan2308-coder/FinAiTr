@@ -1,13 +1,17 @@
 import { Plus } from "lucide-react";
 import { PageSection } from "../components/PageSection";
-import { currency } from "../domain/financeViews";
-import { type RecurringExpense } from "../domain/models";
+import { formatDisplayMoney } from "../domain/currencySettings";
+import { type CurrencySettings, type RecurringExpense } from "../domain/models";
 
 interface RecurringPageProps {
+  currencySettings: CurrencySettings;
   recurringExpenses: RecurringExpense[];
 }
 
-export function RecurringPage({ recurringExpenses }: RecurringPageProps) {
+export function RecurringPage({
+  currencySettings,
+  recurringExpenses,
+}: RecurringPageProps) {
   return (
     <div className="page-stack">
       <div className="toolbar">
@@ -27,7 +31,13 @@ export function RecurringPage({ recurringExpenses }: RecurringPageProps) {
                   {expense.nextDueDate} · {expense.frequency} · {expense.status}
                 </span>
               </div>
-              <b>{currency.format(expense.amount)}</b>
+              <b>
+                {formatDisplayMoney(
+                  expense.amount,
+                  expense.currency,
+                  currencySettings,
+                )}
+              </b>
             </article>
           ))}
         </div>

@@ -3,6 +3,8 @@ import {
   type Account,
   type Category,
   type Receipt,
+  type ReceiptDraft,
+  type ReceiptDraftItem,
   type ReceiptItem,
   type RecurringExpense,
   type Transaction,
@@ -20,13 +22,15 @@ export class FinanceDatabase extends Dexie {
   transactions!: Table<Transaction, string>;
   receipts!: Table<Receipt, string>;
   receiptItems!: Table<ReceiptItem, string>;
+  receiptDrafts!: Table<ReceiptDraft, string>;
+  receiptDraftItems!: Table<ReceiptDraftItem, string>;
   recurringExpenses!: Table<RecurringExpense, string>;
   appMeta!: Table<AppMetaRecord, string>;
 
   constructor() {
     super("finaitr-local");
 
-    this.version(1).stores({
+    const versionOneStores = {
       accounts: "id, name, type, currency, isArchived",
       categories: "id, name, parentId, type",
       transactions:
@@ -36,6 +40,15 @@ export class FinanceDatabase extends Dexie {
       recurringExpenses:
         "id, name, merchant, status, nextDueDate, categoryId, accountId",
       appMeta: "key",
+    };
+
+    this.version(1).stores(versionOneStores);
+
+    this.version(2).stores({
+      ...versionOneStores,
+      receiptDrafts: "id, date, merchant, status, source, updatedAt",
+      receiptDraftItems:
+        "id, draftId, categoryId, normalizedName, kind, *tags",
     });
   }
 }
@@ -45,4 +58,3 @@ export const financeDb = new FinanceDatabase();
 export function canUseIndexedDb(): boolean {
   return typeof indexedDB !== "undefined";
 }
-

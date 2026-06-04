@@ -1,8 +1,11 @@
+import { defaultCurrencySettings } from "../domain/currencySettings";
 import {
   type Account,
   type Category,
   type FinanceSnapshot,
   type Receipt,
+  type ReceiptDraft,
+  type ReceiptDraftItem,
   type ReceiptItem,
   type RecurringExpense,
   type Transaction,
@@ -176,6 +179,7 @@ export const seedReceipts: Receipt[] = [
     rawText: "GREEN MARKET\nCottage cheese 8.80\nCoffee 12.30\nMilk 4.20\nTOTAL 42.80",
     status: "needs_review",
     source: "pasted_text",
+    transactionId: "tx-green-market",
     confidence: 0.72,
     warnings: ["Seed receipt requires review before item analytics are final."],
     createdAt,
@@ -190,6 +194,7 @@ export const seedReceipts: Receipt[] = [
     rawText: "CITY PHARMACY\nIbuprofen 12.50\nBandages 6.20\nTOTAL 18.70",
     status: "confirmed",
     source: "pasted_text",
+    transactionId: "tx-city-pharmacy",
     confidence: 0.91,
     warnings: [],
     createdAt,
@@ -222,6 +227,7 @@ export const seedReceiptItems: ReceiptItem[] = [
     totalPrice: 8.8,
     categoryId: "dairy",
     tags: ["dairy", "groceries"],
+    flags: [],
     confidence: 0.82,
   },
   {
@@ -234,6 +240,7 @@ export const seedReceiptItems: ReceiptItem[] = [
     totalPrice: 12.3,
     categoryId: "groceries",
     tags: ["groceries"],
+    flags: [],
     confidence: 0.78,
   },
   {
@@ -246,6 +253,7 @@ export const seedReceiptItems: ReceiptItem[] = [
     totalPrice: 4.2,
     categoryId: "dairy",
     tags: ["dairy", "groceries"],
+    flags: [],
     confidence: 0.79,
   },
   {
@@ -258,6 +266,7 @@ export const seedReceiptItems: ReceiptItem[] = [
     totalPrice: 12.5,
     categoryId: "medicine",
     tags: ["medicine", "health"],
+    flags: [],
     confidence: 0.94,
   },
   {
@@ -270,9 +279,14 @@ export const seedReceiptItems: ReceiptItem[] = [
     totalPrice: 6.2,
     categoryId: "medicine",
     tags: ["medicine", "health"],
+    flags: [],
     confidence: 0.89,
   },
 ];
+
+export const seedReceiptDrafts: ReceiptDraft[] = [];
+
+export const seedReceiptDraftItems: ReceiptDraftItem[] = [];
 
 export const seedRecurringExpenses: RecurringExpense[] = [
   {
@@ -322,11 +336,16 @@ export const seedRecurringExpenses: RecurringExpense[] = [
 export function createSeedFinanceSnapshot(): FinanceSnapshot {
   return {
     accounts: [...seedAccounts],
+    currencySettings: {
+      ...defaultCurrencySettings,
+      ratesToRub: { ...defaultCurrencySettings.ratesToRub },
+    },
     transactions: [...seedTransactions],
     receipts: [...seedReceipts],
     receiptItems: [...seedReceiptItems],
+    receiptDrafts: [...seedReceiptDrafts],
+    receiptDraftItems: [...seedReceiptDraftItems],
     categories: [...seedCategories],
     recurringExpenses: [...seedRecurringExpenses],
   };
 }
-

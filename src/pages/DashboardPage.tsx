@@ -2,13 +2,23 @@ import { Plus } from "lucide-react";
 import { MetricTile } from "../components/MetricTile";
 import { PageSection } from "../components/PageSection";
 import { ProgressBar } from "../components/ProgressBar";
-import { currency, type FinanceOverview } from "../domain/financeViews";
+import {
+  formatCurrencyAmount,
+  formatDisplayMoney,
+} from "../domain/currencySettings";
+import { type FinanceOverview } from "../domain/financeViews";
+import { type CurrencySettings } from "../domain/models";
 
 interface DashboardPageProps {
+  currencySettings: CurrencySettings;
   overview: FinanceOverview;
 }
 
-export function DashboardPage({ overview }: DashboardPageProps) {
+export function DashboardPage({
+  currencySettings,
+  overview,
+}: DashboardPageProps) {
+  const displayCurrency = overview.displayCurrency;
   const maxCategory = Math.max(
     ...overview.categorySpend.map((item) => item.amount),
     1,
@@ -20,13 +30,16 @@ export function DashboardPage({ overview }: DashboardPageProps) {
         <MetricTile
           detail={overview.monthKey}
           title="This month"
-          value={currency.format(overview.monthlySpend)}
+          value={formatCurrencyAmount(overview.monthlySpend, displayCurrency)}
         />
         <MetricTile
           accent="amber"
           detail="Active subscriptions"
           title="Recurring"
-          value={currency.format(overview.recurringMonthlyTotal)}
+          value={formatCurrencyAmount(
+            overview.recurringMonthlyTotal,
+            displayCurrency,
+          )}
         />
         <MetricTile
           accent="blue"
@@ -52,7 +65,7 @@ export function DashboardPage({ overview }: DashboardPageProps) {
               key={category.id}
               label={category.name}
               percent={Math.round((category.amount / maxCategory) * 100)}
-              value={currency.format(category.amount)}
+              value={formatCurrencyAmount(category.amount, displayCurrency)}
             />
           ))}
         </div>
@@ -66,7 +79,7 @@ export function DashboardPage({ overview }: DashboardPageProps) {
                 <strong>{product.name}</strong>
                 <span>{product.tag}</span>
               </div>
-              <b>{currency.format(product.amount)}</b>
+              <b>{formatCurrencyAmount(product.amount, displayCurrency)}</b>
             </article>
           ))}
         </div>
@@ -82,7 +95,13 @@ export function DashboardPage({ overview }: DashboardPageProps) {
                   {transaction.date} · {transaction.source}
                 </span>
               </div>
-              <b>{currency.format(transaction.amount)}</b>
+              <b>
+                {formatDisplayMoney(
+                  transaction.amount,
+                  transaction.currency,
+                  currencySettings,
+                )}
+              </b>
             </article>
           ))}
         </div>
