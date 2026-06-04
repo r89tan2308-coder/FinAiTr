@@ -323,3 +323,22 @@ Consequences:
 - Original receipt item totals and receipt currencies are not rewritten.
 - Drafts, reviewed drafts, needs-review receipts, rejected receipts, and receipt draft items are excluded from item analytics.
 - Receipt confirmation, recurring expenses, external integrations, live FX, bank matching, and transaction creation behavior are unchanged.
+
+## 2026-06-04: Phase 7B item analytics filtering stays derived and read-only
+
+Decision:
+
+Item analytics search, category filtering, and drilldown operate on derived confirmed receipt item detail rows. They do not create records, update receipt items, or change Dashboard spending totals.
+
+Rationale:
+
+Search and drilldown improve item-level investigation, but they are presentation concerns. The source of accounting spend remains the transaction linked to a confirmed receipt, while receipt item rows provide detail behind that transaction.
+
+Consequences:
+
+- Search matches both normalized item names and raw item names.
+- Category filtering uses confirmed receipt item categories.
+- Drilldown shows the final receipt date, merchant when present, item names, category, original amount/currency, and display amount.
+- Manual FX conversion is still display-only; original receipt item totals and receipt currencies are not rewritten.
+- Dashboard monthly spend, category spend, and merchant spend remain transaction-based.
+- Receipt confirmation, recurring expenses, repository write paths, external integrations, live FX, bank matching, and transaction creation behavior are unchanged.

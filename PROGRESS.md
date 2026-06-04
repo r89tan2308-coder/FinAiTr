@@ -1800,3 +1800,186 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 7B: continue Dashboard analytics with product search, monthly trend, and broader double-counting coverage without adding external integrations.
+
+## 2026-06-04: Phase 7B item analytics search, filters, and detail completed
+
+### Completed
+
+- Added Dashboard item analytics search by normalized item name and raw item name.
+- Added item category filtering for confirmed receipt item analytics.
+- Added a read-only item detail panel showing the confirmed receipt item rows behind a selected item total.
+- Detail rows show:
+  - final receipt date;
+  - merchant when available;
+  - raw item name;
+  - normalized item name;
+  - item category;
+  - original amount and receipt currency;
+  - display amount in the selected display currency.
+- Kept `This month` and `All time` period filtering.
+- Added separate empty states for:
+  - no confirmed receipts with items for the selected period;
+  - no item analytics matching a search;
+  - no confirmed receipt items matching a selected category.
+- Kept Dashboard monthly spend, category spend, and merchant spend transaction-based.
+- Kept manual FX display-only; original receipt item totals, final receipt currencies, and transaction amounts are preserved.
+- Kept item analytics derived from final confirmed receipts only.
+- Kept hard non-goals out of scope:
+  - no CSV or JSON import/export;
+  - no OCR, image upload, Google Drive, AI/LLM calls, bank APIs, crypto/brokerage, live FX, bank matching, or auto-created transactions;
+  - no receipt confirmation or recurring expense behavior changes.
+- Updated `ARCHITECTURE.md` and `DECISIONS.md`.
+
+### Files updated
+
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/domain/financeViews.ts`
+- `src/domain/financeViews.test.ts`
+- `src/pages/DashboardPage.tsx`
+- `src/pages/DashboardPage.test.tsx`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+npm run test -- --run src/domain/financeViews.test.ts src/pages/DashboardPage.test.tsx
+```
+
+Initial focused result: failed because the Dashboard test suite needed explicit cleanup after rendering multiple Dashboard instances, several item names now appear in both aggregate rows and detail rows, and one monthly spend assertion needed exact `textContent` matching for non-breaking spaces.
+
+Fixes:
+
+- Added explicit cleanup to the Dashboard test suite.
+- Changed repeated item-name assertions to use `getAllByText`.
+- Changed the monthly spend assertion to compare exact `textContent`.
+
+Final focused result: succeeded. 2 test files passed, 19 tests passed. npm printed warnings about CLI argument parsing and the existing `--run` warning.
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 11 test files passed, 62 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Runtime verification
+
+- Started Vite at `http://127.0.0.1:5176/`.
+- Confirmed the dev server log reported Vite ready on `http://127.0.0.1:5176/`.
+- Confirmed `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:5176/` returned HTTP 200.
+- The Windows port-owner check failed with `Access denied`, but the Vite log and HTTP 200 response confirmed the server was reachable.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- The browser used for earlier manual verification may still contain local IndexedDB receipt verification data. That data is not stored in the repository and can be cleared through browser storage tools or `indexedDB.deleteDatabase("finaitr-local")` during development.
+- The Vite dev server for this phase is running at `http://127.0.0.1:5176/`.
+
+### Next recommended phase
+
+Phase 7C: add monthly trend analytics and broader Dashboard analytics polish without changing receipt confirmation, recurring behavior, or adding external integrations.
+
+## 2026-06-04: Phase 7B stabilization checkpoint
+
+### Completed
+
+- Reviewed the Phase 7B working tree and confirmed it contains only item analytics search/filter/drilldown changes, focused tests, CSS, and docs.
+- Rechecked confirmed-only analytics:
+  - source detail rows are created only from final `Receipt` records with `status: confirmed`;
+  - search and category filtering operate on those derived detail rows;
+  - receipt drafts, reviewed drafts, needs-review receipts, rejected receipts, and receipt draft items remain excluded.
+- Rechecked spending separation:
+  - Dashboard monthly spend, category spend, and merchant spend remain transaction-based;
+  - item analytics totals remain a confirmed receipt item breakdown and do not add to spending totals.
+- Rechecked display-only FX:
+  - source item amounts stay in `ReceiptItem.totalPrice`;
+  - source currency remains on linked final `Receipt.currency`;
+  - detail rows include original amount/currency plus display amount without rewriting source records.
+- Rechecked empty-state coverage for no confirmed receipt items, no search results, and no category matches.
+- Confirmed docs describe Phase 7B and keep Phase 7C as the next recommended phase.
+- Confirmed no new product features were added during stabilization.
+- Kept hard non-goals out of scope:
+  - no Phase 7C monthly trend implementation;
+  - no CSV or JSON import/export;
+  - no OCR, image upload, Google Drive, AI/LLM calls, bank APIs, crypto/brokerage, live FX, bank matching, or auto-created transactions;
+  - no receipt confirmation or recurring expense behavior changes.
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 11 test files passed, 62 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- The Vite dev server from Phase 7B verification may still be running at `http://127.0.0.1:5176/`.
+
+### Next recommended phase
+
+Phase 7C: add monthly trend analytics and broader Dashboard analytics polish without changing receipt confirmation, recurring behavior, or adding external integrations.

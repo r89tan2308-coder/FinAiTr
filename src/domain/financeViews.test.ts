@@ -8,6 +8,7 @@ import {
 import {
   buildFinanceOverview,
   buildReceiptItemAnalytics,
+  filterReceiptItemAnalytics,
   toMonthlyRecurringAmount,
 } from "./financeViews";
 import { type FinanceSnapshot, type RecurringExpense } from "./models";
@@ -279,6 +280,95 @@ describe("finance view helpers", () => {
       amount: usdToRub(100),
       id: "groceries",
     });
+  });
+
+  it("filters item analytics by normalized and raw item names", () => {
+    const snapshot = createItemAnalyticsSnapshot();
+    const baseReceipt = snapshot.receipts[0];
+    const baseItem = snapshot.receiptItems[0];
+
+    snapshot.receipts.push({
+      ...baseReceipt,
+      currency: "USD",
+      date: "2026-06-12",
+      id: "receipt-confirmed-june-organic",
+      status: "confirmed",
+    });
+    snapshot.receiptItems.push({
+      ...baseItem,
+      categoryId: "dairy",
+      id: "item-june-organic-milk",
+      normalizedName: "milk",
+      rawName: "Organic whole milk",
+      receiptId: "receipt-confirmed-june-organic",
+      tags: ["dairy"],
+      totalPrice: 4,
+    });
+
+    const analytics = buildReceiptItemAnalytics(snapshot, {
+      monthKey: "2026-06",
+      period: "current_month",
+    });
+    const normalizedSearch = filterReceiptItemAnalytics(analytics, {
+      searchQuery: "milk",
+    });
+    const rawSearch = filterReceiptItemAnalytics(analytics, {
+      searchQuery: "organic",
+    });
+
+    expect(normalizedSearch.itemCount).toBe(2);
+    expect(normalizedSearch.totalAmount).toBe(usdToRub(9));
+    expect(rawSearch.itemCount).toBe(1);
+    expect(rawSearch.details[0]).toMatchObject({
+      normalizedName: "milk",
+      rawName: "Organic whole milk",
+    });
+  });
+
+  it("filters item analytics by category", () => {
+    const analytics = buildReceiptItemAnalytics(createItemAnalyticsSnapshot(), {
+      monthKey: "2026-06",
+      period: "all_time",
+    });
+
+    const dairy = filterReceiptItemAnalytics(analytics, {
+      categoryId: "dairy",
+    });
+
+    expect(dairy.itemCount).toBe(2);
+    expect(dairy.totalAmount).toBe(roundMoney(usdToRub(5) + eurToRub(7)));
+    expect(dairy.topCategories).toHaveLength(1);
+    expect(dairy.topCategories[0]).toMatchObject({
+      id: "dairy",
+      name: "Dairy",
+    });
+    expect(dairy.details.every((detail) => detail.categoryId === "dairy")).toBe(
+      true,
+    );
+  });
+
+  it("keeps item detail conversion display-only", () => {
+    const snapshot = createItemAnalyticsSnapshot();
+    const originalReceipts = structuredClone(snapshot.receipts);
+    const originalItems = structuredClone(snapshot.receiptItems);
+
+    const analytics = buildReceiptItemAnalytics(snapshot, {
+      monthKey: "2026-06",
+      period: "current_month",
+    });
+    const detail = analytics.details[0];
+
+    expect(detail).toMatchObject({
+      displayAmount: usdToRub(5),
+      merchant: "Green Market",
+      normalizedName: "milk",
+      originalAmount: 5,
+      originalCurrency: "USD",
+      rawName: "Milk",
+      receiptDate: "2026-06-08",
+    });
+    expect(snapshot.receipts).toEqual(originalReceipts);
+    expect(snapshot.receiptItems).toEqual(originalItems);
   });
 });
 

@@ -31,6 +31,18 @@ button {
   cursor: pointer;
 }
 
+.sr-only {
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -557,6 +569,22 @@ button {
   grid-template-columns: 1fr;
 }
 
+.analytics-filter-grid {
+  align-items: stretch;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+.analytics-search-field {
+  flex: initial;
+}
+
+.analytics-clear-button {
+  justify-content: center;
+  width: 100%;
+}
+
 .analytics-summary-item {
   background: #ffffff;
   border: 1px solid #dce1e7;
@@ -586,19 +614,69 @@ button {
 }
 
 .analytics-grid,
-.analytics-column {
+.analytics-column,
+.analytics-workspace,
+.analytics-detail-panel {
   display: grid;
   gap: 12px;
 }
 
-.analytics-column h3 {
+.analytics-column h3,
+.analytics-detail-panel h3 {
   color: #111827;
   font-size: 0.92rem;
   margin: 0;
 }
 
+.analytics-detail-panel p {
+  color: #697386;
+  font-weight: 700;
+  margin: 0;
+}
+
 .analytics-row {
   align-items: start;
+}
+
+.analytics-item-button {
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.analytics-item-button[aria-pressed="true"] {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.18);
+}
+
+.analytics-item-button > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.analytics-item-button small {
+  color: #697386;
+  font-size: 0.86rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.analytics-detail-panel {
+  background: #f8fafc;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.analytics-detail-panel .list-row {
+  align-items: start;
+}
+
+.analytics-detail-panel .list-row b {
+  overflow-wrap: anywhere;
+  text-align: right;
+  white-space: normal;
 }
 
 .status-banner {
@@ -1000,6 +1078,14 @@ button {
 
   .analytics-summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .analytics-filter-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  }
+
+  .analytics-clear-button {
+    width: auto;
   }
 
   .analytics-grid {

@@ -90,6 +90,7 @@ export function App() {
     >
       {currentRouteId === "dashboard" && (
         <DashboardPage
+          categories={financeData.snapshot.categories}
           currencySettings={financeData.snapshot.currencySettings}
           overview={financeData.overview}
         />

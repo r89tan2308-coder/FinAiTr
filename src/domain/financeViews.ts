@@ -5,9 +5,12 @@ import {
 } from "./currencySettings";
 import {
   type Category,
+  type CurrencyCode,
   type CurrencySettings,
   type FinanceSnapshot,
+  type ISODateString,
   type Receipt,
+  type ReceiptDraftItemFlag,
   type ReceiptItem,
   type RecurringExpense,
   type Transaction,
@@ -44,6 +47,25 @@ export interface ReceiptItemAnalyticsItem {
   categoryName: string;
 }
 
+export interface ReceiptItemAnalyticsDetail {
+  id: string;
+  itemId: string;
+  receiptId: string;
+  receiptDate?: ISODateString;
+  merchant?: string;
+  rawName: string;
+  normalizedName: string;
+  quantity?: number;
+  unitPrice?: number;
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  originalAmount: number;
+  originalCurrency: CurrencyCode;
+  displayAmount: number;
+  flags: ReceiptDraftItemFlag[];
+}
+
 export interface ReceiptItemCategoryAnalytics {
   id: string;
   name: string;
@@ -55,12 +77,18 @@ export interface ReceiptItemCategoryAnalytics {
 
 export interface ReceiptItemAnalyticsSummary {
   averageItemPrice: number;
+  details: ReceiptItemAnalyticsDetail[];
   itemCount: number;
   monthKey?: string;
   period: ItemAnalyticsPeriod;
   topCategories: ReceiptItemCategoryAnalytics[];
   topItems: ReceiptItemAnalyticsItem[];
   totalAmount: number;
+}
+
+export interface ReceiptItemAnalyticsFilters {
+  categoryId?: string;
+  searchQuery?: string;
 }
 
 export interface FinanceOverview {
@@ -245,10 +273,7 @@ export function buildReceiptItemAnalytics(
       )
       .map((receipt) => [receipt.id, receipt]),
   );
-  const itemTotals = new Map<string, ReceiptItemAnalyticsItem>();
-  const categoryTotals = new Map<string, ReceiptItemCategoryAnalytics>();
-  let itemCount = 0;
-  let totalAmount = 0;
+  const details: ReceiptItemAnalyticsDetail[] = [];
 
   snapshot.receiptItems.forEach((item) => {
     const receipt = confirmedReceiptById.get(item.receiptId);
@@ -263,54 +288,57 @@ export function buildReceiptItemAnalytics(
       displayCurrency,
       currencySettings,
     );
-    const itemId = item.normalizedName || item.rawName.toLowerCase();
+    const itemId = getItemAnalyticsId(item);
     const category = categoryMap.get(item.categoryId ?? "") ?? fallbackCategory;
-    const currentItem = itemTotals.get(itemId);
-    const currentItemCount = (currentItem?.itemCount ?? 0) + 1;
-    const currentItemTotal = roundMoney(
-      (currentItem?.totalAmount ?? 0) + convertedAmount,
-    );
-    const currentCategory = categoryTotals.get(category.id);
-    const currentCategoryCount = (currentCategory?.itemCount ?? 0) + 1;
-    const currentCategoryTotal = roundMoney(
-      (currentCategory?.totalAmount ?? 0) + convertedAmount,
-    );
+    const categoryColor = category.color ?? fallbackCategory.color ?? "#64748b";
 
-    itemCount += 1;
-    totalAmount += convertedAmount;
-
-    itemTotals.set(itemId, {
-      averageItemPrice: roundMoney(currentItemTotal / currentItemCount),
-      categoryId: currentItem?.categoryId ?? category.id,
-      categoryName: currentItem?.categoryName ?? category.name,
-      id: itemId,
-      itemCount: currentItemCount,
-      name: currentItem?.name ?? item.rawName,
-      totalAmount: currentItemTotal,
-    });
-
-    categoryTotals.set(category.id, {
-      averageItemPrice: roundMoney(currentCategoryTotal / currentCategoryCount),
-      color: category.color ?? fallbackCategory.color ?? "#64748b",
-      id: category.id,
-      itemCount: currentCategoryCount,
-      name: category.name,
-      totalAmount: currentCategoryTotal,
+    details.push({
+      categoryColor,
+      categoryId: category.id,
+      categoryName: category.name,
+      displayAmount: convertedAmount,
+      flags: [...item.flags],
+      id: item.id,
+      itemId,
+      merchant: receipt.merchant,
+      normalizedName: item.normalizedName,
+      originalAmount: item.totalPrice,
+      originalCurrency: receipt.currency,
+      quantity: item.quantity,
+      rawName: item.rawName,
+      receiptDate: receipt.date,
+      receiptId: receipt.id,
+      unitPrice: item.unitPrice,
     });
   });
 
-  const roundedTotalAmount = roundMoney(totalAmount);
-
-  return {
-    averageItemPrice:
-      itemCount > 0 ? roundMoney(roundedTotalAmount / itemCount) : 0,
-    itemCount,
+  return buildReceiptItemAnalyticsSummaryFromDetails(details, {
     monthKey: period === "current_month" ? monthKey : undefined,
     period,
-    topCategories: sortItemCategoryAnalytics([...categoryTotals.values()]),
-    topItems: sortItemAnalytics([...itemTotals.values()]),
-    totalAmount: roundedTotalAmount,
-  };
+  });
+}
+
+export function filterReceiptItemAnalytics(
+  summary: ReceiptItemAnalyticsSummary,
+  filters: ReceiptItemAnalyticsFilters = {},
+): ReceiptItemAnalyticsSummary {
+  const normalizedSearch = normalizeSearchText(filters.searchQuery ?? "");
+  const categoryId = filters.categoryId?.trim();
+  const filteredDetails = summary.details.filter((detail) => {
+    const matchesCategory = !categoryId || detail.categoryId === categoryId;
+    const matchesSearch =
+      !normalizedSearch ||
+      normalizeSearchText(`${detail.normalizedName} ${detail.rawName}`).includes(
+        normalizedSearch,
+      );
+
+    return matchesCategory && matchesSearch;
+  });
+
+  return buildReceiptItemAnalyticsSummaryFromDetails(filteredDetails, {
+    monthKey: summary.monthKey,
+    period: summary.period,
+  });
 }
 
 export function getTopProducts(
@@ -418,5 +446,84 @@ function sortItemCategoryAnalytics(
   return categories.sort(
     (left, right) =>
       right.totalAmount - left.totalAmount || left.name.localeCompare(right.name),
+  );
+}
+
+function buildReceiptItemAnalyticsSummaryFromDetails(
+  details: ReceiptItemAnalyticsDetail[],
+  options: {
+    monthKey?: string;
+    period: ItemAnalyticsPeriod;
+  },
+): ReceiptItemAnalyticsSummary {
+  const itemTotals = new Map<string, ReceiptItemAnalyticsItem>();
+  const categoryTotals = new Map<string, ReceiptItemCategoryAnalytics>();
+  let totalAmount = 0;
+
+  details.forEach((detail) => {
+    const currentItem = itemTotals.get(detail.itemId);
+    const currentItemCount = (currentItem?.itemCount ?? 0) + 1;
+    const currentItemTotal = roundMoney(
+      (currentItem?.totalAmount ?? 0) + detail.displayAmount,
+    );
+    const currentCategory = categoryTotals.get(detail.categoryId);
+    const currentCategoryCount = (currentCategory?.itemCount ?? 0) + 1;
+    const currentCategoryTotal = roundMoney(
+      (currentCategory?.totalAmount ?? 0) + detail.displayAmount,
+    );
+
+    totalAmount += detail.displayAmount;
+
+    itemTotals.set(detail.itemId, {
+      averageItemPrice: roundMoney(currentItemTotal / currentItemCount),
+      categoryId: currentItem?.categoryId ?? detail.categoryId,
+      categoryName: currentItem?.categoryName ?? detail.categoryName,
+      id: detail.itemId,
+      itemCount: currentItemCount,
+      name: currentItem?.name ?? detail.rawName,
+      totalAmount: currentItemTotal,
+    });
+
+    categoryTotals.set(detail.categoryId, {
+      averageItemPrice: roundMoney(currentCategoryTotal / currentCategoryCount),
+      color: detail.categoryColor,
+      id: detail.categoryId,
+      itemCount: currentCategoryCount,
+      name: detail.categoryName,
+      totalAmount: currentCategoryTotal,
+    });
+  });
+
+  const roundedTotalAmount = roundMoney(totalAmount);
+
+  return {
+    averageItemPrice:
+      details.length > 0 ? roundMoney(roundedTotalAmount / details.length) : 0,
+    details: sortReceiptItemAnalyticsDetails(details),
+    itemCount: details.length,
+    monthKey: options.monthKey,
+    period: options.period,
+    topCategories: sortItemCategoryAnalytics([...categoryTotals.values()]),
+    topItems: sortItemAnalytics([...itemTotals.values()]),
+    totalAmount: roundedTotalAmount,
+  };
+}
+
+function getItemAnalyticsId(item: ReceiptItem): string {
+  return normalizeSearchText(item.normalizedName || item.rawName) || item.id;
+}
+
+function normalizeSearchText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function sortReceiptItemAnalyticsDetails(
+  details: ReceiptItemAnalyticsDetail[],
+): ReceiptItemAnalyticsDetail[] {
+  return [...details].sort(
+    (left, right) =>
+      (right.receiptDate ?? "").localeCompare(left.receiptDate ?? "") ||
+      (left.merchant ?? "").localeCompare(right.merchant ?? "") ||
+      left.rawName.localeCompare(right.rawName),
   );
 }
