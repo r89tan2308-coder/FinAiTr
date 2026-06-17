@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { createSeedFinanceSnapshot } from "../../data/seedData";
 import {
   convertMoney,
   defaultCurrencySettings,
@@ -26,9 +27,11 @@ import {
   deleteReceiptDraft,
   deleteRecurringExpense,
   deleteTransaction,
+  exportLocalJsonBackup,
   getFinanceSnapshot,
   getReceiptDraftRecordById,
   listReceiptDraftRecords,
+  resetLocalDataToSeed,
   saveReceiptDraft,
   updateCurrencySettings,
   updateRecurringExpense,
@@ -137,6 +140,156 @@ describe("finance repository transaction CRUD", () => {
     expect(afterSnapshot.currencySettings.ratesToRub.USD).toBe(70);
     expect(afterOverview.displayCurrency).toBe("EUR");
     expect(afterOverview.monthlySpend).toBe(127.31);
+  });
+
+  it("exports a versioned JSON backup with all app-owned data", async () => {
+    await updateCurrencySettings({
+      ...defaultCurrencySettings,
+      displayCurrency: "GBP",
+      ratesToRub: {
+        USD: 70,
+        RUB: 1,
+        EUR: 80,
+        GBP: 95,
+      },
+    });
+    const draft = await saveReceiptDraft({
+      confidence: 0.84,
+      currency: "USD",
+      date: "2026-06-04",
+      items: [
+        {
+          categoryId: "dairy",
+          confidence: 0.78,
+          flags: [],
+          kind: "item",
+          normalizedName: "milk",
+          quantity: 2,
+          rawLine: "Milk 2 x 3.00",
+          rawName: "Milk",
+          tags: ["dairy", "groceries"],
+          totalPrice: 3,
+          unitPrice: 1.5,
+        },
+      ],
+      merchant: "Fresh Market",
+      rawText: mockEmailReceiptText,
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        kind: "gmail",
+        modelName: "local-heuristic-simulator",
+        providerName: "local-mock-ai-extractor",
+        receivedAt: "2026-06-04T10:15:00.000Z",
+        sender: "receipts@fresh.example",
+        title: "Fresh Market receipt",
+      },
+      total: 5,
+      warnings: ["Simulated AI extraction from Gmail."],
+    });
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    const backup = await exportLocalJsonBackup();
+
+    expect(backup).toMatchObject({
+      app: {
+        name: "finaitr",
+        version: "0.1.0",
+      },
+      schemaVersion: 1,
+      seedVersion: 1,
+      storageMode: "indexeddb",
+    });
+    expect(Date.parse(backup.exportedAt)).not.toBeNaN();
+    expect(backup.tables.accounts).toEqual(beforeSnapshot.accounts);
+    expect(backup.tables.categories).toEqual(beforeSnapshot.categories);
+    expect(backup.tables.transactions).toEqual(beforeSnapshot.transactions);
+    expect(backup.tables.receipts).toEqual(beforeSnapshot.receipts);
+    expect(backup.tables.receiptItems).toEqual(beforeSnapshot.receiptItems);
+    expect(backup.tables.receiptDraftItems).toEqual(
+      beforeSnapshot.receiptDraftItems,
+    );
+    expect(backup.tables.recurringExpenses).toEqual(
+      beforeSnapshot.recurringExpenses,
+    );
+    expect(backup.tables.settings.currencySettings).toEqual(
+      beforeSnapshot.currencySettings,
+    );
+    expect(
+      backup.tables.appMeta.some((record) => record.key === "currencySettings"),
+    ).toBe(true);
+    expect(
+      backup.tables.receiptDrafts.find((item) => item.id === draft.draft.id),
+    ).toMatchObject({
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        kind: "gmail",
+        providerName: "local-mock-ai-extractor",
+        receivedAt: "2026-06-04T10:15:00.000Z",
+        sender: "receipts@fresh.example",
+        title: "Fresh Market receipt",
+      },
+    });
+  });
+
+  it("does not mutate persisted data when backup objects are changed", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const backup = await exportLocalJsonBackup();
+
+    backup.tables.accounts[0].name = "Mutated backup account";
+    backup.tables.settings.currencySettings.ratesToRub.USD = 1;
+    backup.tables.transactions.pop();
+
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+  });
+
+  it("resets local IndexedDB data to the seed baseline", async () => {
+    const baselineSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    await addManualTransaction({
+      accountId: "account-card",
+      amount: 99,
+      categoryId: "software",
+      currency: "EUR",
+      date: "2026-06-20",
+      description: "Reset test transaction",
+      merchant: "Reset Merchant",
+      tags: ["reset"],
+    });
+    await saveReceiptDraft({
+      confidence: 0.61,
+      currency: "USD",
+      items: [],
+      merchant: "Reset Draft Merchant",
+      rawText: "Reset Draft Merchant\nTOTAL 1.00",
+      total: 1,
+      warnings: [],
+    });
+    await updateCurrencySettings({
+      ...defaultCurrencySettings,
+      displayCurrency: "EUR",
+      ratesToRub: {
+        USD: 70,
+        RUB: 1,
+        EUR: 80,
+        GBP: 95,
+      },
+    });
+
+    const dirtySnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(dirtySnapshot.transactions).toHaveLength(
+      createSeedFinanceSnapshot().transactions.length + 1,
+    );
+    expect(dirtySnapshot.receiptDrafts).toHaveLength(1);
+    expect(dirtySnapshot.currencySettings.displayCurrency).toBe("EUR");
+
+    await resetLocalDataToSeed();
+
+    const resetSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(resetSnapshot).toEqual(baselineSnapshot);
   });
 
   it("preserves original transaction currency while dashboard totals are converted", async () => {

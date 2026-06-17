@@ -229,7 +229,7 @@ Deliver the main value of item-level finance analytics.
 - Spend by merchant.
 - Top products/items.
 - Product search analytics.
-- Monthly trend in a later analytics sub-phase.
+- Monthly trend in a deferred analytics polish phase.
 - Recurring expenses total.
 - Recent confirmed receipts.
 - Avoid double-counting receipt-linked transactions.
@@ -278,19 +278,6 @@ Align the architecture and roadmap for future AI-assisted receipt ingestion with
 - Typecheck, lint, tests, build, and audit pass.
 - `PROGRESS.md` is updated.
 
-### Phase 7D: Monthly trend and analytics polish
-
-#### Goal
-
-Finish the remaining Dashboard analytics MVP items after the AI ingestion architecture is documented.
-
-#### Scope
-
-- Monthly trend analytics from local transactions.
-- Broader Dashboard analytics polish.
-- Continued double-counting protection around receipt-linked transactions.
-- No external integrations.
-
 ## Phase 8: Mock AI intake and core MVP polish
 
 ### Phase 8A: Manual AI extraction simulator
@@ -320,34 +307,66 @@ Use the Phase 7C receipt-ingestion contracts in a local-only manual simulator wi
 - Typecheck, lint, tests, build, and audit pass.
 - `PROGRESS.md` is updated.
 
-### Phase 8B: Core MVP polish and backup
+### Phase 8B: Local JSON backup export and safe reset
 
 ### Goal
 
-Stabilize the local-first MVP before any deferred integrations.
+Add local data ownership tools before any deferred integrations.
 
 ### Scope
 
-- Mobile UX polish.
-- PWA installability improvements.
-- Loading, empty, and error states.
-- JSON export/import for local backup.
+- Settings UI for local JSON backup export.
+- Versioned JSON backup with app name/version, schema version, export timestamp, seed version, settings, accounts, categories, transactions, receipts, receipt items, receipt drafts, receipt draft items, recurring expenses, local FX settings, and app metadata.
+- Browser-only JSON download with no backend.
 - Clear all local data with strong confirmation.
-- Security and data ownership notes.
+- Reset restores the current seed/baseline state and refreshes app pages through the existing service/repository boundary.
+- No JSON import/restore in this phase.
+- No CSV import/export in this phase.
 
 ### Acceptance criteria
 
-- App works well at 360 to 430 px widths.
-- PWA manifest exists.
-- User can export and import local backup JSON.
+- User can export a local backup JSON file.
 - User can clear local data with confirmation.
+- Reset restores baseline seed data.
+- Dashboard and pages reload from the refreshed snapshot after reset.
 - No secrets are committed.
-- Typecheck and build pass.
+- Typecheck, lint, tests, build, and audit pass.
+- `PROGRESS.md` is updated.
+
+### Phase 8C: Local JSON import and restore
+
+### Goal
+
+Allow a user to restore local app-owned data from a previously exported FinAiTr JSON backup.
+
+### Scope
+
+- Settings UI for selecting a local JSON backup file.
+- Validate backup `schemaVersion`, app metadata, required table arrays, and required settings before writing.
+- Show a clear restore preview with record counts and warnings.
+- Require strong confirmation before replacing local data.
+- Restore only app-owned IndexedDB data through the existing service/repository boundary.
+- Refresh Dashboard and pages after restore.
+- Reject malformed, unsupported, or unsafe backup files without mutating current data.
+- Preserve original transaction, receipt, receipt item, draft, recurring, and FX amounts/currencies from the backup.
+- No CSV import/export in this phase.
+- No external integrations in this phase.
+
+### Acceptance criteria
+
+- User can import a valid Phase 8B JSON backup.
+- Invalid or unsupported backups are rejected without data loss.
+- Restore requires explicit confirmation.
+- Restored data reloads Dashboard and pages from the imported snapshot.
+- Original amounts/currencies and source metadata are preserved.
+- Tests cover validation, no-mutation rejection, successful restore, baseline replacement, and UI confirmation safety.
+- Typecheck, lint, tests, build, and audit pass.
 - `PROGRESS.md` is updated.
 
 ## Deferred until after first MVP
 
 - CSV import/export.
+- Dashboard monthly trend and broader analytics polish, formerly Phase 7D.
 - Real OCR provider.
 - Real Google Drive adapter.
 - Real Gmail adapter.

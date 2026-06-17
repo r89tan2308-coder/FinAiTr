@@ -541,6 +541,31 @@ button {
   overflow-wrap: anywhere;
 }
 
+.settings-action-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-action-block {
+  background: #ffffff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.settings-danger-block {
+  border-color: #fecaca;
+}
+
+.settings-warning-title {
+  align-items: center;
+  color: #991b1b;
+  display: flex;
+  gap: 8px;
+}
+
 .empty-state {
   background: #ffffff;
   border: 1px dashed #cbd5df;

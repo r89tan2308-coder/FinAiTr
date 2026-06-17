@@ -1,4 +1,12 @@
-import { Database, Save, ShieldCheck, Smartphone } from "lucide-react";
+import {
+  AlertTriangle,
+  Database,
+  Download,
+  RotateCcw,
+  Save,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PageSection } from "../components/PageSection";
 import { defaultCurrencySettings } from "../domain/currencySettings";
@@ -11,11 +19,15 @@ import {
   type CurrencySettingsActionResult,
   type FinanceLoadStatus,
   type FinanceStorageMode,
+  type LocalBackupExportActionResult,
+  type LocalDataResetActionResult,
 } from "../services/financeDataService";
 
 interface SettingsPageProps {
   currencySettings: CurrencySettings;
   errorMessage?: string;
+  onExportLocalBackup: () => Promise<LocalBackupExportActionResult>;
+  onResetLocalData: () => Promise<LocalDataResetActionResult>;
   onUpdateCurrencySettings: (
     settings: CurrencySettings,
   ) => Promise<CurrencySettingsActionResult>;
@@ -31,9 +43,13 @@ interface CurrencyFormValues {
   USD: string;
 }
 
+const resetConfirmationPhrase = "RESET LOCAL DATA";
+
 export function SettingsPage({
   currencySettings,
   errorMessage,
+  onExportLocalBackup,
+  onResetLocalData,
   onUpdateCurrencySettings,
   snapshot,
   status,
@@ -47,6 +63,11 @@ export function SettingsPage({
   const [currencySaveStatus, setCurrencySaveStatus] = useState<
     "idle" | "saving"
   >("idle");
+  const [backupStatus, setBackupStatus] = useState<"idle" | "exporting">("idle");
+  const [localDataMessage, setLocalDataMessage] = useState<string>();
+  const [localDataError, setLocalDataError] = useState<string>();
+  const [resetConfirmation, setResetConfirmation] = useState("");
+  const [resetStatus, setResetStatus] = useState<"idle" | "resetting">("idle");
 
   useEffect(() => {
     setCurrencyForm(currencySettingsToFormValues(currencySettings));
@@ -121,6 +142,70 @@ export function SettingsPage({
     }
 
     setCurrencyError(result.errorMessage ?? "Currency settings could not be saved.");
+  }
+
+  async function exportBackup(): Promise<void> {
+    setBackupStatus("exporting");
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    try {
+      const result = await onExportLocalBackup();
+
+      if (result.ok && result.backup) {
+        downloadJsonBackup(
+          result.backup,
+          result.filename ?? `finaitr-backup-${Date.now()}.json`,
+        );
+        setLocalDataMessage("Backup JSON exported.");
+        return;
+      }
+
+      setLocalDataError(result.errorMessage ?? "Local backup could not be exported.");
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error
+          ? error.message
+          : "Local backup could not be exported.",
+      );
+    } finally {
+      setBackupStatus("idle");
+    }
+  }
+
+  async function resetLocalData(): Promise<void> {
+    if (resetConfirmation !== resetConfirmationPhrase) {
+      setLocalDataError(`Type ${resetConfirmationPhrase} before reset.`);
+      setLocalDataMessage(undefined);
+      return;
+    }
+
+    setResetStatus("resetting");
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    try {
+      const result = await onResetLocalData();
+
+      if (result.ok) {
+        setResetConfirmation("");
+        setCurrencyForm(
+          currencySettingsToFormValues(
+            result.data?.snapshot.currencySettings ?? currencySettings,
+          ),
+        );
+        setLocalDataMessage("Local data reset to baseline.");
+        return;
+      }
+
+      setLocalDataError(result.errorMessage ?? "Local data could not be reset.");
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error ? error.message : "Local data could not be reset.",
+      );
+    } finally {
+      setResetStatus("idle");
+    }
   }
 
   return (
@@ -223,6 +308,78 @@ export function SettingsPage({
         </div>
       </PageSection>
 
+      <PageSection title="Local data">
+        <div className="form-panel local-data-panel">
+          {localDataMessage && (
+            <div className="success-banner" role="status">
+              {localDataMessage}
+            </div>
+          )}
+          {localDataError && (
+            <div className="status-banner" role="alert">
+              {localDataError}
+            </div>
+          )}
+
+          <div className="settings-action-grid">
+            <div className="settings-action-block">
+              <strong>JSON backup</strong>
+              <p className="settings-note">
+                Export a local JSON file with accounts, categories, transactions,
+                receipts, receipt drafts, recurring expenses, currency rates, and
+                metadata.
+              </p>
+              <button
+                className="secondary-button"
+                disabled={backupStatus === "exporting"}
+                onClick={() => void exportBackup()}
+                type="button"
+              >
+                <Download aria-hidden="true" size={18} />
+                {backupStatus === "exporting" ? "Exporting" : "Export JSON"}
+              </button>
+            </div>
+
+            <div className="settings-action-block settings-danger-block">
+              <div className="settings-warning-title">
+                <AlertTriangle aria-hidden="true" size={20} />
+                <strong>Reset local data</strong>
+              </div>
+              <p className="settings-note">
+                This clears app-owned IndexedDB data on this device and restores the
+                baseline seed records. It cannot be undone from inside the app.
+              </p>
+              <label className="field">
+                <span>Reset confirmation</span>
+                <input
+                  aria-label="Reset confirmation"
+                  onChange={(event) => {
+                    setResetConfirmation(event.target.value);
+                    setLocalDataError(undefined);
+                    setLocalDataMessage(undefined);
+                  }}
+                  placeholder={resetConfirmationPhrase}
+                  value={resetConfirmation}
+                />
+              </label>
+              <button
+                className="danger-button"
+                disabled={
+                  resetStatus === "resetting" ||
+                  resetConfirmation !== resetConfirmationPhrase ||
+                  storageMode !== "indexeddb"
+                }
+                onClick={() => void resetLocalData()}
+                type="button"
+              >
+                <RotateCcw aria-hidden="true" size={18} />
+                {resetStatus === "resetting" ? "Resetting" : "Reset local data"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </PageSection>
+
       <PageSection title="App status">
         <div className="settings-list">
           {settingsItems.map((item) => (
@@ -290,4 +447,18 @@ function roundRate(value: number): number {
 
 function formatDateTime(value: string): string {
   return value.replace("T", " ").slice(0, 16);
+}
+
+function downloadJsonBackup(backup: unknown, filename: string): void {
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

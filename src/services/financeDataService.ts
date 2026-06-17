@@ -32,14 +32,17 @@ import {
   addManualTransaction,
   deleteReceiptDraft,
   deleteTransaction,
+  exportLocalJsonBackup,
   getReceiptDraftRecordById,
   getFinanceSnapshot,
   listReceiptDraftRecords,
+  resetLocalDataToSeed,
   saveReceiptDraft,
   updateReceiptDraft,
   updateRecurringExpense,
   updateCurrencySettings,
   updateTransaction,
+  type LocalJsonBackup,
   type ReceiptDraftConfirmationInput,
   type ReceiptDraftConfirmationRecord,
   type ReceiptDraftUpdateInput,
@@ -55,6 +58,7 @@ import {
 export type FinanceLoadStatus = "loading" | "ready" | "error";
 export type FinanceStorageMode = RepositoryStorageMode;
 export type {
+  LocalJsonBackup,
   ManualAiExtractionInput,
   ReceiptDraftConfirmationInput,
   ReceiptDraftConfirmationRecord,
@@ -130,6 +134,19 @@ export interface ReceiptDraftActionResult {
 }
 
 export interface CurrencySettingsActionResult {
+  data?: FinanceDataState;
+  errorMessage?: string;
+  ok: boolean;
+}
+
+export interface LocalBackupExportActionResult {
+  backup?: LocalJsonBackup;
+  errorMessage?: string;
+  filename?: string;
+  ok: boolean;
+}
+
+export interface LocalDataResetActionResult {
   data?: FinanceDataState;
   errorMessage?: string;
   ok: boolean;
@@ -329,6 +346,43 @@ export async function updateCurrencySettingsAndReload(
   }
 }
 
+export async function exportLocalJsonBackupForDownload(): Promise<LocalBackupExportActionResult> {
+  try {
+    const backup = await exportLocalJsonBackup();
+
+    return {
+      backup,
+      filename: buildBackupFilename(backup.exportedAt),
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Local backup could not be exported.",
+      ok: false,
+    };
+  }
+}
+
+export async function resetLocalDataAndReload(): Promise<LocalDataResetActionResult> {
+  try {
+    await resetLocalDataToSeed();
+
+    return {
+      data: await loadFinanceData(),
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error ? error.message : "Local data could not be reset.",
+      ok: false,
+    };
+  }
+}
+
 export async function listReceiptDrafts(): Promise<ReceiptDraftRecord[]> {
   return listReceiptDraftRecords();
 }
@@ -468,4 +522,10 @@ function categoriesToExtractionHints(
       keywords: [category.id, category.name.toLowerCase()],
       name: category.name,
     }));
+}
+
+function buildBackupFilename(exportedAt: string): string {
+  const safeTimestamp = exportedAt.replace(/[:.]/g, "-");
+
+  return `finaitr-backup-${safeTimestamp}.json`;
 }

@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 8A React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, searchable confirmed receipt item analytics, future receipt ingestion contracts, and a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only.
+The repository now has a Phase 8B React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export plus safe reset to seed data.
 
 Existing files:
 
@@ -23,12 +23,14 @@ Existing files:
 - Dashboard item analytics from confirmed final receipt items only, with current-month/all-time filters, item search, category filtering, and source receipt item drilldown.
 - future receipt ingestion contracts for manual paste, Gmail, Google Drive, Google Docs, and AI receipt extraction.
 - a Phase 8A local manual AI extraction simulator on the Receipts screen that accepts email-like or document-like text, preserves source metadata, and opens the saved draft in the existing review flow.
+- Phase 8B Settings tools for versioned local JSON backup export and strong-confirmation local data reset.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
-- monthly trend and broader dashboard analytics polish in Phase 7D;
-- backup/import/export and local data reset UI;
+- JSON import/restore in Phase 8C;
+- monthly trend and broader dashboard analytics polish in a deferred later phase;
+- CSV import/export;
 
 ## Target stack
 
@@ -59,11 +61,12 @@ No backend is required for the first MVP.
 
 ## Implemented source layout
 
-Phase 8A uses this layout:
+Phase 8B uses this layout:
 
 ```text
 src/
   app/
+    appInfo.ts
     App.tsx
     App.test.tsx
     routes.ts
@@ -93,6 +96,7 @@ src/
     RecurringPage.test.tsx
     RecurringPage.tsx
     CategoriesPage.tsx
+    SettingsPage.test.tsx
     SettingsPage.tsx
   persistence/
     db.ts
@@ -202,7 +206,59 @@ Dexie tables:
 
 If IndexedDB is unavailable or a load fails, `financeDataService` returns the seed snapshot with `storageMode: "seed_fallback"`. This keeps tests and constrained browser environments renderable without replacing IndexedDB as the app's primary local persistence layer.
 
-Dev/test browser data reset note: the local app database is the browser IndexedDB database named `finaitr-local`. Until Phase 8 adds an in-app backup/reset workflow, development verification data can be cleared outside the product UI through browser storage tools or a dev console call to `indexedDB.deleteDatabase("finaitr-local")`, followed by an app reload. Do not commit browser IndexedDB contents or runtime verification data.
+Dev/test browser data reset note: the local app database is the browser IndexedDB database named `finaitr-local`. Phase 8B adds an in-app strong-confirmation reset that clears app-owned tables and restores seed data. Browser storage tools or a dev console call to `indexedDB.deleteDatabase("finaitr-local")` remain acceptable for development cleanup outside product UI. Do not commit browser IndexedDB contents or runtime verification data.
+
+## Local JSON backup and reset
+
+Phase 8B adds local data ownership actions to Settings.
+
+Backup export flow:
+
+```text
+SettingsPage Export JSON
+  -> financeDataService exportLocalJsonBackupForDownload
+  -> financeRepository exportLocalJsonBackup
+  -> getFinanceSnapshot plus appMeta records
+  -> versioned JSON backup object
+  -> browser Blob download
+```
+
+The backup schema is versioned separately from the Dexie schema:
+
+- `schemaVersion`: local backup format version, currently `1`;
+- `app`: app name and version from `src/app/appInfo.ts`;
+- `exportedAt`: ISO timestamp;
+- `seedVersion`: current seed data version;
+- `storageMode`: `indexeddb` or `seed_fallback`;
+- `tables.settings.currencySettings`: display currency and manual RUB FX rates;
+- `tables.accounts`;
+- `tables.categories`;
+- `tables.transactions`;
+- `tables.receipts`;
+- `tables.receiptItems`;
+- `tables.receiptDrafts`;
+- `tables.receiptDraftItems`;
+- `tables.recurringExpenses`;
+- `tables.appMeta`.
+
+Source metadata is not stored in a separate table. It is exported inside `receipts` and `receiptDrafts` when present.
+
+Backup export is read-only after normal seed initialization. It must not rewrite transactions, receipts, receipt items, receipt drafts, recurring expenses, or FX settings.
+
+Safe reset flow:
+
+```text
+SettingsPage Reset local data
+  -> exact confirmation phrase
+  -> financeDataService resetLocalDataAndReload
+  -> financeRepository resetLocalDataToSeed
+  -> Dexie transaction clears app-owned tables and appMeta
+  -> seed accounts/categories/transactions/receipts/receiptItems/recurring/appMeta
+  -> loadFinanceData
+  -> shared App state refreshes Dashboard and pages
+```
+
+Reset restores the current seed/baseline state, including default manual FX settings. It does not import a backup, restore a backup, export CSV, call external services, or alter receipt confirmation, item analytics, recurring expense, or FX semantics. JSON import/restore is the next planned local data ownership phase, Phase 8C, and must be implemented as a separate explicit restore flow.
 
 ## Derived views
 

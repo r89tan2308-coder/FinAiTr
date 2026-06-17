@@ -385,3 +385,24 @@ Consequences:
 - Human review and explicit confirmation remain required before Dashboard impact.
 - Receipt items from simulated drafts affect item analytics only after confirmation creates final receipt items.
 - Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+
+## 2026-06-05: Phase 8B exports JSON backup and resets to seed only
+
+Decision:
+
+Add local Settings actions for versioned JSON backup export and strong-confirmation local data reset. Export reads app-owned local data and downloads JSON in the browser. Reset clears app-owned IndexedDB tables and app metadata, then restores the current seed/baseline state.
+
+Rationale:
+
+The local-first MVP needs a way for the user to inspect and keep a copy of local data before broader use. Reset is useful during MVP validation, but it must be deliberate and reversible only through an external backup file because JSON import/restore is not implemented yet.
+
+Consequences:
+
+- Backup export includes schema version, app name/version, export timestamp, seed version, storage mode, settings/currency rates, app metadata, accounts, categories, transactions, receipts, receipt items, receipt drafts, receipt draft items, and recurring expenses.
+- Source metadata is preserved because it remains embedded in receipt and receipt draft records.
+- Export is read-only after normal seed initialization and does not mutate persisted app data.
+- Reset requires the exact phrase `RESET LOCAL DATA` in the Settings UI.
+- Reset restores seed data and default manual FX settings through the existing finance service/repository boundary.
+- Dashboard and pages refresh from the reloaded finance snapshot after reset.
+- JSON import/restore remains out of scope for Phase 8B and is the next planned local data ownership phase, Phase 8C.
+- CSV import/export, real Gmail/Drive/Docs/OAuth/backend/scheduled sync/OCR/AI API/live FX/bank API/crypto/brokerage/bank matching, and changes to receipt confirmation, item analytics, recurring, or FX semantics remain out of scope.

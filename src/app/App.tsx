@@ -14,13 +14,16 @@ import {
   deleteReceiptDraftAndReload,
   deleteRecurringExpenseAndReload,
   deleteTransactionAndReload,
+  exportLocalJsonBackupForDownload,
   loadFinanceData,
+  resetLocalDataAndReload,
   saveParsedReceiptDraftAndReload,
   simulateAiReceiptExtractionAndSaveDraftAndReload,
   updateCurrencySettingsAndReload,
   updateRecurringExpenseAndReload,
   updateReceiptDraftAndReload,
   type CurrencySettingsActionResult,
+  type LocalDataResetActionResult,
   type ReceiptDraftActionResult,
   type RecurringExpenseActionResult,
   type TransactionActionResult,
@@ -76,6 +79,14 @@ export function App() {
   }
 
   function applyCurrencySettingsActionResult(result: CurrencySettingsActionResult) {
+    if (result.ok && result.data) {
+      setFinanceData(result.data);
+    }
+
+    return result;
+  }
+
+  function applyLocalDataResetActionResult(result: LocalDataResetActionResult) {
     if (result.ok && result.data) {
       setFinanceData(result.data);
     }
@@ -190,6 +201,10 @@ export function App() {
         <SettingsPage
           currencySettings={financeData.snapshot.currencySettings}
           errorMessage={financeData.errorMessage}
+          onExportLocalBackup={exportLocalJsonBackupForDownload}
+          onResetLocalData={async () =>
+            applyLocalDataResetActionResult(await resetLocalDataAndReload())
+          }
           onUpdateCurrencySettings={async (settings) =>
             applyCurrencySettingsActionResult(
               await updateCurrencySettingsAndReload(settings),

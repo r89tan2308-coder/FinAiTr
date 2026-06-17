@@ -3,12 +3,14 @@ import {
   parseCurrencySettings,
   serializeCurrencySettings,
 } from "../../domain/currencySettings";
+import { appInfo } from "../../app/appInfo";
 import {
   type Category,
   type CurrencyCode,
   type CurrencySettings,
   type FinanceSnapshot,
   type ISODateString,
+  type Account,
   type Receipt,
   type ReceiptDraft,
   type ReceiptDraftItem,
@@ -30,6 +32,7 @@ import {
   type TransactionInput,
 } from "../../domain/transactionValidation";
 import { canUseIndexedDb, financeDb } from "../db";
+import { type AppMetaRecord } from "../db";
 
 const seedVersionKey = "seedVersion";
 const currencySettingsKey = "currencySettings";
@@ -39,6 +42,33 @@ export type RepositoryStorageMode = "indexeddb" | "seed_fallback";
 export interface FinanceRepositorySnapshot {
   snapshot: FinanceSnapshot;
   storageMode: RepositoryStorageMode;
+}
+
+export const localJsonBackupSchemaVersion = 1;
+
+export interface LocalJsonBackup {
+  app: {
+    name: string;
+    version: string;
+  };
+  exportedAt: string;
+  schemaVersion: typeof localJsonBackupSchemaVersion;
+  seedVersion: number;
+  storageMode: RepositoryStorageMode;
+  tables: {
+    accounts: Account[];
+    appMeta: AppMetaRecord[];
+    categories: Category[];
+    receiptDraftItems: ReceiptDraftItem[];
+    receiptDrafts: ReceiptDraft[];
+    receiptItems: ReceiptItem[];
+    receipts: Receipt[];
+    recurringExpenses: RecurringExpense[];
+    settings: {
+      currencySettings: CurrencySettings;
+    };
+    transactions: Transaction[];
+  };
 }
 
 export interface ReceiptDraftItemInput {
@@ -154,6 +184,84 @@ export async function getFinanceSnapshot(): Promise<FinanceRepositorySnapshot> {
     },
     storageMode: "indexeddb",
   };
+}
+
+export async function exportLocalJsonBackup(): Promise<LocalJsonBackup> {
+  const exportedAt = new Date().toISOString();
+  const { snapshot, storageMode } = await getFinanceSnapshot();
+  const appMeta = canUseIndexedDb()
+    ? await financeDb.appMeta.toArray()
+    : seedAppMetaRecords(exportedAt);
+
+  return cloneJsonValue({
+    app: appInfo,
+    exportedAt,
+    schemaVersion: localJsonBackupSchemaVersion,
+    seedVersion,
+    storageMode,
+    tables: {
+      accounts: snapshot.accounts,
+      appMeta,
+      categories: snapshot.categories,
+      receiptDraftItems: snapshot.receiptDraftItems,
+      receiptDrafts: snapshot.receiptDrafts,
+      receiptItems: snapshot.receiptItems,
+      receipts: snapshot.receipts,
+      recurringExpenses: snapshot.recurringExpenses,
+      settings: {
+        currencySettings: snapshot.currencySettings,
+      },
+      transactions: snapshot.transactions,
+    },
+  });
+}
+
+export async function resetLocalDataToSeed(): Promise<void> {
+  assertIndexedDbWritable("local data reset");
+
+  const seed = createSeedFinanceSnapshot();
+  const now = new Date().toISOString();
+
+  await financeDb.transaction(
+    "rw",
+    [
+      financeDb.accounts,
+      financeDb.categories,
+      financeDb.transactions,
+      financeDb.receipts,
+      financeDb.receiptItems,
+      financeDb.receiptDrafts,
+      financeDb.receiptDraftItems,
+      financeDb.recurringExpenses,
+      financeDb.appMeta,
+    ],
+    async () => {
+      await Promise.all([
+        financeDb.accounts.clear(),
+        financeDb.categories.clear(),
+        financeDb.transactions.clear(),
+        financeDb.receipts.clear(),
+        financeDb.receiptItems.clear(),
+        financeDb.receiptDrafts.clear(),
+        financeDb.receiptDraftItems.clear(),
+        financeDb.recurringExpenses.clear(),
+        financeDb.appMeta.clear(),
+      ]);
+
+      await Promise.all([
+        financeDb.accounts.bulkPut(seed.accounts),
+        financeDb.categories.bulkPut(seed.categories),
+        financeDb.transactions.bulkPut(seed.transactions),
+        financeDb.receipts.bulkPut(seed.receipts),
+        financeDb.receiptItems.bulkPut(seed.receiptItems),
+        financeDb.receiptDrafts.bulkPut(seed.receiptDrafts),
+        financeDb.receiptDraftItems.bulkPut(seed.receiptDraftItems),
+        financeDb.recurringExpenses.bulkPut(seed.recurringExpenses),
+      ]);
+
+      await financeDb.appMeta.bulkPut(seedAppMetaRecords(now));
+    },
+  );
 }
 
 export async function ensureSeedData(): Promise<void> {
@@ -880,4 +988,25 @@ function normalizeReceiptSourceMetadata(
     title: normalizeOptionalText(metadata.title),
     url: normalizeOptionalText(metadata.url),
   };
+}
+
+function seedAppMetaRecords(updatedAt: string): AppMetaRecord[] {
+  const seed = createSeedFinanceSnapshot();
+
+  return [
+    {
+      key: seedVersionKey,
+      updatedAt,
+      value: String(seedVersion),
+    },
+    {
+      key: currencySettingsKey,
+      updatedAt,
+      value: serializeCurrencySettings(seed.currencySettings),
+    },
+  ];
+}
+
+function cloneJsonValue<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
