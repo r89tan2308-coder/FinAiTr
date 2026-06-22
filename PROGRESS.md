@@ -2756,3 +2756,104 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8D: plan and implement local CSV import/export through the existing local-first service/repository boundary, without external integrations.
+## 2026-06-22: Phase 8D-A local CSV export implemented
+
+### Completed
+
+- Added read-only local CSV exports from Settings for:
+  - transactions;
+  - confirmed receipt items;
+  - recurring expenses.
+- Added `src/domain/csvExport.ts` for stable CSV headers, row building, browser-safe CSV escaping, file naming, empty-dataset header output, and display-currency reporting columns.
+- Preserved original amount and currency fields in CSV rows.
+- Added human-readable account/category names alongside source ids.
+- Added useful receipt source metadata to confirmed receipt item exports.
+- Kept CSV export inside the existing Settings -> financeDataService -> financeRepository -> domain boundary.
+- Added repository/service CSV export actions without any write path.
+- Added Settings browser Blob download handling for CSV files.
+- Added tests for CSV formatting, escaping commas/quotes/newlines, stable headers, empty datasets, display-currency values, confirmed-only receipt item export, recurring monthly export values, and no source snapshot mutation.
+- Added repository coverage proving CSV export does not mutate persisted data.
+- Added Settings UI coverage proving the CSV export action creates a CSV Blob download.
+- Updated product, plan, architecture, and decision docs for Phase 8D-A and Phase 8D-B.
+- Did not implement CSV import.
+- Did not change JSON backup/restore/reset semantics, receipt confirmation, item analytics, recurring, FX, or Dashboard monthly spend semantics.
+- Did not add Gmail/Drive/Docs/OAuth, backend, AI API, OCR, live FX, bank APIs, crypto/brokerage, bank matching, or new external integrations.
+
+### Changed files
+
+- `PRODUCT_SPEC.md`
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/domain/csvExport.ts`
+- `src/domain/csvExport.test.ts`
+- `src/pages/SettingsPage.tsx`
+- `src/pages/SettingsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/services/financeDataService.ts`
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Initial result: failed in the new Settings CSV download test because the current jsdom `Blob` implementation did not expose `.text()`.
+
+Fix: changed the test helper to read the generated Blob through `FileReader`.
+
+Final result: succeeded. 14 test files passed, 96 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run test -- src/pages/SettingsPage.test.tsx --run
+```
+
+Result after the Blob reader fix: succeeded. 1 test file passed, 5 tests passed. npm printed the existing `--run` warning.
+
+```powershell
+git diff --check
+```
+
+Initial result: failed because several files had an extra blank line at EOF from PowerShell file writes.
+
+Fix: normalized modified files to one final newline and no trailing blank EOF line.
+
+Final result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- CSV import is not implemented in Phase 8D-A.
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+
+### Next recommended phase
+
+Phase 8D-B: implement CSV import preview/confirm with validation and explicit confirmation before any write.

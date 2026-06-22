@@ -9,7 +9,8 @@ The first MVP is limited to:
 - receipt review and confirmation;
 - recurring expenses;
 - dashboard analytics;
-- manual local currency conversion settings for USD, RUB, EUR, and GBP.
+- manual local currency conversion settings for USD, RUB, EUR, and GBP;
+- local JSON backup/restore/reset and local CSV export.
 
 Real bank APIs, Google Drive, OCR APIs, crypto, brokerage, payment execution, live exchange-rate fetching, and credentials are out of scope.
 
@@ -389,9 +390,56 @@ Allow a user to restore local app-owned data from a previously exported FinAiTr 
 - Typecheck, lint, tests, build, and audit pass.
 - `PROGRESS.md` is updated.
 
+### Phase 8D-A: Local CSV export
+
+### Goal
+
+Add read-only browser CSV exports for the main local MVP datasets without adding CSV import or external integrations.
+
+### Scope
+
+- Settings UI for local CSV exports.
+- Export transactions to CSV.
+- Export confirmed receipt items to CSV.
+- Export recurring expenses to CSV.
+- Use browser-only downloads with no backend.
+- Preserve original amount and currency fields.
+- Include display-currency columns where useful for reporting.
+- Include human-readable account/category values and useful receipt source metadata.
+- Keep exports read-only and inside the existing service/repository boundary.
+- No CSV import in this phase.
+- No external integrations in this phase.
+
+### Acceptance criteria
+
+- User can export transactions CSV from Settings.
+- User can export confirmed receipt items CSV from Settings.
+- User can export recurring expenses CSV from Settings.
+- CSV headers are stable.
+- CSV escaping covers commas, quotes, and newlines.
+- Empty datasets export headers only.
+- Exporting CSV does not mutate local app data.
+- JSON backup/restore/reset semantics are unchanged.
+- Receipt confirmation, item analytics, recurring, FX, and Dashboard monthly spend semantics are unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` is updated.
+
+### Phase 8D-B: CSV import preview and confirm
+
+### Goal
+
+Plan and implement a safe local CSV import flow after export-only behavior is stable.
+
+### Scope
+
+- CSV import preview before any write.
+- Explicit confirmation before writing imported rows.
+- Validation and clear rejection of malformed rows.
+- Preserve local-first service/repository boundaries.
+- No external integrations.
+
 ## Deferred until after first MVP
 
-- CSV import/export.
 - Real OCR provider.
 - Real Google Drive adapter.
 - Real Gmail adapter.

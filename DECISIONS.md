@@ -426,6 +426,7 @@ Consequences:
 - Original amounts, currencies, source metadata, and manual FX settings are preserved from the backup.
 - Receipt confirmation, item analytics, recurring expense, and FX semantics remain unchanged.
 - CSV import/export, cloud sync, Gmail/Drive/Docs/OAuth, backend, AI API, OCR, live FX, bank APIs, crypto/brokerage, and bank matching remain out of scope.
+
 ## 2026-06-22: Phase 7D monthly trends are transaction-only derived views
 
 Decision:
@@ -443,3 +444,22 @@ Consequences:
 - Confirmed receipt items, receipt draft items, and recurring expenses do not affect monthly trend spend totals.
 - Existing Dashboard monthly spend, receipt confirmation, item analytics, recurring CRUD, FX settings, backup/restore, and AI ingestion semantics remain unchanged.
 - CSV import/export, real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching, and payment execution remain out of scope.
+
+## 2026-06-22: Phase 8D-A exports CSV as read-only local files
+
+Decision:
+
+Add Settings actions for browser-only CSV export of transactions, confirmed receipt items, and recurring expenses. The export path stays inside `SettingsPage -> financeDataService -> financeRepository -> domain csvExport` and never writes local data.
+
+Rationale:
+
+After JSON backup/restore, the MVP needs lightweight report-friendly exports without expanding into import semantics or external integrations. Splitting CSV export from CSV import keeps the change reviewable and avoids accidental mutation paths.
+
+Consequences:
+
+- CSV export preserves original amounts and currencies and adds display-currency reporting columns where useful.
+- Exported rows include stable headers, human-readable account/category names, and receipt source metadata for confirmed receipt item rows.
+- CSV formatting escapes commas, quotes, and newlines, and empty datasets export headers only.
+- Exporting CSV must not mutate transactions, receipts, receipt items, drafts, recurring expenses, FX settings, app metadata, or JSON backup/restore/reset behavior.
+- CSV import is not implemented in Phase 8D-A; Phase 8D-B must add preview, validation, and explicit confirmation before any import write path.
+- Real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching and payment execution remain out of scope.

@@ -23,6 +23,8 @@ import {
   type LocalBackupExportActionResult,
   type LocalBackupRestoreActionResult,
   type LocalBackupRestorePreviewActionResult,
+  type LocalCsvExportActionResult,
+  type LocalCsvExportKind,
   type LocalDataResetActionResult,
   type LocalJsonBackup,
   type LocalJsonRestorePreview,
@@ -32,6 +34,9 @@ interface SettingsPageProps {
   currencySettings: CurrencySettings;
   errorMessage?: string;
   onExportLocalBackup: () => Promise<LocalBackupExportActionResult>;
+  onExportLocalCsv: (
+    kind: LocalCsvExportKind,
+  ) => Promise<LocalCsvExportActionResult>;
   onPreviewLocalBackupRestore: (
     rawJson: string,
   ) => Promise<LocalBackupRestorePreviewActionResult>;
@@ -56,11 +61,17 @@ interface CurrencyFormValues {
 
 const resetConfirmationPhrase = "RESET LOCAL DATA";
 const restoreConfirmationPhrase = "RESTORE LOCAL DATA";
+const csvExportLabels: Record<LocalCsvExportKind, string> = {
+  confirmed_receipt_items: "Confirmed receipt items",
+  recurring_expenses: "Recurring expenses",
+  transactions: "Transactions",
+};
 
 export function SettingsPage({
   currencySettings,
   errorMessage,
   onExportLocalBackup,
+  onExportLocalCsv,
   onPreviewLocalBackupRestore,
   onResetLocalData,
   onRestoreLocalBackup,
@@ -78,6 +89,9 @@ export function SettingsPage({
     "idle" | "saving"
   >("idle");
   const [backupStatus, setBackupStatus] = useState<"idle" | "exporting">("idle");
+  const [csvExportStatus, setCsvExportStatus] = useState<
+    "idle" | LocalCsvExportKind
+  >("idle");
   const [localDataMessage, setLocalDataMessage] = useState<string>();
   const [localDataError, setLocalDataError] = useState<string>();
   const [restoreBackup, setRestoreBackup] = useState<LocalJsonBackup>();
@@ -190,6 +204,34 @@ export function SettingsPage({
       );
     } finally {
       setBackupStatus("idle");
+    }
+  }
+
+  async function exportCsv(kind: LocalCsvExportKind): Promise<void> {
+    setCsvExportStatus(kind);
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    try {
+      const result = await onExportLocalCsv(kind);
+
+      if (result.ok && result.csv) {
+        downloadTextFile(
+          result.csv.content,
+          result.csv.filename,
+          "text/csv;charset=utf-8",
+        );
+        setLocalDataMessage(`${csvExportLabels[kind]} CSV exported.`);
+        return;
+      }
+
+      setLocalDataError(result.errorMessage ?? "Local CSV could not be exported.");
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error ? error.message : "Local CSV could not be exported.",
+      );
+    } finally {
+      setCsvExportStatus("idle");
     }
   }
 
@@ -445,6 +487,49 @@ export function SettingsPage({
               </button>
             </div>
 
+            <div className="settings-action-block">
+              <strong>CSV exports</strong>
+              <p className="settings-note">
+                Download read-only CSV files for transactions, confirmed receipt
+                items, and recurring expenses.
+              </p>
+              <div className="form-actions">
+                <button
+                  className="secondary-button"
+                  disabled={csvExportStatus !== "idle"}
+                  onClick={() => void exportCsv("transactions")}
+                  type="button"
+                >
+                  <Download aria-hidden="true" size={18} />
+                  {csvExportStatus === "transactions"
+                    ? "Exporting"
+                    : "Export transactions CSV"}
+                </button>
+                <button
+                  className="secondary-button"
+                  disabled={csvExportStatus !== "idle"}
+                  onClick={() => void exportCsv("confirmed_receipt_items")}
+                  type="button"
+                >
+                  <Download aria-hidden="true" size={18} />
+                  {csvExportStatus === "confirmed_receipt_items"
+                    ? "Exporting"
+                    : "Export receipt items CSV"}
+                </button>
+                <button
+                  className="secondary-button"
+                  disabled={csvExportStatus !== "idle"}
+                  onClick={() => void exportCsv("recurring_expenses")}
+                  type="button"
+                >
+                  <Download aria-hidden="true" size={18} />
+                  {csvExportStatus === "recurring_expenses"
+                    ? "Exporting"
+                    : "Export recurring CSV"}
+                </button>
+              </div>
+            </div>
+
             <div className="settings-action-block settings-danger-block">
               <div className="settings-warning-title">
                 <Upload aria-hidden="true" size={20} />
@@ -653,8 +738,11 @@ function readTextFile(file: File): Promise<string> {
 }
 
 function downloadJsonBackup(backup: unknown, filename: string): void {
-  const json = JSON.stringify(backup, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
+  downloadTextFile(JSON.stringify(backup, null, 2), filename, "application/json");
+}
+
+function downloadTextFile(content: string, filename: string, type: string): void {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 

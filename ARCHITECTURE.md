@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 8C React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, plus safe reset to seed data.
+The repository now has a Phase 8D-A React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, safe reset to seed data, and read-only local CSV exports.
 
 Existing files:
 
@@ -26,11 +26,12 @@ Existing files:
 - a Phase 8A local manual AI extraction simulator on the Receipts screen that accepts email-like or document-like text, preserves source metadata, and opens the saved draft in the existing review flow.
 - Phase 8B Settings tools for versioned local JSON backup export and strong-confirmation local data reset.
 - Phase 8C Settings tools for validated local JSON backup import/restore with preview and strong confirmation.
+- Phase 8D-A Settings tools for read-only transactions, confirmed receipt items, and recurring expenses CSV export.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
-- CSV import/export;
+- CSV import preview/confirm;
 
 ## Target stack
 
@@ -61,7 +62,7 @@ No backend is required for the first MVP.
 
 ## Implemented source layout
 
-Phase 8C uses this layout:
+Phase 8D-A uses this layout:
 
 ```text
 src/
@@ -78,6 +79,8 @@ src/
   data/
     seedData.ts
   domain/
+    csvExport.test.ts
+    csvExport.ts
     currencySettings.test.ts
     currencySettings.ts
     financeViews.ts
@@ -289,7 +292,34 @@ SettingsPage Reset local data
   -> shared App state refreshes Dashboard and pages
 ```
 
-Reset restores the current seed/baseline state, including default manual FX settings. It does not import a backup, export CSV, call external services, or alter receipt confirmation, item analytics, recurring expense, or FX semantics. Restore and reset are separate explicit flows with separate confirmation phrases.
+Reset restores the current seed/baseline state, including default manual FX settings. It does not import a backup, import CSV, call external services, or alter receipt confirmation, item analytics, recurring expense, or FX semantics. Restore, reset, and CSV export are separate explicit flows.
+
+## Local CSV export
+
+Phase 8D-A adds read-only CSV exports to Settings. CSV export is a browser-only download flow with no backend and no import/write behavior.
+
+CSV export flow:
+
+```text
+SettingsPage CSV export button
+  -> financeDataService exportLocalCsvForDownload(kind)
+  -> financeRepository exportLocalCsv(kind)
+  -> getFinanceSnapshot
+  -> domain csvExport builder
+  -> browser Blob download
+```
+
+The supported export kinds are:
+
+- `transactions`: transaction id, date, merchant, description, account id/name, category id/name, source, receipt id, original amount/currency, display amount/currency, tags, and timestamps.
+- `confirmed_receipt_items`: final receipt item id, receipt id/date/merchant/source, useful receipt source metadata, item names, category id/name, quantity, prices, original receipt currency, display total/currency, tags, flags, and confidence.
+- `recurring_expenses`: recurring id, name, merchant, account id/name, category id/name, status, frequency, next due date, original amount/currency, monthly amount, display monthly amount/currency, tags, note, and timestamps.
+
+CSV formatting lives in `src/domain/csvExport.ts`. The serializer emits stable headers, escapes commas, quotes, CR/LF line breaks, and returns headers only for empty datasets. Export rows are derived from the loaded snapshot and sorted for stable output; source records are not mutated.
+
+CSV export preserves original amounts and currencies. Display-currency columns use the existing local manual FX settings only for reporting. Confirmed receipt item rows use the linked final receipt currency because receipt item records do not have their own currency field.
+
+CSV export does not change JSON backup/restore/reset behavior, receipt confirmation, item analytics, recurring expenses, FX settings, or Dashboard monthly spend semantics. CSV import remains a separate future Phase 8D-B preview/confirm flow.
 
 ## Derived views
 

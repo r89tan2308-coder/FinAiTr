@@ -28,6 +28,7 @@ import {
   deleteReceiptDraft,
   deleteRecurringExpense,
   deleteTransaction,
+  exportLocalCsv,
   exportLocalJsonBackup,
   getFinanceSnapshot,
   getReceiptDraftRecordById,
@@ -232,6 +233,18 @@ describe("finance repository transaction CRUD", () => {
         title: "Fresh Market receipt",
       },
     });
+  });
+
+  it("exports local CSV without mutating persisted data", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    const result = await exportLocalCsv("transactions");
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.kind).toBe("transactions");
+    expect(result.rowCount).toBe(beforeSnapshot.transactions.length);
+    expect(result.content).toContain("transaction_id,date,merchant");
+    expect(afterSnapshot).toEqual(beforeSnapshot);
   });
 
   it("does not mutate persisted data when backup objects are changed", async () => {

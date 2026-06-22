@@ -33,6 +33,7 @@ import {
   addManualTransaction,
   deleteReceiptDraft,
   deleteTransaction,
+  exportLocalCsv,
   exportLocalJsonBackup,
   getReceiptDraftRecordById,
   getFinanceSnapshot,
@@ -44,6 +45,8 @@ import {
   updateRecurringExpense,
   updateCurrencySettings,
   updateTransaction,
+  type LocalCsvExport,
+  type LocalCsvExportKind,
   type LocalJsonBackup,
   type LocalJsonRestorePreview,
   type ReceiptDraftConfirmationInput,
@@ -61,6 +64,8 @@ import {
 export type FinanceLoadStatus = "loading" | "ready" | "error";
 export type FinanceStorageMode = RepositoryStorageMode;
 export type {
+  LocalCsvExport,
+  LocalCsvExportKind,
   LocalJsonBackup,
   LocalJsonRestorePreview,
   ManualAiExtractionInput,
@@ -147,6 +152,12 @@ export interface LocalBackupExportActionResult {
   backup?: LocalJsonBackup;
   errorMessage?: string;
   filename?: string;
+  ok: boolean;
+}
+
+export interface LocalCsvExportActionResult {
+  csv?: LocalCsvExport;
+  errorMessage?: string;
   ok: boolean;
 }
 
@@ -378,6 +389,23 @@ export async function exportLocalJsonBackupForDownload(): Promise<LocalBackupExp
         error instanceof Error
           ? error.message
           : "Local backup could not be exported.",
+      ok: false,
+    };
+  }
+}
+
+export async function exportLocalCsvForDownload(
+  kind: LocalCsvExportKind,
+): Promise<LocalCsvExportActionResult> {
+  try {
+    return {
+      csv: await exportLocalCsv(kind),
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error ? error.message : "Local CSV could not be exported.",
       ok: false,
     };
   }

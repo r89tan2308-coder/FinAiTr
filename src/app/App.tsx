@@ -14,6 +14,7 @@ import {
   deleteReceiptDraftAndReload,
   deleteRecurringExpenseAndReload,
   deleteTransactionAndReload,
+  exportLocalCsvForDownload,
   exportLocalJsonBackupForDownload,
   loadFinanceData,
   previewLocalJsonBackupRestoreFromText,
@@ -215,6 +216,7 @@ export function App() {
           currencySettings={financeData.snapshot.currencySettings}
           errorMessage={financeData.errorMessage}
           onExportLocalBackup={exportLocalJsonBackupForDownload}
+          onExportLocalCsv={exportLocalCsvForDownload}
           onPreviewLocalBackupRestore={previewLocalJsonBackupRestoreFromText}
           onResetLocalData={async () =>
             applyLocalDataResetActionResult(await resetLocalDataAndReload())

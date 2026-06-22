@@ -8,6 +8,8 @@ import {
   type LocalBackupExportActionResult,
   type LocalBackupRestoreActionResult,
   type LocalBackupRestorePreviewActionResult,
+  type LocalCsvExportActionResult,
+  type LocalCsvExportKind,
   type LocalDataResetActionResult,
   type LocalJsonBackup,
 } from "../services/financeDataService";
@@ -77,6 +79,60 @@ describe("SettingsPage local data tools", () => {
     expect(click).toHaveBeenCalledTimes(1);
     expect(revokeObjectUrl).toHaveBeenCalledWith("blob:finaitr-backup");
     expect(screen.getByRole("status")).toHaveTextContent("Backup JSON exported.");
+  });
+
+  it("downloads a transactions CSV from the export action", async () => {
+    const user = userEvent.setup();
+    const csv = {
+      content: "transaction_id,date\r\ntx-1,2026-06-01\r\n",
+      exportedAt: "2026-06-22T10:11:12.000Z",
+      filename: "finaitr-transactions-test.csv",
+      kind: "transactions" as const,
+      rowCount: 1,
+    };
+    const createObjectUrl = vi.fn<(blob: Blob) => string>(
+      () => "blob:finaitr-csv",
+    );
+    const revokeObjectUrl = vi.fn<(url: string) => void>();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const onExportLocalCsv = vi.fn(
+      async (kind: LocalCsvExportKind): Promise<LocalCsvExportActionResult> => {
+        expect(kind).toBe("transactions");
+
+        return {
+          csv,
+          ok: true,
+        };
+      },
+    );
+
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectUrl,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectUrl,
+    });
+
+    renderSettingsPage({ onExportLocalCsv });
+
+    await user.click(
+      screen.getByRole("button", { name: "Export transactions CSV" }),
+    );
+
+    expect(onExportLocalCsv).toHaveBeenCalledWith("transactions");
+    expect(createObjectUrl).toHaveBeenCalledTimes(1);
+    await expect(readBlobText(createObjectUrl.mock.calls[0][0])).resolves.toBe(
+      csv.content,
+    );
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:finaitr-csv");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Transactions CSV exported.",
+    );
   });
 
   it("requires strong confirmation before reset and reports success", async () => {
@@ -208,6 +264,9 @@ describe("SettingsPage local data tools", () => {
 
 interface RenderSettingsOptions {
   onExportLocalBackup?: () => Promise<LocalBackupExportActionResult>;
+  onExportLocalCsv?: (
+    kind: LocalCsvExportKind,
+  ) => Promise<LocalCsvExportActionResult>;
   onPreviewLocalBackupRestore?: (
     rawJson: string,
   ) => Promise<LocalBackupRestorePreviewActionResult>;
@@ -227,6 +286,13 @@ function renderSettingsPage(options: RenderSettingsOptions = {}) {
         (async () => ({
           backup: buildTestBackup(),
           filename: "finaitr-backup-test.json",
+          ok: true,
+        }))
+      }
+      onExportLocalCsv={
+        options.onExportLocalCsv ??
+        (async (kind) => ({
+          csv: buildTestCsvExport(kind),
           ok: true,
         }))
       }
@@ -268,6 +334,30 @@ function renderSettingsPage(options: RenderSettingsOptions = {}) {
       storageMode={options.storageMode ?? "indexeddb"}
     />,
   );
+}
+
+function readBlobText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.addEventListener("error", () => {
+      reject(new Error("Blob could not be read."));
+    });
+    reader.addEventListener("load", () => {
+      resolve(typeof reader.result === "string" ? reader.result : "");
+    });
+    reader.readAsText(blob);
+  });
+}
+
+function buildTestCsvExport(kind: LocalCsvExportKind) {
+  return {
+    content: "id\r\n",
+    exportedAt: "2026-06-22T10:11:12.000Z",
+    filename: `finaitr-${kind}.csv`,
+    kind,
+    rowCount: 0,
+  };
 }
 
 function buildTestBackup(): LocalJsonBackup {

@@ -6,6 +6,11 @@ import {
 } from "../../domain/currencySettings";
 import { appInfo } from "../../app/appInfo";
 import {
+  buildLocalCsvExport,
+  type LocalCsvExport,
+  type LocalCsvExportKind,
+} from "../../domain/csvExport";
+import {
   type Category,
   type CurrencyCode,
   type CurrencySettings,
@@ -39,6 +44,7 @@ const seedVersionKey = "seedVersion";
 const currencySettingsKey = "currencySettings";
 
 export type RepositoryStorageMode = "indexeddb" | "seed_fallback";
+export type { LocalCsvExport, LocalCsvExportKind };
 
 export interface FinanceRepositorySnapshot {
   snapshot: FinanceSnapshot;
@@ -240,6 +246,14 @@ export async function exportLocalJsonBackup(): Promise<LocalJsonBackup> {
       transactions: snapshot.transactions,
     },
   });
+}
+
+export async function exportLocalCsv(
+  kind: LocalCsvExportKind,
+): Promise<LocalCsvExport> {
+  const { snapshot } = await getFinanceSnapshot();
+
+  return buildLocalCsvExport(snapshot, kind);
 }
 
 export async function resetLocalDataToSeed(): Promise<void> {
