@@ -60,6 +60,8 @@ export function DashboardPage({
     itemCount: itemAnalytics.itemCount,
     searchQuery: itemSearchQuery,
   });
+  const monthlyTrend = overview.monthlyTrend;
+  const trendMonthCount = monthlyTrend.months.length;
 
   function handlePeriodChange(period: ItemAnalyticsPeriod) {
     setItemAnalyticsPeriod(period);
@@ -98,6 +100,131 @@ export function DashboardPage({
       </div>
 
       <PageSection
+        action={<span className="section-kicker">Transactions only</span>}
+        title="Monthly trend"
+      >
+        {monthlyTrend.hasTransactions ? (
+          <div className="monthly-trend-panel">
+            <div className="analytics-summary-grid trend-summary-grid">
+              <div className="analytics-summary-item">
+                <span>{trendMonthCount}-month spend</span>
+                <strong>
+                  {formatCurrencyAmount(monthlyTrend.totalSpend, displayCurrency)}
+                </strong>
+              </div>
+              <div className="analytics-summary-item">
+                <span>Average spend</span>
+                <strong>
+                  {formatCurrencyAmount(
+                    monthlyTrend.averageSpend,
+                    displayCurrency,
+                  )}
+                </strong>
+              </div>
+              {monthlyTrend.hasIncome && (
+                <div className="analytics-summary-item" data-tone="income">
+                  <span>{trendMonthCount}-month income</span>
+                  <strong>
+                    {formatCurrencyAmount(
+                      monthlyTrend.totalIncome,
+                      displayCurrency,
+                    )}
+                  </strong>
+                </div>
+              )}
+            </div>
+            <div className="trend-list">
+              {monthlyTrend.months.map((month) => (
+                <article className="trend-row" key={month.monthKey}>
+                  <div className="trend-row-heading">
+                    <div>
+                      <strong>{month.label}</strong>
+                      <span>
+                        {month.transactionCount} transaction
+                        {month.transactionCount === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <b>
+                      {formatCurrencyAmount(month.spendAmount, displayCurrency)}
+                    </b>
+                  </div>
+                  <div className="trend-bars" aria-label={`${month.label} trend`}>
+                    <div className="trend-bar-line">
+                      <span>Spend</span>
+                      <div className="trend-track">
+                        <div
+                          className="trend-fill trend-fill-spend"
+                          style={{
+                            width: `${getTrendPercent(
+                              month.spendAmount,
+                              monthlyTrend.maxSpendAmount,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {monthlyTrend.hasIncome && (
+                      <div className="trend-bar-line">
+                        <span>Income</span>
+                        <div className="trend-track">
+                          <div
+                            className="trend-fill trend-fill-income"
+                            style={{
+                              width: `${getTrendPercent(
+                                month.incomeAmount,
+                                monthlyTrend.maxIncomeAmount,
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="trend-row-meta">
+                    {month.topCategory ? (
+                      <span>
+                        Top category: {month.topCategory.name} ·{" "}
+                        {formatCurrencyAmount(
+                          month.topCategory.amount,
+                          displayCurrency,
+                        )}
+                      </span>
+                    ) : (
+                      <span>No spending category this month.</span>
+                    )}
+                    {monthlyTrend.hasIncome && (
+                      <span>
+                        Net {formatCurrencyAmount(month.netAmount, displayCurrency)}
+                      </span>
+                    )}
+                  </div>
+                  {month.categoryBreakdown.length > 0 && (
+                    <div
+                      aria-label={`${month.label} category breakdown`}
+                      className="trend-category-breakdown"
+                    >
+                      {month.categoryBreakdown.slice(0, 3).map((category) => (
+                        <span key={category.id}>
+                          <i
+                            aria-hidden="true"
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <b>{category.name}</b>
+                          {formatCurrencyAmount(category.amount, displayCurrency)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="empty-state">No transaction trend data yet.</div>
+        )}
+      </PageSection>
+
+      <PageSection
         action={
           <button className="icon-text-button" type="button">
             <Plus aria-hidden="true" size={18} />
@@ -106,17 +233,21 @@ export function DashboardPage({
         }
         title="Spend by category"
       >
-        <div className="bar-list">
-          {overview.categorySpend.map((category) => (
-            <ProgressBar
-              color={category.color}
-              key={category.id}
-              label={category.name}
-              percent={Math.round((category.amount / maxCategory) * 100)}
-              value={formatCurrencyAmount(category.amount, displayCurrency)}
-            />
-          ))}
-        </div>
+        {overview.categorySpend.length > 0 ? (
+          <div className="bar-list">
+            {overview.categorySpend.map((category) => (
+              <ProgressBar
+                color={category.color}
+                key={category.id}
+                label={category.name}
+                percent={Math.round((category.amount / maxCategory) * 100)}
+                value={formatCurrencyAmount(category.amount, displayCurrency)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No category spending this month.</div>
+        )}
       </PageSection>
 
       <PageSection
@@ -344,6 +475,14 @@ export function DashboardPage({
       </PageSection>
     </div>
   );
+}
+
+function getTrendPercent(amount: number, maxAmount: number): number {
+  if (maxAmount <= 0 || amount <= 0) {
+    return 0;
+  }
+
+  return Math.max(4, Math.round((amount / maxAmount) * 100));
 }
 
 function getItemAnalyticsEmptyMessage({

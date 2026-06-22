@@ -7,6 +7,7 @@ import {
 } from "./currencySettings";
 import {
   buildFinanceOverview,
+  buildMonthlyTrend,
   buildReceiptItemAnalytics,
   filterReceiptItemAnalytics,
   toMonthlyRecurringAmount,
@@ -123,6 +124,185 @@ describe("finance view helpers", () => {
       currency: "EUR",
       id: "source-eur",
     });
+  });
+
+  it("builds a transaction-only monthly trend with display currency conversion", () => {
+    const snapshot = createSeedFinanceSnapshot();
+    snapshot.transactions = [
+      {
+        ...snapshot.transactions[0],
+        amount: 10,
+        currency: "USD",
+        date: "2026-04-12",
+        id: "trend-apr-grocery",
+      },
+      {
+        ...snapshot.transactions[0],
+        amount: 20,
+        currency: "EUR",
+        date: "2026-05-12",
+        id: "trend-may-grocery",
+      },
+      {
+        ...snapshot.transactions[0],
+        amount: 30,
+        categoryId: "software",
+        currency: "RUB",
+        date: "2026-06-12",
+        id: "trend-jun-software",
+      },
+    ];
+    snapshot.receipts = [];
+    snapshot.receiptItems = [];
+    snapshot.recurringExpenses = [];
+
+    const trend = buildMonthlyTrend(snapshot, {
+      endMonthKey: "2026-06",
+      monthCount: 3,
+    });
+
+    expect(trend.months.map((month) => month.monthKey)).toEqual([
+      "2026-04",
+      "2026-05",
+      "2026-06",
+    ]);
+    expect(trend.hasTransactions).toBe(true);
+    expect(trend.totalSpend).toBe(
+      roundMoney(usdToRub(10) + eurToRub(20) + 30),
+    );
+    expect(trend.averageSpend).toBe(
+      roundMoney((usdToRub(10) + eurToRub(20) + 30) / 3),
+    );
+    expect(trend.months[1]).toMatchObject({
+      label: "May 2026",
+      spendAmount: eurToRub(20),
+      topCategory: {
+        id: "groceries",
+        name: "Groceries",
+        amount: eurToRub(20),
+      },
+      transactionCount: 1,
+    });
+    expect(trend.months[2].categoryBreakdown).toEqual([
+      {
+        amount: 30,
+        color: "#7c3aed",
+        id: "software",
+        name: "Software",
+      },
+    ]);
+  });
+
+  it("separates income category transactions from monthly spend trend", () => {
+    const snapshot = createSeedFinanceSnapshot();
+    snapshot.categories = [
+      ...snapshot.categories,
+      {
+        color: "#16a34a",
+        icon: "briefcase",
+        id: "salary",
+        name: "Salary",
+        type: "income",
+      },
+    ];
+    snapshot.transactions = [
+      {
+        ...snapshot.transactions[0],
+        amount: 100,
+        categoryId: "groceries",
+        currency: "USD",
+        date: "2026-06-10",
+        id: "trend-expense",
+      },
+      {
+        ...snapshot.transactions[0],
+        amount: 500,
+        categoryId: "salary",
+        currency: "USD",
+        date: "2026-06-15",
+        id: "trend-income",
+        merchant: "Employer",
+      },
+    ];
+    snapshot.receipts = [];
+    snapshot.receiptItems = [];
+    snapshot.recurringExpenses = [];
+
+    const overview = buildFinanceOverview(snapshot, { monthKey: "2026-06" });
+    const juneTrend = overview.monthlyTrend.months.find(
+      (month) => month.monthKey === "2026-06",
+    );
+
+    expect(overview.monthlySpend).toBe(usdToRub(600));
+    expect(overview.monthlyTrend.hasIncome).toBe(true);
+    expect(juneTrend).toMatchObject({
+      incomeAmount: usdToRub(500),
+      netAmount: usdToRub(400),
+      spendAmount: usdToRub(100),
+      transactionCount: 2,
+    });
+  });
+
+  it("keeps receipt items and recurring expenses out of monthly trend totals", () => {
+    const snapshot = createItemAnalyticsSnapshot();
+    snapshot.recurringExpenses = [
+      {
+        ...createSeedFinanceSnapshot().recurringExpenses[0],
+        amount: 999,
+        currency: "USD",
+        frequency: "monthly",
+        id: "trend-recurring",
+        status: "active",
+      },
+    ];
+
+    const trend = buildMonthlyTrend(snapshot, {
+      endMonthKey: "2026-06",
+      monthCount: 2,
+    });
+    const juneTrend = trend.months.find((month) => month.monthKey === "2026-06");
+
+    expect(juneTrend?.spendAmount).toBe(usdToRub(100));
+    expect(juneTrend?.categoryBreakdown).toEqual([
+      {
+        amount: usdToRub(100),
+        color: "#0f766e",
+        id: "groceries",
+        name: "Groceries",
+      },
+    ]);
+    expect(trend.totalSpend).toBe(usdToRub(100));
+  });
+
+  it("returns an empty monthly trend window when there are no transactions", () => {
+    const snapshot = createSeedFinanceSnapshot();
+    snapshot.transactions = [];
+    snapshot.receipts = [];
+    snapshot.receiptItems = [];
+    snapshot.recurringExpenses = [];
+
+    const trend = buildMonthlyTrend(snapshot, {
+      endMonthKey: "2026-06",
+      monthCount: 3,
+    });
+
+    expect(trend).toMatchObject({
+      averageSpend: 0,
+      hasIncome: false,
+      hasTransactions: false,
+      maxIncomeAmount: 0,
+      maxSpendAmount: 0,
+      totalIncome: 0,
+      totalSpend: 0,
+    });
+    expect(trend.months.map((month) => month.monthKey)).toEqual([
+      "2026-04",
+      "2026-05",
+      "2026-06",
+    ]);
+    expect(trend.months.every((month) => month.transactionCount === 0)).toBe(
+      true,
+    );
   });
 
   it("normalizes recurring expenses to monthly totals", () => {

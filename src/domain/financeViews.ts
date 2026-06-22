@@ -35,6 +35,35 @@ export interface ProductSpend {
   tag: string;
 }
 
+export interface MonthlyTrendCategory {
+  id: string;
+  name: string;
+  amount: number;
+  color: string;
+}
+
+export interface MonthlyTrendPoint {
+  categoryBreakdown: MonthlyTrendCategory[];
+  incomeAmount: number;
+  label: string;
+  monthKey: string;
+  netAmount: number;
+  spendAmount: number;
+  topCategory?: MonthlyTrendCategory;
+  transactionCount: number;
+}
+
+export interface MonthlyTrendSummary {
+  averageSpend: number;
+  hasIncome: boolean;
+  hasTransactions: boolean;
+  maxIncomeAmount: number;
+  maxSpendAmount: number;
+  months: MonthlyTrendPoint[];
+  totalIncome: number;
+  totalSpend: number;
+}
+
 export type ItemAnalyticsPeriod = "current_month" | "all_time";
 
 export interface ReceiptItemAnalyticsItem {
@@ -95,6 +124,7 @@ export interface FinanceOverview {
   displayCurrency: CurrencySettings["displayCurrency"];
   monthKey: string;
   monthlySpend: number;
+  monthlyTrend: MonthlyTrendSummary;
   recurringMonthlyTotal: number;
   pendingReceiptCount: number;
   categorySpend: CategorySpend[];
@@ -147,6 +177,10 @@ export function buildFinanceOverview(
     displayCurrency,
     monthKey,
     monthlySpend: roundMoney(sumAmounts(monthTransactions, currencySettings)),
+    monthlyTrend: buildMonthlyTrend(snapshot, {
+      endMonthKey: monthKey,
+      monthCount: 6,
+    }),
     recurringMonthlyTotal: roundMoney(
       snapshot.recurringExpenses
         .filter((expense) => expense.status === "active")
@@ -184,6 +218,112 @@ export function buildFinanceOverview(
     recentTransactions: sortByDateDesc(snapshot.transactions).slice(0, 4),
     recentReceipts: sortReceiptsByDateDesc(snapshot.receipts).slice(0, 4),
     recurringExpenses: sortRecurringByDueDate(snapshot.recurringExpenses),
+  };
+}
+
+export function buildMonthlyTrend(
+  snapshot: FinanceSnapshot,
+  options: {
+    endMonthKey?: string;
+    monthCount?: number;
+  } = {},
+): MonthlyTrendSummary {
+  const currencySettings = snapshot.currencySettings ?? defaultCurrencySettings;
+  const displayCurrency = currencySettings.displayCurrency;
+  const endMonthKey = options.endMonthKey ?? getCurrentMonthKey();
+  const monthCount = Math.max(1, Math.floor(options.monthCount ?? 6));
+  const monthKeys = buildMonthKeyWindow(endMonthKey, monthCount);
+  const categoryMap = new Map(
+    snapshot.categories.map((category) => [category.id, category]),
+  );
+  const buckets = new Map(
+    monthKeys.map((monthKey) => [
+      monthKey,
+      {
+        categoryTotals: new Map<string, MonthlyTrendCategory>(),
+        incomeAmount: 0,
+        spendAmount: 0,
+        transactionCount: 0,
+      },
+    ]),
+  );
+
+  snapshot.transactions.forEach((transaction) => {
+    const monthKey = transaction.date.slice(0, 7);
+    const bucket = buckets.get(monthKey);
+
+    if (!bucket) {
+      return;
+    }
+
+    const category = categoryMap.get(transaction.categoryId ?? "") ?? fallbackCategory;
+    const displayAmount = convertMoney(
+      transaction.amount,
+      transaction.currency,
+      displayCurrency,
+      currencySettings,
+    );
+
+    bucket.transactionCount += 1;
+
+    if (category.type === "income") {
+      bucket.incomeAmount += displayAmount;
+      return;
+    }
+
+    if (category.type === "transfer") {
+      return;
+    }
+
+    bucket.spendAmount += displayAmount;
+
+    const categoryId = category.id;
+    const currentCategory = bucket.categoryTotals.get(categoryId);
+    bucket.categoryTotals.set(categoryId, {
+      amount: roundMoney((currentCategory?.amount ?? 0) + displayAmount),
+      color: category.color ?? fallbackCategory.color ?? "#64748b",
+      id: categoryId,
+      name: category.name,
+    });
+  });
+
+  const months = monthKeys.map((monthKey) => {
+    const bucket = buckets.get(monthKey);
+    const categoryBreakdown = sortTrendCategories([
+      ...(bucket?.categoryTotals.values() ?? []),
+    ]);
+    const spendAmount = roundMoney(bucket?.spendAmount ?? 0);
+    const incomeAmount = roundMoney(bucket?.incomeAmount ?? 0);
+
+    return {
+      categoryBreakdown,
+      incomeAmount,
+      label: formatMonthLabel(monthKey),
+      monthKey,
+      netAmount: roundMoney(incomeAmount - spendAmount),
+      spendAmount,
+      topCategory: categoryBreakdown[0],
+      transactionCount: bucket?.transactionCount ?? 0,
+    };
+  });
+  const totalSpend = roundMoney(
+    months.reduce((sum, month) => sum + month.spendAmount, 0),
+  );
+  const totalIncome = roundMoney(
+    months.reduce((sum, month) => sum + month.incomeAmount, 0),
+  );
+  const activeSpendMonths = months.filter((month) => month.spendAmount > 0).length;
+
+  return {
+    averageSpend:
+      activeSpendMonths > 0 ? roundMoney(totalSpend / activeSpendMonths) : 0,
+    hasIncome: months.some((month) => month.incomeAmount > 0),
+    hasTransactions: months.some((month) => month.transactionCount > 0),
+    maxIncomeAmount: Math.max(...months.map((month) => month.incomeAmount), 0),
+    maxSpendAmount: Math.max(...months.map((month) => month.spendAmount), 0),
+    months,
+    totalIncome,
+    totalSpend,
   };
 }
 
@@ -447,6 +587,71 @@ function sortItemCategoryAnalytics(
     (left, right) =>
       right.totalAmount - left.totalAmount || left.name.localeCompare(right.name),
   );
+}
+
+function sortTrendCategories(
+  categories: MonthlyTrendCategory[],
+): MonthlyTrendCategory[] {
+  return categories.sort(
+    (left, right) =>
+      right.amount - left.amount || left.name.localeCompare(right.name),
+  );
+}
+
+function buildMonthKeyWindow(endMonthKey: string, monthCount: number): string[] {
+  const { month, year } = parseMonthKey(endMonthKey);
+
+  return Array.from({ length: monthCount }, (_, index) => {
+    const offset = index - (monthCount - 1);
+    const date = new Date(year, month - 1 + offset, 1);
+
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+      2,
+      "0",
+    )}`;
+  });
+}
+
+function parseMonthKey(monthKey: string): { month: number; year: number } {
+  const [rawYear, rawMonth] = monthKey.split("-");
+  const year = Number(rawYear);
+  const month = Number(rawMonth);
+
+  if (
+    Number.isInteger(year) &&
+    Number.isInteger(month) &&
+    month >= 1 &&
+    month <= 12
+  ) {
+    return { month, year };
+  }
+
+  const now = new Date();
+
+  return {
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+  };
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const { month, year } = parseMonthKey(monthKey);
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  return `${monthNames[month - 1]} ${year}`;
 }
 
 function buildReceiptItemAnalyticsSummaryFromDetails(

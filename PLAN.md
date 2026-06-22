@@ -229,7 +229,7 @@ Deliver the main value of item-level finance analytics.
 - Spend by merchant.
 - Top products/items.
 - Product search analytics.
-- Monthly trend in a deferred analytics polish phase.
+- Monthly trend analytics based on transactions only.
 - Recurring expenses total.
 - Recent confirmed receipts.
 - Avoid double-counting receipt-linked transactions.
@@ -278,6 +278,32 @@ Align the architecture and roadmap for future AI-assisted receipt ingestion with
 - Typecheck, lint, tests, build, and audit pass.
 - `PROGRESS.md` is updated.
 
+### Phase 7D: Monthly trend analytics and Dashboard polish
+
+#### Goal
+
+Add readable monthly Dashboard trend analytics without changing accounting semantics.
+
+#### Scope
+
+- Add transaction-only monthly spend trend analytics.
+- Split income trend values when transactions use categories with `type: income`.
+- Show compact category breakdown per trend month when spend categories exist.
+- Keep recurring expenses as a separate monthly estimate.
+- Keep confirmed receipt item analytics as detail-only breakdowns, not extra spending.
+- Use the selected display currency through local manual FX conversion.
+- Improve mobile readability and empty states for Dashboard trend and category sections.
+
+#### Acceptance criteria
+
+- Monthly trends are derived from transactions only.
+- Income category transactions appear in income trend values and do not inflate trend spend.
+- Receipt items and recurring expenses do not affect monthly trend spend totals.
+- Dashboard shows a clear empty state when no transaction trend data exists.
+- Existing transaction, receipt confirmation, item analytics, recurring, FX, backup/restore, and AI ingestion semantics are unchanged.
+- Tests cover aggregation, display-currency conversion, empty states, and no double-counting from receipt items or recurring expenses.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` is updated.
 ## Phase 8: Mock AI intake and core MVP polish
 
 ### Phase 8A: Manual AI extraction simulator
@@ -366,7 +392,6 @@ Allow a user to restore local app-owned data from a previously exported FinAiTr 
 ## Deferred until after first MVP
 
 - CSV import/export.
-- Dashboard monthly trend and broader analytics polish, formerly Phase 7D.
 - Real OCR provider.
 - Real Google Drive adapter.
 - Real Gmail adapter.

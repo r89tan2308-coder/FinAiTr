@@ -217,6 +217,14 @@ button {
   margin: 0;
 }
 
+.section-kicker {
+  color: #697386;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: right;
+  text-transform: uppercase;
+}
+
 .segmented-control {
   background: #e5e9ef;
   border-radius: 8px;
@@ -726,6 +734,138 @@ button {
   padding: 12px;
 }
 
+.monthly-trend-panel,
+.trend-list,
+.trend-row,
+.trend-bars,
+.trend-row-meta {
+  display: grid;
+  gap: 12px;
+}
+
+.trend-row {
+  background: #ffffff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.trend-row-heading {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.trend-row-heading div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.trend-row-heading strong,
+.trend-row-heading b {
+  color: #111827;
+}
+
+.trend-row-heading strong {
+  font-size: 0.95rem;
+}
+
+.trend-row-heading b {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.trend-row-heading span,
+.trend-row-meta,
+.trend-bar-line span {
+  color: #697386;
+  font-weight: 700;
+}
+
+.trend-row-heading span,
+.trend-row-meta {
+  font-size: 0.84rem;
+}
+
+.trend-bar-line {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 58px minmax(0, 1fr);
+}
+
+.trend-bar-line span {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.trend-track {
+  background: #e5e9ef;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.trend-fill {
+  border-radius: inherit;
+  height: 100%;
+  min-width: 0;
+}
+
+.trend-fill-spend {
+  background: #0f766e;
+}
+
+.trend-fill-income {
+  background: #16a34a;
+}
+
+.trend-row-meta {
+  border-top: 1px solid #eef2f7;
+  padding-top: 10px;
+}
+
+.trend-category-breakdown {
+  display: grid;
+  gap: 8px;
+}
+
+.trend-category-breakdown span {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  color: #4b5563;
+  display: grid;
+  font-size: 0.8rem;
+  font-weight: 800;
+  gap: 7px;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  min-height: 34px;
+  overflow-wrap: anywhere;
+  padding: 7px 9px;
+}
+
+.trend-category-breakdown i {
+  border-radius: 999px;
+  display: block;
+  height: 8px;
+  width: 8px;
+}
+
+.trend-category-breakdown b {
+  color: #111827;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.trend-summary-grid .analytics-summary-item[data-tone="income"] {
+  border-color: #bbf7d0;
+}
+
 .analytics-detail-panel .list-row {
   align-items: start;
 }
@@ -1153,6 +1293,10 @@ button {
 
   .analytics-summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .trend-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .analytics-filter-grid {

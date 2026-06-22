@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { createSeedFinanceSnapshot } from "../data/seedData";
@@ -12,6 +12,108 @@ describe("DashboardPage", () => {
     cleanup();
   });
 
+  it("shows monthly transaction trends on the Dashboard", () => {
+    const snapshot = createSeedFinanceSnapshot();
+    const overview = buildFinanceOverview(snapshot, { monthKey: "2026-06" });
+
+    renderDashboard(snapshot);
+
+    expect(screen.getByText("Monthly trend")).toBeInTheDocument();
+    expect(screen.getByText("Transactions only")).toBeInTheDocument();
+    expect(screen.getByText("6-month spend")).toBeInTheDocument();
+    expect(screen.getByText("Average spend")).toBeInTheDocument();
+    expect(screen.getByText("Jun 2026")).toBeInTheDocument();
+    expect(
+      getAllByExactTextContent(
+        formatCurrencyAmount(overview.monthlyTrend.totalSpend, "RUB"),
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/Top category: Gym/)).toBeInTheDocument();
+    const juneBreakdown = screen.getByLabelText("Jun 2026 category breakdown");
+    expect(within(juneBreakdown).getByText("Gym")).toBeInTheDocument();
+    expect(normalizeDisplayText(juneBreakdown.textContent ?? "")).toContain(
+      normalizeDisplayText(
+        formatCurrencyAmount(
+          overview.monthlyTrend.months[5].categoryBreakdown[0].amount,
+          "RUB",
+        ),
+      ),
+    );
+  });
+
+  it("shows an empty monthly trend state when there are no transactions", () => {
+    const snapshot = createSeedFinanceSnapshot();
+    snapshot.transactions = [];
+    snapshot.receipts = [];
+    snapshot.receiptItems = [];
+    snapshot.recurringExpenses = [];
+
+    renderDashboard(snapshot);
+
+    expect(
+      screen.getByText("No transaction trend data yet."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No category spending this month.")).toBeInTheDocument();
+  });
+
+  it("shows income trend summary when income categories are present", () => {
+    const snapshot = createSeedFinanceSnapshot();
+    snapshot.categories = [
+      ...snapshot.categories,
+      {
+        color: "#16a34a",
+        icon: "briefcase",
+        id: "salary",
+        name: "Salary",
+        type: "income",
+      },
+    ];
+    snapshot.transactions = [
+      {
+        ...snapshot.transactions[0],
+        amount: 100,
+        categoryId: "groceries",
+        currency: "USD",
+        date: "2026-06-10",
+        id: "dashboard-trend-expense",
+      },
+      {
+        ...snapshot.transactions[0],
+        amount: 500,
+        categoryId: "salary",
+        currency: "USD",
+        date: "2026-06-15",
+        id: "dashboard-trend-income",
+        merchant: "Employer",
+      },
+    ];
+    snapshot.receipts = [];
+    snapshot.receiptItems = [];
+    snapshot.recurringExpenses = [];
+
+    renderDashboard(snapshot);
+
+    expect(screen.getByText("6-month income")).toBeInTheDocument();
+    expect(
+      getAllByExactTextContent(
+        formatCurrencyAmount(
+          convertMoney(500, "USD", "RUB", snapshot.currencySettings),
+          "RUB",
+        ),
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText((_, element) =>
+        normalizeDisplayText(element?.textContent ?? "") ===
+        normalizeDisplayText(
+          `Net ${formatCurrencyAmount(
+            convertMoney(400, "USD", "RUB", snapshot.currencySettings),
+            "RUB",
+          )}`,
+        ),
+      ).length,
+    ).toBeGreaterThan(0);
+  });
   it("shows confirmed receipt item analytics and switches period filters", async () => {
     const user = userEvent.setup();
     const snapshot = createSeedFinanceSnapshot();
@@ -175,4 +277,8 @@ function renderDashboard(snapshot: FinanceSnapshot = createSeedFinanceSnapshot()
 
 function getAllByExactTextContent(textContent: string): HTMLElement[] {
   return screen.getAllByText((_, element) => element?.textContent === textContent);
+}
+
+function normalizeDisplayText(value: string): string {
+  return value.replace(/\s/g, " ");
 }

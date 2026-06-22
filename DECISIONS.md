@@ -426,3 +426,20 @@ Consequences:
 - Original amounts, currencies, source metadata, and manual FX settings are preserved from the backup.
 - Receipt confirmation, item analytics, recurring expense, and FX semantics remain unchanged.
 - CSV import/export, cloud sync, Gmail/Drive/Docs/OAuth, backend, AI API, OCR, live FX, bank APIs, crypto/brokerage, and bank matching remain out of scope.
+## 2026-06-22: Phase 7D monthly trends are transaction-only derived views
+
+Decision:
+
+Add Dashboard monthly trend analytics as pure derived views from transactions. Trend spend includes expense-category transactions, trend income is shown separately when category metadata uses `type: income`, transfer-category transactions do not add spend or income totals, and each month can show a compact expense-category breakdown.
+
+Rationale:
+
+The Dashboard needs readable monthly direction without changing existing accounting behavior. The transaction record remains the source of spend totals, while receipt items provide detail and recurring expenses provide planning estimates.
+
+Consequences:
+
+- Monthly trend analytics live in `src/domain/financeViews.ts` and are rebuilt from `FinanceSnapshot`.
+- Display-currency conversion uses the existing manual FX settings and remains display-only.
+- Confirmed receipt items, receipt draft items, and recurring expenses do not affect monthly trend spend totals.
+- Existing Dashboard monthly spend, receipt confirmation, item analytics, recurring CRUD, FX settings, backup/restore, and AI ingestion semantics remain unchanged.
+- CSV import/export, real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching, and payment execution remain out of scope.

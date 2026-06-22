@@ -30,7 +30,7 @@ Local data ownership is part of the MVP. The user can export app-owned local dat
 
 Current Dashboard analytics are deterministic local app views. They are derived from:
 
-- local manual transactions;
+- local manual transactions, including transaction-only monthly spend and income trends;
 - confirmed final receipts;
 - confirmed final receipt items;
 - local recurring expense records;
@@ -46,6 +46,8 @@ Future receipt text sources are:
 - Google Docs documents that contain receipt text.
 
 Current mock AI extraction and future real AI extraction must create receipt drafts only. They must not create transactions, confirm receipts, update Dashboard totals, or skip human review. Dashboard impact still happens only after the user reviews a draft and explicitly confirms it into one final receipt plus one linked transaction.
+
+Monthly trend analytics are deterministic Dashboard views. Trend spend is derived from transactions only, income is shown separately when category metadata marks transactions as income, recurring expenses remain a separate estimate, and confirmed receipt items remain item-level detail rather than extra spending.
 
 ## Non-goals
 

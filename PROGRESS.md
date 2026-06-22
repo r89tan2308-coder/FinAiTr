@@ -2658,3 +2658,101 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8D: plan and implement local CSV import/export through the existing local-first service/repository boundary, without external integrations.
+## 2026-06-22: Phase 7D monthly trend analytics and Dashboard polish implemented
+
+### Completed
+
+- Added transaction-only monthly trend analytics in `src/domain/financeViews.ts`.
+- Added a six-month Dashboard trend section with:
+  - monthly spend bars;
+  - optional income bars when category metadata has `type: income`;
+  - net values when income exists;
+  - compact per-month expense category breakdowns;
+  - a clear empty state when no transaction trend data exists.
+- Kept recurring expenses separate as the existing active-recurring monthly estimate.
+- Kept confirmed receipt items as item-level analytics detail only, not extra spending.
+- Kept display-currency conversion display-only through existing manual FX settings.
+- Added Dashboard empty state for no current-month category spending.
+- Added focused tests for monthly aggregation, display currency conversion, income split, empty trend state, and excluding receipt items and recurring expenses from trend totals.
+- Updated product, plan, architecture, and decision docs to move Phase 7D out of deferred status and describe the transaction-only trend boundary.
+- Confirmed no CSV import/export, Gmail/Drive/Docs/OAuth, backend, OCR, AI API calls, bank APIs, live FX, crypto/brokerage, bank matching, or payment execution was added.
+
+### Changed files
+
+- `PRODUCT_SPEC.md`
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/domain/financeViews.ts`
+- `src/domain/financeViews.test.ts`
+- `src/pages/DashboardPage.tsx`
+- `src/pages/DashboardPage.test.tsx`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Initial result: failed because `src/pages/DashboardPage.tsx` and `src/styles.css` had an extra blank line at EOF.
+
+Fix: removed the extra EOF blank lines.
+
+Final result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run src/domain/financeViews.test.ts src/pages/DashboardPage.test.tsx
+```
+
+Result: succeeded. 2 test files passed, 26 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 13 test files passed, 88 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Browser verification
+
+- Opened `http://127.0.0.1:5173/` in the in-app browser.
+- Confirmed the visible app content is FinAiTr Dashboard and includes `Monthly trend`.
+- Tested a 390 x 844 mobile viewport.
+- Confirmed the monthly trend section rendered with 6 trend rows, `Transactions only`, and a category breakdown.
+- Confirmed there was no horizontal overflow at the mobile viewport.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- CSV import/export remains deferred.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+
+### Next recommended phase
+
+Phase 8D: plan and implement local CSV import/export through the existing local-first service/repository boundary, without external integrations.

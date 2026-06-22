@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 8C React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, plus safe reset to seed data.
+The repository now has a Phase 8C React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, plus safe reset to seed data.
 
 Existing files:
 
@@ -20,6 +20,7 @@ Existing files:
 - receipt draft review/edit UI for saved drafts.
 - explicit reviewed-draft confirmation that creates one final receipt, final receipt items, and one receipt-linked transaction.
 - recurring expense create, edit, delete, list, validation, and display-only monthly estimate.
+- Dashboard transaction-only monthly trend analytics with spend, optional income split, net values, and compact category breakdowns.
 - Dashboard item analytics from confirmed final receipt items only, with current-month/all-time filters, item search, category filtering, and source receipt item drilldown.
 - future receipt ingestion contracts for manual paste, Gmail, Google Drive, Google Docs, and AI receipt extraction.
 - a Phase 8A local manual AI extraction simulator on the Receipts screen that accepts email-like or document-like text, preserves source metadata, and opens the saved draft in the existing review flow.
@@ -29,7 +30,6 @@ Existing files:
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
-- monthly trend and broader dashboard analytics polish in a deferred later phase;
 - CSV import/export;
 
 ## Target stack
@@ -296,6 +296,7 @@ Reset restores the current seed/baseline state, including default manual FX sett
 `src/domain/financeViews.ts` derives screen-ready data from `FinanceSnapshot`:
 
 - monthly transaction spend;
+- transaction-only six-month trend with spend, income when category type marks income, net values, and category breakdowns;
 - monthly recurring total;
 - pending receipt count;
 - category spend;
@@ -310,6 +311,8 @@ Reset restores the current seed/baseline state, including default manual FX sett
 These helpers convert transactions, recurring expenses, and receipt item totals into the configured display currency before aggregation. Conversion is display-only: source records keep their original `amount`, `totalPrice`, and `currency`, and `buildFinanceOverview` must not rewrite transaction, receipt, receipt item, receipt draft, or recurring records.
 
 The Dashboard monthly spend remains transaction-based. The recurring monthly total is a separate active-recurring estimate and must not be added into transaction spend until a future phase explicitly creates normal transactions from recurring expenses.
+
+Monthly trend analytics are also transaction-only. They use the selected display currency, group transactions by month, treat categories with `type: income` as income trend values, ignore transfer categories for spend/income totals, and aggregate expense categories into per-month breakdowns. Confirmed receipt items, receipt draft items, and recurring expenses are excluded from monthly trend spend so the trend cannot double-count receipt-linked transactions or planning-only recurring records.
 
 Confirmed receipt item analytics are a separate breakdown of final receipt data, not extra spending. They are derived from `receipts` with `status: confirmed` and the linked `receiptItems`; draft, reviewed-draft, needs-review, and rejected receipt data is excluded. Current-month item analytics use the final receipt date when available and exclude confirmed receipts without a date from the current-month filter. All-time item analytics include confirmed receipts even when a receipt date is missing. Phase 7B adds filtering and drilldown by deriving source detail rows from the same confirmed final receipt items; filtering does not write to persistence and does not change transaction spend.
 
