@@ -24,7 +24,7 @@ The first MVP is limited to local-first personal finance workflows:
 
 The MVP must be useful without bank access, server accounts, cloud storage, or real OCR.
 
-Local data ownership is part of the MVP. The user can export app-owned local data to a versioned JSON backup and can reset this device's local app data back to the baseline seed state with strong confirmation. JSON import/restore is planned as Phase 8C and is not part of Phase 8B.
+Local data ownership is part of the MVP. The user can export app-owned local data to a versioned JSON backup, restore from a previously exported FinAiTr backup with validation and strong confirmation, and reset this device's local app data back to the baseline seed state with strong confirmation.
 
 ## Current analytics vs future AI ingestion
 
@@ -60,10 +60,9 @@ The first MVP must not include:
 - payment execution;
 - multi-user auth;
 - background server jobs;
-- financial advice or tax advice automation;
-- JSON import or restore before Phase 8C.
+- financial advice or tax advice automation.
 
-Future integrations may be planned, but not implemented, until the local-first MVP is stable. Phase 8C is the next planned local data ownership phase and is limited to JSON import/restore from FinAiTr backups.
+Future integrations may be planned, but not implemented, until the local-first MVP is stable.
 
 Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. Phase 8A may use those contracts through a local manual simulator. Neither phase may add real Gmail, Google Drive, Google Docs, OAuth, backend jobs, scheduled sync, OCR APIs, or AI API calls.
 
@@ -105,9 +104,9 @@ The user creates recurring expenses such as subscriptions, gym memberships, and 
 
 The user sees total monthly spend, spend by category, spend by merchant, top products/items, monthly trend, recurring total, recent receipts, and item search analytics.
 
-### Local backup and reset
+### Local backup, restore, and reset
 
-The user exports a local JSON backup from Settings. The user can also reset local app data after typing a strong confirmation phrase. Reset clears app-owned IndexedDB data on this device, restores baseline seed data, and refreshes the app views.
+The user exports a local JSON backup from Settings. The user can import a previously exported FinAiTr backup, review a restore summary, type a strong confirmation phrase, and replace local app data only after validation passes. The user can also reset local app data after typing a strong confirmation phrase. Reset clears app-owned IndexedDB data on this device, restores baseline seed data, and refreshes the app views.
 
 ## Success criteria
 
@@ -120,6 +119,7 @@ The first MVP is successful when:
 - recurring expenses can be managed and included in the dashboard;
 - dashboard analytics update from local app data;
 - local JSON backup export works without a backend;
+- local JSON backup restore rejects invalid files and requires confirmation;
 - local data reset requires confirmation and restores baseline data;
 - local data is not sent to external services;
 - validation commands pass.

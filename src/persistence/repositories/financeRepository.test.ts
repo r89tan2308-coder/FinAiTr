@@ -14,6 +14,7 @@ import {
   deleteReceiptDraftAndReload,
   getReceiptDraftById,
   listReceiptDrafts,
+  previewLocalJsonBackupRestoreFromText,
   saveParsedReceiptDraftAndReload,
   simulateAiReceiptExtractionAndSaveDraftAndReload,
   updateReceiptDraftAndReload,
@@ -36,6 +37,8 @@ import {
   updateCurrencySettings,
   updateRecurringExpense,
   updateTransaction,
+  buildLocalJsonRestorePreview,
+  restoreLocalJsonBackup,
 } from "./financeRepository";
 
 describe("finance repository transaction CRUD", () => {
@@ -290,6 +293,175 @@ describe("finance repository transaction CRUD", () => {
     const resetSnapshot = (await getFinanceSnapshot()).snapshot;
 
     expect(resetSnapshot).toEqual(baselineSnapshot);
+  });
+
+  it("restores a valid JSON backup and recalculates analytics", async () => {
+    const created = await addManualTransaction({
+      accountId: "account-card",
+      amount: 100,
+      categoryId: "software",
+      currency: "EUR",
+      date: "2026-06-20",
+      description: "Restore test transaction",
+      merchant: "Restore Merchant",
+      tags: ["restore"],
+    });
+    const draft = await saveReceiptDraft({
+      confidence: 0.84,
+      currency: "GBP",
+      date: "2026-06-21",
+      items: [
+        {
+          categoryId: "groceries",
+          confidence: 0.9,
+          flags: [],
+          kind: "item",
+          normalizedName: "restore tea",
+          quantity: 1,
+          rawLine: "Restore Tea 4.50",
+          rawName: "Restore Tea",
+          tags: ["groceries"],
+          totalPrice: 4.5,
+        },
+      ],
+      merchant: "Restore Grocer",
+      rawText: "Restore Grocer\nRestore Tea 4.50\nTOTAL 4.50",
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        kind: "gmail",
+        providerName: "local-mock-ai-extractor",
+        sender: "restore@example.test",
+        title: "Restore backup receipt",
+      },
+      total: 4.5,
+      warnings: ["Restore source metadata."],
+    });
+
+    await updateCurrencySettings({
+      ...defaultCurrencySettings,
+      displayCurrency: "EUR",
+      ratesToRub: {
+        USD: 70,
+        RUB: 1,
+        EUR: 80,
+        GBP: 95,
+      },
+    });
+
+    const backup = await exportLocalJsonBackup();
+    const preview = buildLocalJsonRestorePreview(backup);
+
+    expect(preview.recordCounts.transactions).toBe(
+      createSeedFinanceSnapshot().transactions.length + 1,
+    );
+    expect(preview.displayCurrency).toBe("EUR");
+
+    await resetLocalDataToSeed();
+
+    const resetSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(
+      resetSnapshot.transactions.some(
+        (transaction) => transaction.id === created.id,
+      ),
+    ).toBe(false);
+
+    await restoreLocalJsonBackup(backup);
+
+    const restoredSnapshot = (await getFinanceSnapshot()).snapshot;
+    const restoredTransaction = restoredSnapshot.transactions.find(
+      (transaction) => transaction.id === created.id,
+    );
+    const restoredDraft = restoredSnapshot.receiptDrafts.find(
+      (item) => item.id === draft.draft.id,
+    );
+    const expectedOverview = buildFinanceOverview(snapshotFromBackup(backup), {
+      monthKey: "2026-06",
+    });
+    const restoredOverview = buildFinanceOverview(restoredSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(restoredSnapshot.accounts).toEqual(backup.tables.accounts);
+    expect(restoredSnapshot.categories).toEqual(backup.tables.categories);
+    expect(restoredSnapshot.receiptItems).toEqual(backup.tables.receiptItems);
+    expect(restoredSnapshot.receipts).toEqual(backup.tables.receipts);
+    expect(restoredSnapshot.receiptDraftItems).toEqual(
+      backup.tables.receiptDraftItems,
+    );
+    expect(restoredSnapshot.recurringExpenses).toEqual(
+      backup.tables.recurringExpenses,
+    );
+    expect(restoredTransaction).toMatchObject({
+      amount: 100,
+      currency: "EUR",
+      merchant: "Restore Merchant",
+    });
+    expect(restoredDraft).toMatchObject({
+      currency: "GBP",
+      sourceMetadata: {
+        kind: "gmail",
+        providerName: "local-mock-ai-extractor",
+        sender: "restore@example.test",
+        title: "Restore backup receipt",
+      },
+      total: 4.5,
+    });
+    expect(restoredSnapshot.currencySettings.displayCurrency).toBe("EUR");
+    expect(restoredSnapshot.currencySettings.ratesToRub.EUR).toBe(80);
+    expect(restoredOverview.monthlySpend).toBe(expectedOverview.monthlySpend);
+    expect(restoredOverview.displayCurrency).toBe("EUR");
+  });
+
+  it("returns invalid JSON errors before restore validation", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    const result = await previewLocalJsonBackupRestoreFromText("{invalid json");
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toBe("Backup file is not valid JSON.");
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+  });
+
+  it("rejects unsupported schema versions without mutating data", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const invalidBackup = cloneJsonValue(await exportLocalJsonBackup()) as {
+      schemaVersion: number;
+    };
+
+    invalidBackup.schemaVersion = 999;
+
+    expect(() => buildLocalJsonRestorePreview(invalidBackup)).toThrow(
+      "Unsupported backup schema version",
+    );
+    await expect(restoreLocalJsonBackup(invalidBackup)).rejects.toThrow(
+      "Unsupported backup schema version",
+    );
+
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+  });
+
+  it("rejects backups with missing tables without mutating data", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const invalidBackup = cloneJsonValue(await exportLocalJsonBackup()) as {
+      tables: Record<string, unknown>;
+    };
+
+    delete invalidBackup.tables.transactions;
+
+    expect(() => buildLocalJsonRestorePreview(invalidBackup)).toThrow(
+      "transactions",
+    );
+    await expect(restoreLocalJsonBackup(invalidBackup)).rejects.toThrow(
+      "transactions",
+    );
+
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(afterSnapshot).toEqual(beforeSnapshot);
   });
 
   it("preserves original transaction currency while dashboard totals are converted", async () => {
@@ -914,6 +1086,24 @@ describe("finance repository transaction CRUD", () => {
 
 function usdToRub(amount: number): number {
   return convertMoney(amount, "USD", "RUB", defaultCurrencySettings);
+}
+
+function snapshotFromBackup(backup: Awaited<ReturnType<typeof exportLocalJsonBackup>>) {
+  return {
+    accounts: backup.tables.accounts,
+    categories: backup.tables.categories,
+    currencySettings: backup.tables.settings.currencySettings,
+    receiptDraftItems: backup.tables.receiptDraftItems,
+    receiptDrafts: backup.tables.receiptDrafts,
+    receiptItems: backup.tables.receiptItems,
+    receipts: backup.tables.receipts,
+    recurringExpenses: backup.tables.recurringExpenses,
+    transactions: backup.tables.transactions,
+  };
+}
+
+function cloneJsonValue<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function saveConfirmationDraft(status: "draft" | "reviewed") {

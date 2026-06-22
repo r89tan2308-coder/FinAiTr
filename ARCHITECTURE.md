@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 8B React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export plus safe reset to seed data.
+The repository now has a Phase 8C React + TypeScript + Vite app shell with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, plus safe reset to seed data.
 
 Existing files:
 
@@ -24,11 +24,11 @@ Existing files:
 - future receipt ingestion contracts for manual paste, Gmail, Google Drive, Google Docs, and AI receipt extraction.
 - a Phase 8A local manual AI extraction simulator on the Receipts screen that accepts email-like or document-like text, preserves source metadata, and opens the saved draft in the existing review flow.
 - Phase 8B Settings tools for versioned local JSON backup export and strong-confirmation local data reset.
+- Phase 8C Settings tools for validated local JSON backup import/restore with preview and strong confirmation.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
-- JSON import/restore in Phase 8C;
 - monthly trend and broader dashboard analytics polish in a deferred later phase;
 - CSV import/export;
 
@@ -61,7 +61,7 @@ No backend is required for the first MVP.
 
 ## Implemented source layout
 
-Phase 8B uses this layout:
+Phase 8C uses this layout:
 
 ```text
 src/
@@ -208,9 +208,9 @@ If IndexedDB is unavailable or a load fails, `financeDataService` returns the se
 
 Dev/test browser data reset note: the local app database is the browser IndexedDB database named `finaitr-local`. Phase 8B adds an in-app strong-confirmation reset that clears app-owned tables and restores seed data. Browser storage tools or a dev console call to `indexedDB.deleteDatabase("finaitr-local")` remain acceptable for development cleanup outside product UI. Do not commit browser IndexedDB contents or runtime verification data.
 
-## Local JSON backup and reset
+## Local JSON backup, restore, and reset
 
-Phase 8B adds local data ownership actions to Settings.
+Phase 8B adds local data ownership export/reset actions to Settings. Phase 8C adds local JSON import/restore for previously exported FinAiTr backups.
 
 Backup export flow:
 
@@ -245,6 +245,37 @@ Source metadata is not stored in a separate table. It is exported inside `receip
 
 Backup export is read-only after normal seed initialization. It must not rewrite transactions, receipts, receipt items, receipt drafts, recurring expenses, or FX settings.
 
+Restore preview flow:
+
+```text
+SettingsPage Backup JSON file input
+  -> browser File/FileReader text read
+  -> financeDataService previewLocalJsonBackupRestoreFromText
+  -> JSON.parse
+  -> financeRepository buildLocalJsonRestorePreview
+  -> schema and record validation
+  -> record counts, exportedAt, display currency, and warnings
+```
+
+Restore write flow:
+
+```text
+SettingsPage Restore backup
+  -> exact confirmation phrase
+  -> financeDataService restoreLocalJsonBackupAndReload
+  -> financeRepository restoreLocalJsonBackup
+  -> validate backup again before any write
+  -> Dexie transaction clears app-owned tables and appMeta
+  -> bulkPut backup accounts/categories/transactions/receipts/items/drafts/recurring
+  -> restore appMeta with seedVersion and serialized currencySettings
+  -> loadFinanceData
+  -> shared App state refreshes Dashboard and pages
+```
+
+Restore validation checks the backup is a FinAiTr backup with `schemaVersion: 1`, valid app metadata, valid export timestamp, valid storage mode, required table arrays, valid currency settings, basic record shapes, and no duplicate table primary keys. Invalid JSON, unsupported schema versions, missing tables, malformed records, or duplicate ids are rejected before app-owned data is cleared.
+
+Restore preserves original transaction amounts/currencies, receipt totals/currencies, receipt item totals, receipt draft totals/currencies, recurring amounts/currencies, source metadata, and manual FX settings from the backup. Currency conversion remains display-only after restore because Dashboard and pages rebuild derived views from the restored snapshot.
+
 Safe reset flow:
 
 ```text
@@ -258,7 +289,7 @@ SettingsPage Reset local data
   -> shared App state refreshes Dashboard and pages
 ```
 
-Reset restores the current seed/baseline state, including default manual FX settings. It does not import a backup, restore a backup, export CSV, call external services, or alter receipt confirmation, item analytics, recurring expense, or FX semantics. JSON import/restore is the next planned local data ownership phase, Phase 8C, and must be implemented as a separate explicit restore flow.
+Reset restores the current seed/baseline state, including default manual FX settings. It does not import a backup, export CSV, call external services, or alter receipt confirmation, item analytics, recurring expense, or FX semantics. Restore and reset are separate explicit flows with separate confirmation phrases.
 
 ## Derived views
 

@@ -27,6 +27,7 @@ import {
 } from "../receipt-ingestion/types";
 import {
   addRecurringExpense,
+  buildLocalJsonRestorePreview,
   confirmReceiptDraft,
   deleteRecurringExpense,
   addManualTransaction,
@@ -37,12 +38,14 @@ import {
   getFinanceSnapshot,
   listReceiptDraftRecords,
   resetLocalDataToSeed,
+  restoreLocalJsonBackup,
   saveReceiptDraft,
   updateReceiptDraft,
   updateRecurringExpense,
   updateCurrencySettings,
   updateTransaction,
   type LocalJsonBackup,
+  type LocalJsonRestorePreview,
   type ReceiptDraftConfirmationInput,
   type ReceiptDraftConfirmationRecord,
   type ReceiptDraftUpdateInput,
@@ -59,6 +62,7 @@ export type FinanceLoadStatus = "loading" | "ready" | "error";
 export type FinanceStorageMode = RepositoryStorageMode;
 export type {
   LocalJsonBackup,
+  LocalJsonRestorePreview,
   ManualAiExtractionInput,
   ReceiptDraftConfirmationInput,
   ReceiptDraftConfirmationRecord,
@@ -147,6 +151,19 @@ export interface LocalBackupExportActionResult {
 }
 
 export interface LocalDataResetActionResult {
+  data?: FinanceDataState;
+  errorMessage?: string;
+  ok: boolean;
+}
+
+export interface LocalBackupRestorePreviewActionResult {
+  backup?: LocalJsonBackup;
+  errorMessage?: string;
+  ok: boolean;
+  preview?: LocalJsonRestorePreview;
+}
+
+export interface LocalBackupRestoreActionResult {
   data?: FinanceDataState;
   errorMessage?: string;
   ok: boolean;
@@ -378,6 +395,50 @@ export async function resetLocalDataAndReload(): Promise<LocalDataResetActionRes
     return {
       errorMessage:
         error instanceof Error ? error.message : "Local data could not be reset.",
+      ok: false,
+    };
+  }
+}
+
+export async function previewLocalJsonBackupRestoreFromText(
+  rawJson: string,
+): Promise<LocalBackupRestorePreviewActionResult> {
+  try {
+    const parsedBackup = JSON.parse(rawJson) as unknown;
+    const preview = buildLocalJsonRestorePreview(parsedBackup);
+
+    return {
+      backup: parsedBackup as LocalJsonBackup,
+      ok: true,
+      preview,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof SyntaxError
+          ? "Backup file is not valid JSON."
+          : error instanceof Error
+            ? error.message
+            : "Backup file could not be validated.",
+      ok: false,
+    };
+  }
+}
+
+export async function restoreLocalJsonBackupAndReload(
+  backup: LocalJsonBackup,
+): Promise<LocalBackupRestoreActionResult> {
+  try {
+    await restoreLocalJsonBackup(backup);
+
+    return {
+      data: await loadFinanceData(),
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error ? error.message : "Local backup could not be restored.",
       ok: false,
     };
   }

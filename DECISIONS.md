@@ -406,3 +406,23 @@ Consequences:
 - Dashboard and pages refresh from the reloaded finance snapshot after reset.
 - JSON import/restore remains out of scope for Phase 8B and is the next planned local data ownership phase, Phase 8C.
 - CSV import/export, real Gmail/Drive/Docs/OAuth/backend/scheduled sync/OCR/AI API/live FX/bank API/crypto/brokerage/bank matching, and changes to receipt confirmation, item analytics, recurring, or FX semantics remain out of scope.
+
+## 2026-06-17: Phase 8C restores only validated FinAiTr JSON backups
+
+Decision:
+
+Add local JSON backup import/restore as a Settings flow that validates the selected backup before any write, shows a restore preview, requires the exact `RESTORE LOCAL DATA` phrase, then replaces app-owned IndexedDB tables through the existing finance service and repository boundary.
+
+Rationale:
+
+Phase 8B made local backups exportable, but a local-first app also needs a safe way to recover from a reset or move data between local browser profiles. Restore can destroy current local data, so validation, preview, and strong confirmation must happen before the Dexie transaction clears tables.
+
+Consequences:
+
+- Restore accepts only the versioned FinAiTr JSON backup shape currently exported by Phase 8B.
+- Unsupported schema versions, invalid JSON, missing tables, malformed record shapes, invalid currency settings, and duplicate primary keys are rejected before current local data is mutated.
+- Restore writes only app-owned tables and app metadata: accounts, categories, transactions, receipts, receipt items, receipt drafts, receipt draft items, recurring expenses, and currency settings.
+- Dashboard and pages refresh from the restored finance snapshot after restore.
+- Original amounts, currencies, source metadata, and manual FX settings are preserved from the backup.
+- Receipt confirmation, item analytics, recurring expense, and FX semantics remain unchanged.
+- CSV import/export, cloud sync, Gmail/Drive/Docs/OAuth, backend, AI API, OCR, live FX, bank APIs, crypto/brokerage, and bank matching remain out of scope.

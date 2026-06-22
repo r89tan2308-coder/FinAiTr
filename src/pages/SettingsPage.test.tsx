@@ -6,6 +6,8 @@ import { buildFinanceOverview } from "../domain/financeViews";
 import { SettingsPage } from "./SettingsPage";
 import {
   type LocalBackupExportActionResult,
+  type LocalBackupRestoreActionResult,
+  type LocalBackupRestorePreviewActionResult,
   type LocalDataResetActionResult,
   type LocalJsonBackup,
 } from "../services/financeDataService";
@@ -120,6 +122,79 @@ describe("SettingsPage local data tools", () => {
     expect(confirmationInput).toHaveValue("");
   });
 
+  it("previews a backup file and requires strong confirmation before restore", async () => {
+    const user = userEvent.setup();
+    const backup = buildTestBackup();
+    const onPreviewLocalBackupRestore = vi.fn(
+      async (rawJson: string): Promise<LocalBackupRestorePreviewActionResult> => {
+        expect(JSON.parse(rawJson)).toMatchObject({
+          app: {
+            name: "finaitr",
+          },
+          schemaVersion: 1,
+        });
+
+        return {
+          backup,
+          ok: true,
+          preview: buildTestRestorePreview(),
+        };
+      },
+    );
+    const onRestoreLocalBackup = vi.fn(
+      async (): Promise<LocalBackupRestoreActionResult> => ({
+        data: {
+          overview: buildFinanceOverview(seedSnapshot),
+          snapshot: seedSnapshot,
+          status: "ready",
+          storageMode: "indexeddb",
+        },
+        ok: true,
+      }),
+    );
+
+    renderSettingsPage({
+      onPreviewLocalBackupRestore,
+      onRestoreLocalBackup,
+    });
+
+    const restoreButton = screen.getByRole("button", { name: "Restore backup" });
+    const restoreConfirmationInput = screen.getByLabelText("Restore confirmation");
+    const backupFile = new File([JSON.stringify(backup)], "backup.json", {
+      type: "application/json",
+    });
+
+    expect(restoreButton).toBeDisabled();
+
+    await user.upload(screen.getByLabelText("Backup JSON file"), backupFile);
+
+    await waitFor(() =>
+      expect(onPreviewLocalBackupRestore).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText("Restore preview")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${seedRecordCount} records, display currency RUB`),
+    ).toBeInTheDocument();
+    expect(restoreButton).toBeDisabled();
+
+    await user.type(restoreConfirmationInput, "RESTORE");
+
+    expect(restoreButton).toBeDisabled();
+    expect(onRestoreLocalBackup).not.toHaveBeenCalled();
+
+    await user.clear(restoreConfirmationInput);
+    await user.type(restoreConfirmationInput, "RESTORE LOCAL DATA");
+
+    expect(restoreButton).toBeEnabled();
+
+    await user.click(restoreButton);
+
+    expect(onRestoreLocalBackup).toHaveBeenCalledWith(backup);
+    await waitFor(() =>
+      expect(screen.getByText("Backup restored. Local data reloaded.")).toBeInTheDocument(),
+    );
+  });
+
   it("does not allow reset in seed fallback mode", async () => {
     renderSettingsPage({ storageMode: "seed_fallback" });
 
@@ -133,7 +208,13 @@ describe("SettingsPage local data tools", () => {
 
 interface RenderSettingsOptions {
   onExportLocalBackup?: () => Promise<LocalBackupExportActionResult>;
+  onPreviewLocalBackupRestore?: (
+    rawJson: string,
+  ) => Promise<LocalBackupRestorePreviewActionResult>;
   onResetLocalData?: () => Promise<LocalDataResetActionResult>;
+  onRestoreLocalBackup?: (
+    backup: LocalJsonBackup,
+  ) => Promise<LocalBackupRestoreActionResult>;
   storageMode?: "indexeddb" | "seed_fallback";
 }
 
@@ -149,8 +230,28 @@ function renderSettingsPage(options: RenderSettingsOptions = {}) {
           ok: true,
         }))
       }
+      onPreviewLocalBackupRestore={
+        options.onPreviewLocalBackupRestore ??
+        (async () => ({
+          backup: buildTestBackup(),
+          ok: true,
+          preview: buildTestRestorePreview(),
+        }))
+      }
       onResetLocalData={
         options.onResetLocalData ??
+        (async () => ({
+          data: {
+            overview: buildFinanceOverview(seedSnapshot),
+            snapshot: seedSnapshot,
+            status: "ready",
+            storageMode: "indexeddb",
+          },
+          ok: true,
+        }))
+      }
+      onRestoreLocalBackup={
+        options.onRestoreLocalBackup ??
         (async () => ({
           data: {
             overview: buildFinanceOverview(seedSnapshot),
@@ -193,5 +294,32 @@ function buildTestBackup(): LocalJsonBackup {
       },
       transactions: seedSnapshot.transactions,
     },
+  };
+}
+
+function buildTestRestorePreview() {
+  return {
+    app: {
+      name: "finaitr",
+      version: "0.1.0",
+    },
+    displayCurrency: seedSnapshot.currencySettings.displayCurrency,
+    exportedAt: "2026-06-05T10:00:00.000Z",
+    recordCounts: {
+      accounts: seedSnapshot.accounts.length,
+      appMeta: 0,
+      categories: seedSnapshot.categories.length,
+      receiptDraftItems: seedSnapshot.receiptDraftItems.length,
+      receiptDrafts: seedSnapshot.receiptDrafts.length,
+      receiptItems: seedSnapshot.receiptItems.length,
+      receipts: seedSnapshot.receipts.length,
+      recurringExpenses: seedSnapshot.recurringExpenses.length,
+      total: Number(seedRecordCount),
+      transactions: seedSnapshot.transactions.length,
+    },
+    schemaVersion: 1 as const,
+    seedVersion: 1,
+    storageMode: "indexeddb" as const,
+    warnings: [],
   };
 }

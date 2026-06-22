@@ -16,13 +16,16 @@ import {
   deleteTransactionAndReload,
   exportLocalJsonBackupForDownload,
   loadFinanceData,
+  previewLocalJsonBackupRestoreFromText,
   resetLocalDataAndReload,
+  restoreLocalJsonBackupAndReload,
   saveParsedReceiptDraftAndReload,
   simulateAiReceiptExtractionAndSaveDraftAndReload,
   updateCurrencySettingsAndReload,
   updateRecurringExpenseAndReload,
   updateReceiptDraftAndReload,
   type CurrencySettingsActionResult,
+  type LocalBackupRestoreActionResult,
   type LocalDataResetActionResult,
   type ReceiptDraftActionResult,
   type RecurringExpenseActionResult,
@@ -87,6 +90,16 @@ export function App() {
   }
 
   function applyLocalDataResetActionResult(result: LocalDataResetActionResult) {
+    if (result.ok && result.data) {
+      setFinanceData(result.data);
+    }
+
+    return result;
+  }
+
+  function applyLocalBackupRestoreActionResult(
+    result: LocalBackupRestoreActionResult,
+  ) {
     if (result.ok && result.data) {
       setFinanceData(result.data);
     }
@@ -202,8 +215,14 @@ export function App() {
           currencySettings={financeData.snapshot.currencySettings}
           errorMessage={financeData.errorMessage}
           onExportLocalBackup={exportLocalJsonBackupForDownload}
+          onPreviewLocalBackupRestore={previewLocalJsonBackupRestoreFromText}
           onResetLocalData={async () =>
             applyLocalDataResetActionResult(await resetLocalDataAndReload())
+          }
+          onRestoreLocalBackup={async (backup) =>
+            applyLocalBackupRestoreActionResult(
+              await restoreLocalJsonBackupAndReload(backup),
+            )
           }
           onUpdateCurrencySettings={async (settings) =>
             applyCurrencySettingsActionResult(

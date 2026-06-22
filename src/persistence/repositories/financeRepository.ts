@@ -1,5 +1,6 @@
 import { createSeedFinanceSnapshot, seedVersion } from "../../data/seedData";
 import {
+  assertValidCurrencySettings,
   parseCurrencySettings,
   serializeCurrencySettings,
 } from "../../domain/currencySettings";
@@ -21,6 +22,7 @@ import {
   type ReceiptItem,
   type ReceiptSource,
   type RecurringExpense,
+  type SupportedCurrencyCode,
   type Transaction,
 } from "../../domain/models";
 import {
@@ -31,8 +33,7 @@ import {
   assertValidTransactionInput,
   type TransactionInput,
 } from "../../domain/transactionValidation";
-import { canUseIndexedDb, financeDb } from "../db";
-import { type AppMetaRecord } from "../db";
+import { canUseIndexedDb, financeDb, type AppMetaRecord } from "../db";
 
 const seedVersionKey = "seedVersion";
 const currencySettingsKey = "currencySettings";
@@ -69,6 +70,31 @@ export interface LocalJsonBackup {
     };
     transactions: Transaction[];
   };
+}
+
+export interface LocalJsonRestorePreview {
+  app: {
+    name: string;
+    version: string;
+  };
+  displayCurrency: SupportedCurrencyCode;
+  exportedAt: string;
+  recordCounts: {
+    accounts: number;
+    appMeta: number;
+    categories: number;
+    receiptDraftItems: number;
+    receiptDrafts: number;
+    receiptItems: number;
+    receipts: number;
+    recurringExpenses: number;
+    total: number;
+    transactions: number;
+  };
+  schemaVersion: typeof localJsonBackupSchemaVersion;
+  seedVersion: number;
+  storageMode: RepositoryStorageMode;
+  warnings: string[];
 }
 
 export interface ReceiptDraftItemInput {
@@ -260,6 +286,97 @@ export async function resetLocalDataToSeed(): Promise<void> {
       ]);
 
       await financeDb.appMeta.bulkPut(seedAppMetaRecords(now));
+    },
+  );
+}
+
+export function buildLocalJsonRestorePreview(
+  backupValue: unknown,
+): LocalJsonRestorePreview {
+  const backup = validateLocalJsonBackup(backupValue);
+  const recordCounts = {
+    accounts: backup.tables.accounts.length,
+    appMeta: backup.tables.appMeta.length,
+    categories: backup.tables.categories.length,
+    receiptDraftItems: backup.tables.receiptDraftItems.length,
+    receiptDrafts: backup.tables.receiptDrafts.length,
+    receiptItems: backup.tables.receiptItems.length,
+    receipts: backup.tables.receipts.length,
+    recurringExpenses: backup.tables.recurringExpenses.length,
+    transactions: backup.tables.transactions.length,
+  };
+
+  return {
+    app: backup.app,
+    displayCurrency: backup.tables.settings.currencySettings.displayCurrency,
+    exportedAt: backup.exportedAt,
+    recordCounts: {
+      ...recordCounts,
+      total: Object.values(recordCounts).reduce((sum, count) => sum + count, 0),
+    },
+    schemaVersion: backup.schemaVersion,
+    seedVersion: backup.seedVersion,
+    storageMode: backup.storageMode,
+    warnings: buildRestoreWarnings(backup),
+  };
+}
+
+export async function restoreLocalJsonBackup(
+  backupValue: unknown,
+): Promise<void> {
+  assertIndexedDbWritable("local JSON backup restore");
+
+  const backup = validateLocalJsonBackup(backupValue);
+  const appMeta = appMetaRecordsForRestore(backup);
+
+  await financeDb.transaction(
+    "rw",
+    [
+      financeDb.accounts,
+      financeDb.categories,
+      financeDb.transactions,
+      financeDb.receipts,
+      financeDb.receiptItems,
+      financeDb.receiptDrafts,
+      financeDb.receiptDraftItems,
+      financeDb.recurringExpenses,
+      financeDb.appMeta,
+    ],
+    async () => {
+      await Promise.all([
+        financeDb.accounts.clear(),
+        financeDb.categories.clear(),
+        financeDb.transactions.clear(),
+        financeDb.receipts.clear(),
+        financeDb.receiptItems.clear(),
+        financeDb.receiptDrafts.clear(),
+        financeDb.receiptDraftItems.clear(),
+        financeDb.recurringExpenses.clear(),
+        financeDb.appMeta.clear(),
+      ]);
+
+      await Promise.all([
+        financeDb.accounts.bulkPut(cloneJsonValue(backup.tables.accounts)),
+        financeDb.categories.bulkPut(cloneJsonValue(backup.tables.categories)),
+        financeDb.transactions.bulkPut(
+          cloneJsonValue(backup.tables.transactions),
+        ),
+        financeDb.receipts.bulkPut(cloneJsonValue(backup.tables.receipts)),
+        financeDb.receiptItems.bulkPut(
+          cloneJsonValue(backup.tables.receiptItems),
+        ),
+        financeDb.receiptDrafts.bulkPut(
+          cloneJsonValue(backup.tables.receiptDrafts),
+        ),
+        financeDb.receiptDraftItems.bulkPut(
+          cloneJsonValue(backup.tables.receiptDraftItems),
+        ),
+        financeDb.recurringExpenses.bulkPut(
+          cloneJsonValue(backup.tables.recurringExpenses),
+        ),
+      ]);
+
+      await financeDb.appMeta.bulkPut(appMeta);
     },
   );
 }
@@ -988,6 +1105,450 @@ function normalizeReceiptSourceMetadata(
     title: normalizeOptionalText(metadata.title),
     url: normalizeOptionalText(metadata.url),
   };
+}
+
+function validateLocalJsonBackup(backupValue: unknown): LocalJsonBackup {
+  const backup = requireRecord(backupValue, "Backup file");
+  const app = requireRecord(backup.app, "Backup app metadata");
+  const tables = requireRecord(backup.tables, "Backup tables");
+  const settings = requireRecord(tables.settings, "Backup settings");
+  const currencySettings = requireCurrencySettings(
+    settings.currencySettings,
+    "Backup currency settings",
+  );
+  const exportedAt = requireString(backup.exportedAt, "Backup export timestamp");
+  const schemaVersion = requireNumber(
+    backup.schemaVersion,
+    "Backup schema version",
+  );
+  const backupSeedVersion = requireNumber(backup.seedVersion, "Backup seed version");
+  const backupStorageMode = requireString(backup.storageMode, "Backup storage mode");
+  const appName = requireString(app.name, "Backup app name");
+  const appVersion = requireString(app.version, "Backup app version");
+
+  if (schemaVersion !== localJsonBackupSchemaVersion) {
+    throw new Error(
+      `Unsupported backup schema version ${schemaVersion}. Expected ${localJsonBackupSchemaVersion}.`,
+    );
+  }
+
+  if (appName !== appInfo.name) {
+    throw new Error("Backup app metadata is not supported.");
+  }
+
+  if (Number.isNaN(Date.parse(exportedAt))) {
+    throw new Error("Backup export timestamp is invalid.");
+  }
+
+  if (!Number.isInteger(backupSeedVersion) || backupSeedVersion < 0) {
+    throw new Error("Backup seed version is invalid.");
+  }
+
+  if (!isRepositoryStorageMode(backupStorageMode)) {
+    throw new Error("Backup storage mode is invalid.");
+  }
+
+  const accounts = requireArray<Account>(tables.accounts, "accounts");
+  const appMeta = requireArray<AppMetaRecord>(tables.appMeta, "appMeta");
+  const categories = requireArray<Category>(tables.categories, "categories");
+  const transactions = requireArray<Transaction>(
+    tables.transactions,
+    "transactions",
+  );
+  const receipts = requireArray<Receipt>(tables.receipts, "receipts");
+  const receiptItems = requireArray<ReceiptItem>(
+    tables.receiptItems,
+    "receiptItems",
+  );
+  const receiptDrafts = requireArray<ReceiptDraft>(
+    tables.receiptDrafts,
+    "receiptDrafts",
+  );
+  const receiptDraftItems = requireArray<ReceiptDraftItem>(
+    tables.receiptDraftItems,
+    "receiptDraftItems",
+  );
+  const recurringExpenses = requireArray<RecurringExpense>(
+    tables.recurringExpenses,
+    "recurringExpenses",
+  );
+
+  accounts.forEach(validateAccountRecord);
+  appMeta.forEach(validateAppMetaRecord);
+  categories.forEach(validateCategoryRecord);
+  transactions.forEach(validateTransactionRecord);
+  receipts.forEach(validateReceiptRecord);
+  receiptItems.forEach(validateReceiptItemRecord);
+  receiptDrafts.forEach(validateReceiptDraftRecord);
+  receiptDraftItems.forEach(validateReceiptDraftItemRecord);
+  recurringExpenses.forEach(validateRecurringExpenseRecord);
+
+  assertUniqueIds(accounts, "accounts");
+  assertUniqueIds(categories, "categories");
+  assertUniqueIds(transactions, "transactions");
+  assertUniqueIds(receipts, "receipts");
+  assertUniqueIds(receiptItems, "receiptItems");
+  assertUniqueIds(receiptDrafts, "receiptDrafts");
+  assertUniqueIds(receiptDraftItems, "receiptDraftItems");
+  assertUniqueIds(recurringExpenses, "recurringExpenses");
+  assertUniqueAppMetaKeys(appMeta);
+
+  return cloneJsonValue({
+    app: {
+      name: appName,
+      version: appVersion,
+    },
+    exportedAt,
+    schemaVersion: localJsonBackupSchemaVersion,
+    seedVersion: backupSeedVersion,
+    storageMode: backupStorageMode,
+    tables: {
+      accounts,
+      appMeta,
+      categories,
+      receiptDraftItems,
+      receiptDrafts,
+      receiptItems,
+      receipts,
+      recurringExpenses,
+      settings: {
+        currencySettings,
+      },
+      transactions,
+    },
+  });
+}
+
+function buildRestoreWarnings(backup: LocalJsonBackup): string[] {
+  const warnings: string[] = [];
+
+  if (backup.app.version !== appInfo.version) {
+    warnings.push(
+      `Backup app version ${backup.app.version} differs from current app version ${appInfo.version}.`,
+    );
+  }
+
+  if (backup.seedVersion !== seedVersion) {
+    warnings.push(
+      `Backup seed version ${backup.seedVersion} differs from current seed version ${seedVersion}.`,
+    );
+  }
+
+  if (backup.storageMode !== "indexeddb") {
+    warnings.push("Backup was exported from seed fallback mode.");
+  }
+
+  return warnings;
+}
+
+function appMetaRecordsForRestore(backup: LocalJsonBackup): AppMetaRecord[] {
+  const recordsByKey = new Map(
+    backup.tables.appMeta.map((record) => [record.key, record] as const),
+  );
+  const seedVersionRecord = recordsByKey.get(seedVersionKey);
+  const currencySettingsRecord = recordsByKey.get(currencySettingsKey);
+
+  recordsByKey.set(seedVersionKey, {
+    key: seedVersionKey,
+    updatedAt: seedVersionRecord?.updatedAt ?? backup.exportedAt,
+    value: String(backup.seedVersion),
+  });
+  recordsByKey.set(currencySettingsKey, {
+    key: currencySettingsKey,
+    updatedAt:
+      currencySettingsRecord?.updatedAt ??
+      backup.tables.settings.currencySettings.updatedAt ??
+      backup.exportedAt,
+    value: serializeCurrencySettings(backup.tables.settings.currencySettings),
+  });
+
+  return cloneJsonValue(Array.from(recordsByKey.values()));
+}
+
+function validateAccountRecord(record: Account, index: number): void {
+  const label = `accounts[${index}]`;
+  requireRecord(record, label);
+  requireString(record.id, `${label}.id`);
+  requireString(record.name, `${label}.name`);
+  requireString(record.type, `${label}.type`);
+  requireString(record.currency, `${label}.currency`);
+  requireNumber(record.openingBalance, `${label}.openingBalance`);
+  requireOptionalNumber(record.currentBalance, `${label}.currentBalance`);
+  requireBoolean(record.isArchived, `${label}.isArchived`);
+  requireString(record.createdAt, `${label}.createdAt`);
+  requireString(record.updatedAt, `${label}.updatedAt`);
+}
+
+function validateAppMetaRecord(record: AppMetaRecord, index: number): void {
+  const label = `appMeta[${index}]`;
+  requireRecord(record, label);
+  requireString(record.key, `${label}.key`);
+  requireString(record.value, `${label}.value`);
+  requireString(record.updatedAt, `${label}.updatedAt`);
+}
+
+function validateCategoryRecord(record: Category, index: number): void {
+  const label = `categories[${index}]`;
+  requireRecord(record, label);
+  requireString(record.id, `${label}.id`);
+  requireString(record.name, `${label}.name`);
+  requireOptionalString(record.parentId, `${label}.parentId`);
+  requireString(record.type, `${label}.type`);
+  requireOptionalString(record.color, `${label}.color`);
+  requireOptionalString(record.icon, `${label}.icon`);
+
+  if (!["expense", "income", "transfer"].includes(record.type)) {
+    throw new Error(`${label}.type is invalid.`);
+  }
+}
+
+function validateTransactionRecord(record: Transaction, index: number): void {
+  const label = `transactions[${index}]`;
+  requireRecord(record, label);
+  requireString(record.id, `${label}.id`);
+  requireString(record.date, `${label}.date`);
+  requireNumber(record.amount, `${label}.amount`);
+  requireString(record.currency, `${label}.currency`);
+  requireString(record.merchant, `${label}.merchant`);
+  requireString(record.accountId, `${label}.accountId`);
+  requireOptionalString(record.categoryId, `${label}.categoryId`);
+  requireOptionalString(record.description, `${label}.description`);
+  requireString(record.source, `${label}.source`);
+  requireOptionalString(record.receiptId, `${label}.receiptId`);
+  requireStringArray(record.tags, `${label}.tags`);
+  requireString(record.createdAt, `${label}.createdAt`);
+  requireString(record.updatedAt, `${label}.updatedAt`);
+}
+
+function validateReceiptRecord(record: Receipt, index: number): void {
+  const label = `receipts[${index}]`;
+  requireRecord(record, label);
+  requireString(record.id, `${label}.id`);
+  requireOptionalString(record.date, `${label}.date`);
+  requireOptionalString(record.merchant, `${label}.merchant`);
+  requireOptionalNumber(record.total, `${label}.total`);
+  requireString(record.currency, `${label}.currency`);
+  requireString(record.rawText, `${label}.rawText`);
+  requireString(record.status, `${label}.status`);
+  requireString(record.source, `${label}.source`);
+  requireOptionalSourceMetadata(record.sourceMetadata, `${label}.sourceMetadata`);
+  requireOptionalString(record.transactionId, `${label}.transactionId`);
+  requireOptionalNumber(record.confidence, `${label}.confidence`);
+  requireStringArray(record.warnings, `${label}.warnings`);
+  requireString(record.createdAt, `${label}.createdAt`);
+  requireString(record.updatedAt, `${label}.updatedAt`);
+}
+
+function validateReceiptItemRecord(record: ReceiptItem, index: number): void {
+  const label = `receiptItems[${index}]`;
+  requireRecord(record, label);
+  requireString(record.id, `${label}.id`);
+  requireString(record.receiptId, `${label}.receiptId`);
+  requireString(record.rawName, `${label}.rawName`);
+  requireString(record.normalizedName, `${label}.normalizedName`);
+  requireOptionalNumber(record.quantity, `${label}.quantity`);
+  requireOptionalNumber(record.unitPrice, `${label}.unitPrice`);
+  requireNumber(record.totalPrice, `${label}.totalPrice`);
+  requireOptionalString(record.categoryId, `${label}.categoryId`);
+  requireStringArray(record.tags, `${label}.tags`);
+  requireStringArray(record.flags, `${label}.flags`);
+  requireOptionalNumber(record.confidence, `${label}.confidence`);
+}
+
+function validateReceiptDraftRecord(record: ReceiptDraft, index: number): void {
+  const label = `receiptDrafts[${index}]`;
+  requireRecord(record, label);
+  requireString(record.id, `${label}.id`);
+  requireOptionalString(record.date, `${label}.date`);
+  requireOptionalString(record.merchant, `${label}.merchant`);
+  requireOptionalNumber(record.total, `${label}.total`);
+  requireString(record.currency, `${label}.currency`);
+  requireString(record.rawText, `${label}.rawText`);
+  requireString(record.status, `${label}.status`);
+  requireString(record.source, `${label}.source`);
+  requireOptionalSourceMetadata(record.sourceMetadata, `${label}.sourceMetadata`);
+  requireNumber(record.confidence, `${label}.confidence`);
+  requireStringArray(record.warnings, `${label}.warnings`);
+  requireOptionalString(record.confirmedReceiptId, `${label}.confirmedReceiptId`);
+  requireOptionalString(record.linkedTransactionId, `${label}.linkedTransactionId`);
+  requireString(record.createdAt, `${label}.createdAt`);
+  requireString(record.updatedAt, `${label}.updatedAt`);
+}
+
+function validateReceiptDraftItemRecord(
+  record: ReceiptDraftItem,
+  index: number,
+): void {
+  const label = `receiptDraftItems[${index}]`;
+  requireRecord(record, label);
+  requireString(record.id, `${label}.id`);
+  requireString(record.draftId, `${label}.draftId`);
+  requireString(record.rawLine, `${label}.rawLine`);
+  requireString(record.rawName, `${label}.rawName`);
+  requireString(record.normalizedName, `${label}.normalizedName`);
+  requireOptionalNumber(record.quantity, `${label}.quantity`);
+  requireOptionalNumber(record.unitPrice, `${label}.unitPrice`);
+  requireNumber(record.totalPrice, `${label}.totalPrice`);
+  requireString(record.categoryId, `${label}.categoryId`);
+  requireStringArray(record.tags, `${label}.tags`);
+  requireNumber(record.confidence, `${label}.confidence`);
+  requireStringArray(record.flags, `${label}.flags`);
+  requireString(record.kind, `${label}.kind`);
+}
+
+function validateRecurringExpenseRecord(
+  record: RecurringExpense,
+  index: number,
+): void {
+  const label = `recurringExpenses[${index}]`;
+  requireRecord(record, label);
+  requireString(record.id, `${label}.id`);
+  requireString(record.name, `${label}.name`);
+  requireOptionalString(record.merchant, `${label}.merchant`);
+  requireNumber(record.amount, `${label}.amount`);
+  requireString(record.currency, `${label}.currency`);
+  requireString(record.frequency, `${label}.frequency`);
+  requireString(record.nextDueDate, `${label}.nextDueDate`);
+  requireOptionalString(record.categoryId, `${label}.categoryId`);
+  requireOptionalString(record.accountId, `${label}.accountId`);
+  requireOptionalString(record.note, `${label}.note`);
+  requireString(record.status, `${label}.status`);
+  requireStringArray(record.tags, `${label}.tags`);
+  requireString(record.createdAt, `${label}.createdAt`);
+  requireString(record.updatedAt, `${label}.updatedAt`);
+}
+
+function requireCurrencySettings(
+  value: unknown,
+  label: string,
+): CurrencySettings {
+  const settings = requireRecord(value, label) as unknown as CurrencySettings;
+  requireString(settings.displayCurrency, `${label}.displayCurrency`);
+  requireRecord(settings.ratesToRub, `${label}.ratesToRub`);
+  requireNumber(settings.ratesToRub.USD, `${label}.ratesToRub.USD`);
+  requireNumber(settings.ratesToRub.RUB, `${label}.ratesToRub.RUB`);
+  requireNumber(settings.ratesToRub.EUR, `${label}.ratesToRub.EUR`);
+  requireNumber(settings.ratesToRub.GBP, `${label}.ratesToRub.GBP`);
+  requireString(settings.source, `${label}.source`);
+  requireString(settings.updatedAt, `${label}.updatedAt`);
+  assertValidCurrencySettings(settings);
+
+  return settings;
+}
+
+function requireOptionalSourceMetadata(
+  metadata: ReceiptDraftSourceMetadata | undefined,
+  label: string,
+): void {
+  if (metadata === undefined) {
+    return;
+  }
+
+  requireRecord(metadata, label);
+  requireString(metadata.kind, `${label}.kind`);
+  requireOptionalString(metadata.sourceId, `${label}.sourceId`);
+  requireOptionalString(metadata.title, `${label}.title`);
+  requireOptionalString(metadata.sender, `${label}.sender`);
+  requireOptionalString(metadata.url, `${label}.url`);
+  requireOptionalString(metadata.receivedAt, `${label}.receivedAt`);
+  requireOptionalString(metadata.fetchedAt, `${label}.fetchedAt`);
+  requireOptionalString(metadata.providerName, `${label}.providerName`);
+  requireOptionalString(metadata.modelName, `${label}.modelName`);
+  requireOptionalString(metadata.extractedAt, `${label}.extractedAt`);
+}
+
+function requireRecord(value: unknown, label: string): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new Error(`${label} must be an object.`);
+  }
+
+  return value;
+}
+
+function requireArray<T>(value: unknown, label: string): T[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Backup table ${label} is missing or invalid.`);
+  }
+
+  return value as T[];
+}
+
+function requireString(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+
+  return value;
+}
+
+function requireOptionalString(value: unknown, label: string): void {
+  if (value !== undefined && typeof value !== "string") {
+    throw new Error(`${label} must be a string when present.`);
+  }
+}
+
+function requireNumber(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number.`);
+  }
+
+  return value;
+}
+
+function requireOptionalNumber(value: unknown, label: string): void {
+  if (
+    value !== undefined &&
+    (typeof value !== "number" || !Number.isFinite(value))
+  ) {
+    throw new Error(`${label} must be a finite number when present.`);
+  }
+}
+
+function requireBoolean(value: unknown, label: string): void {
+  if (typeof value !== "boolean") {
+    throw new Error(`${label} must be a boolean.`);
+  }
+}
+
+function requireStringArray(value: unknown, label: string): void {
+  if (
+    !Array.isArray(value) ||
+    value.some((item) => typeof item !== "string")
+  ) {
+    throw new Error(`${label} must be an array of strings.`);
+  }
+}
+
+function assertUniqueIds(records: Array<{ id: string }>, label: string): void {
+  const ids = new Set<string>();
+
+  records.forEach((record) => {
+    if (ids.has(record.id)) {
+      throw new Error(`Backup table ${label} has duplicate id ${record.id}.`);
+    }
+
+    ids.add(record.id);
+  });
+}
+
+function assertUniqueAppMetaKeys(records: AppMetaRecord[]): void {
+  const keys = new Set<string>();
+
+  records.forEach((record) => {
+    if (keys.has(record.key)) {
+      throw new Error(`Backup appMeta has duplicate key ${record.key}.`);
+    }
+
+    keys.add(record.key);
+  });
+}
+
+function isRepositoryStorageMode(value: string): value is RepositoryStorageMode {
+  return value === "indexeddb" || value === "seed_fallback";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function seedAppMetaRecords(updatedAt: string): AppMetaRecord[] {

@@ -2481,3 +2481,180 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8C: implement safe local JSON import/restore for FinAiTr backup files. Do not start CSV import/export or external integrations in Phase 8C.
+
+## 2026-06-17: Phase 8C local JSON import and restore implemented
+
+### Completed
+
+- Added Settings UI for importing a previously exported FinAiTr JSON backup file.
+- Added restore preview with app metadata, export timestamp, record counts, display currency, and restore warnings.
+- Added strong restore confirmation with the exact phrase `RESTORE LOCAL DATA`; restore stays disabled without a validated backup, exact phrase, and IndexedDB storage mode.
+- Added service actions for backup preview and restore:
+  - `previewLocalJsonBackupRestoreFromText`;
+  - `restoreLocalJsonBackupAndReload`.
+- Added repository validation before restore:
+  - backup object and app metadata;
+  - `schemaVersion`;
+  - export timestamp;
+  - storage mode;
+  - required table arrays;
+  - currency settings;
+  - basic record shapes;
+  - duplicate primary keys.
+- Added repository restore that validates again, then replaces app-owned Dexie tables and app metadata in a single transaction.
+- Restored data reloads shared app state so Dashboard and pages rebuild from the restored snapshot.
+- Preserved original transaction amounts/currencies, receipt totals/currencies, receipt item totals, receipt draft data, recurring amounts/currencies, source metadata, and manual FX settings from the backup.
+- Kept receipt confirmation, item analytics, recurring expense, and display-only FX semantics unchanged.
+- Did not add CSV import/export, cloud sync, Gmail/Drive/Docs/OAuth, backend, AI API, OCR, live FX, bank APIs, crypto/brokerage, bank matching, or new product features outside JSON restore.
+- Updated product, architecture, decision, and progress docs for Phase 8C.
+
+### Changed files
+
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/pages/SettingsPage.tsx`
+- `src/pages/SettingsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/services/financeDataService.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 13 test files passed, 81 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- Restore accepts only the current Phase 8B/8C schema version `1`; future backup schemas will need explicit migrations.
+- CSV import/export remains deferred.
+- Dashboard monthly trend and broader analytics polish remain deferred.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 8C stabilization checkpoint: review and checkpoint the JSON restore working tree before starting CSV import/export or deferred Dashboard polish.
+
+## 2026-06-22: Phase 8C stabilization checkpoint
+
+### Completed
+
+- Reviewed the Phase 8C working tree and confirmed JSON restore stays inside the existing UI -> financeDataService -> financeRepository -> Dexie boundary.
+- Confirmed restore validation happens before the Dexie transaction that clears app-owned tables.
+- Confirmed invalid JSON, unsupported schema versions, and missing required tables are rejected without mutating the current IndexedDB data.
+- Confirmed restore replaces only app-owned tables and app metadata:
+  - accounts;
+  - categories;
+  - transactions;
+  - receipts;
+  - receipt items;
+  - receipt drafts;
+  - receipt draft items;
+  - recurring expenses;
+  - app metadata and currency settings.
+- Confirmed restored backups preserve original amounts, currencies, source metadata, settings, manual FX rates, receipts, receipt items, drafts, transactions, recurring expenses, and categories.
+- Confirmed docs and tests describe JSON export, JSON import/restore, and reset as separate local data ownership flows.
+- Confirmed no CSV import/export, Gmail/Drive/Docs/OAuth, backend, AI API, OCR, bank APIs, live FX, crypto/brokerage, bank matching, Dashboard polish, or other new product feature was added during stabilization.
+
+### Changed files
+
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/pages/SettingsPage.tsx`
+- `src/pages/SettingsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/services/financeDataService.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 13 test files passed, 81 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- Restore accepts only backup schema version `1`; future backup schemas will need explicit migration planning.
+- CSV import/export remains deferred.
+- Dashboard monthly trend and broader analytics polish remain deferred.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 8D: plan and implement local CSV import/export through the existing local-first service/repository boundary, without external integrations.

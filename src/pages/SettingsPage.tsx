@@ -6,8 +6,9 @@ import {
   Save,
   ShieldCheck,
   Smartphone,
+  Upload,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { PageSection } from "../components/PageSection";
 import { defaultCurrencySettings } from "../domain/currencySettings";
 import {
@@ -20,14 +21,24 @@ import {
   type FinanceLoadStatus,
   type FinanceStorageMode,
   type LocalBackupExportActionResult,
+  type LocalBackupRestoreActionResult,
+  type LocalBackupRestorePreviewActionResult,
   type LocalDataResetActionResult,
+  type LocalJsonBackup,
+  type LocalJsonRestorePreview,
 } from "../services/financeDataService";
 
 interface SettingsPageProps {
   currencySettings: CurrencySettings;
   errorMessage?: string;
   onExportLocalBackup: () => Promise<LocalBackupExportActionResult>;
+  onPreviewLocalBackupRestore: (
+    rawJson: string,
+  ) => Promise<LocalBackupRestorePreviewActionResult>;
   onResetLocalData: () => Promise<LocalDataResetActionResult>;
+  onRestoreLocalBackup: (
+    backup: LocalJsonBackup,
+  ) => Promise<LocalBackupRestoreActionResult>;
   onUpdateCurrencySettings: (
     settings: CurrencySettings,
   ) => Promise<CurrencySettingsActionResult>;
@@ -44,12 +55,15 @@ interface CurrencyFormValues {
 }
 
 const resetConfirmationPhrase = "RESET LOCAL DATA";
+const restoreConfirmationPhrase = "RESTORE LOCAL DATA";
 
 export function SettingsPage({
   currencySettings,
   errorMessage,
   onExportLocalBackup,
+  onPreviewLocalBackupRestore,
   onResetLocalData,
+  onRestoreLocalBackup,
   onUpdateCurrencySettings,
   snapshot,
   status,
@@ -66,6 +80,12 @@ export function SettingsPage({
   const [backupStatus, setBackupStatus] = useState<"idle" | "exporting">("idle");
   const [localDataMessage, setLocalDataMessage] = useState<string>();
   const [localDataError, setLocalDataError] = useState<string>();
+  const [restoreBackup, setRestoreBackup] = useState<LocalJsonBackup>();
+  const [restoreConfirmation, setRestoreConfirmation] = useState("");
+  const [restorePreview, setRestorePreview] = useState<LocalJsonRestorePreview>();
+  const [restoreStatus, setRestoreStatus] = useState<
+    "idle" | "previewing" | "restoring"
+  >("idle");
   const [resetConfirmation, setResetConfirmation] = useState("");
   const [resetStatus, setResetStatus] = useState<"idle" | "resetting">("idle");
 
@@ -170,6 +190,91 @@ export function SettingsPage({
       );
     } finally {
       setBackupStatus("idle");
+    }
+  }
+
+  async function previewRestoreBackup(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const selectedFile = event.target.files?.[0];
+
+    setRestoreBackup(undefined);
+    setRestoreConfirmation("");
+    setRestorePreview(undefined);
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    if (!selectedFile) {
+      return;
+    }
+
+    setRestoreStatus("previewing");
+
+    try {
+      const rawJson = await readTextFile(selectedFile);
+      const result = await onPreviewLocalBackupRestore(rawJson);
+
+      if (result.ok && result.backup && result.preview) {
+        setRestoreBackup(result.backup);
+        setRestorePreview(result.preview);
+        setLocalDataMessage("Backup JSON validated. Review summary before restore.");
+        return;
+      }
+
+      setLocalDataError(result.errorMessage ?? "Backup file could not be validated.");
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error
+          ? error.message
+          : "Backup file could not be validated.",
+      );
+    } finally {
+      setRestoreStatus("idle");
+    }
+  }
+
+  async function restoreLocalBackup(): Promise<void> {
+    if (!restoreBackup) {
+      setLocalDataError("Select a valid backup file before restore.");
+      setLocalDataMessage(undefined);
+      return;
+    }
+
+    if (restoreConfirmation !== restoreConfirmationPhrase) {
+      setLocalDataError(`Type ${restoreConfirmationPhrase} before restore.`);
+      setLocalDataMessage(undefined);
+      return;
+    }
+
+    setRestoreStatus("restoring");
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    try {
+      const result = await onRestoreLocalBackup(restoreBackup);
+
+      if (result.ok) {
+        setRestoreBackup(undefined);
+        setRestoreConfirmation("");
+        setRestorePreview(undefined);
+        setCurrencyForm(
+          currencySettingsToFormValues(
+            result.data?.snapshot.currencySettings ?? currencySettings,
+          ),
+        );
+        setLocalDataMessage("Backup restored. Local data reloaded.");
+        return;
+      }
+
+      setLocalDataError(result.errorMessage ?? "Local backup could not be restored.");
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error
+          ? error.message
+          : "Local backup could not be restored.",
+      );
+    } finally {
+      setRestoreStatus("idle");
     }
   }
 
@@ -342,6 +447,86 @@ export function SettingsPage({
 
             <div className="settings-action-block settings-danger-block">
               <div className="settings-warning-title">
+                <Upload aria-hidden="true" size={20} />
+                <strong>Restore JSON backup</strong>
+              </div>
+              <p className="settings-note">
+                Import a FinAiTr backup JSON file, review its summary, then type the
+                confirmation phrase to replace local app data on this device.
+              </p>
+              <label className="field">
+                <span>Backup JSON file</span>
+                <input
+                  accept="application/json,.json"
+                  aria-label="Backup JSON file"
+                  disabled={restoreStatus === "previewing" || restoreStatus === "restoring"}
+                  onChange={(event) => void previewRestoreBackup(event)}
+                  type="file"
+                />
+              </label>
+
+              {restorePreview && (
+                <div className="settings-restore-preview" role="status">
+                  <strong>Restore preview</strong>
+                  <span>
+                    {restorePreview.app.name} {restorePreview.app.version} exported{" "}
+                    {formatDateTime(restorePreview.exportedAt)}
+                  </span>
+                  <span>
+                    {restorePreview.recordCounts.total} records, display currency{" "}
+                    {restorePreview.displayCurrency}
+                  </span>
+                  <div className="settings-preview-grid">
+                    <span>Accounts {restorePreview.recordCounts.accounts}</span>
+                    <span>Categories {restorePreview.recordCounts.categories}</span>
+                    <span>Transactions {restorePreview.recordCounts.transactions}</span>
+                    <span>Receipts {restorePreview.recordCounts.receipts}</span>
+                    <span>Items {restorePreview.recordCounts.receiptItems}</span>
+                    <span>Drafts {restorePreview.recordCounts.receiptDrafts}</span>
+                    <span>Recurring {restorePreview.recordCounts.recurringExpenses}</span>
+                  </div>
+                  {restorePreview.warnings.length > 0 && (
+                    <ul>
+                      {restorePreview.warnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <label className="field">
+                <span>Restore confirmation</span>
+                <input
+                  aria-label="Restore confirmation"
+                  onChange={(event) => {
+                    setRestoreConfirmation(event.target.value);
+                    setLocalDataError(undefined);
+                    setLocalDataMessage(undefined);
+                  }}
+                  placeholder={restoreConfirmationPhrase}
+                  value={restoreConfirmation}
+                />
+              </label>
+              <button
+                className="danger-button"
+                disabled={
+                  restoreStatus === "previewing" ||
+                  restoreStatus === "restoring" ||
+                  !restoreBackup ||
+                  restoreConfirmation !== restoreConfirmationPhrase ||
+                  storageMode !== "indexeddb"
+                }
+                onClick={() => void restoreLocalBackup()}
+                type="button"
+              >
+                <Upload aria-hidden="true" size={18} />
+                {restoreStatus === "restoring" ? "Restoring" : "Restore backup"}
+              </button>
+            </div>
+
+            <div className="settings-action-block settings-danger-block">
+              <div className="settings-warning-title">
                 <AlertTriangle aria-hidden="true" size={20} />
                 <strong>Reset local data</strong>
               </div>
@@ -447,6 +632,24 @@ function roundRate(value: number): number {
 
 function formatDateTime(value: string): string {
   return value.replace("T", " ").slice(0, 16);
+}
+
+function readTextFile(file: File): Promise<string> {
+  if (typeof file.text === "function") {
+    return file.text();
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.addEventListener("error", () => {
+      reject(new Error("Backup file could not be read."));
+    });
+    reader.addEventListener("load", () => {
+      resolve(typeof reader.result === "string" ? reader.result : "");
+    });
+    reader.readAsText(file);
+  });
 }
 
 function downloadJsonBackup(backup: unknown, filename: string): void {
