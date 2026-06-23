@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 8D-B3 React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, safe reset to seed data, read-only local CSV exports, transaction CSV import preview/confirm, and recurring expense CSV import preview/confirm.
+The repository now has a Phase 8E React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, safe reset to seed data, read-only local CSV exports, transaction CSV import preview/confirm, and recurring expense CSV import preview/confirm.
 
 Existing files:
 
@@ -30,6 +30,7 @@ Existing files:
 - Phase 8D-B1 Settings tools for transactions-only CSV import preview, row validation, duplicate warnings, strong confirmation, and confirmed local writes.
 - Phase 8D-B2 Settings tools for recurring expense CSV import preview, row validation, duplicate warnings, strong confirmation, and confirmed local writes.
 - Phase 8D-B3 shared CSV import/export QA coverage for malformed CSV parse errors, warning-only duplicate behavior, read-only exports for all supported CSV kinds, and no partial writes from failed import batches.
+- Phase 8E AI receipt extraction prompt QA and runtime schema validation before draft creation.
 
 Still missing by design until later phases:
 
@@ -126,6 +127,8 @@ src/
     manualAiExtractionSimulator.test.ts
     manualAiExtractionSimulator.ts
     receiptExtractionContract.ts
+    receiptExtractionValidation.test.ts
+    receiptExtractionValidation.ts
     types.ts
   test/
     setup.ts
@@ -430,6 +433,7 @@ The only path from AI-extracted data to Dashboard impact remains:
 receipt source provider
   -> raw receipt text candidate
   -> receipt extraction provider
+  -> runtime extraction JSON validation
   -> receipt draft and draft items
   -> human review/edit
   -> explicit receipt confirmation
@@ -764,6 +768,8 @@ Phase 8A adds `src/receipt-ingestion/manualAiExtractionSimulator.ts`:
 - `simulateAiReceiptExtractionAndSaveDraftAndReload` in `financeDataService` converts the extraction result to the existing `ReceiptDraftInput`, calls `saveReceiptDraft`, and reloads finance data.
 - The Receipts page opens the saved result in the existing draft review form.
 
+Phase 8E adds `src/receipt-ingestion/receiptExtractionValidation.ts`. `financeDataService` validates the provider result and source metadata before converting the extraction to `ReceiptDraftInput` or calling `saveReceiptDraft`. Invalid provider metadata, source metadata, missing required draft fields, malformed item fields, invalid dates, invalid currency codes, invalid amounts, or out-of-range confidence values reject the action before any IndexedDB mutation.
+
 The simulator preserves source type, title, sender, received date, provider name, model name, fetch time, and extraction time when available. It writes only receipt drafts and receipt draft items. Human review and explicit receipt confirmation remain required before one final receipt, final receipt items, and one linked transaction are created.
 
 Expected extraction JSON shape:
@@ -797,10 +803,15 @@ Expected extraction JSON shape:
 The JSON schema requires:
 
 - top-level `currency`, `items`, `warnings`, and `confidence`;
+- at least one extracted item;
+- a three-letter uppercase currency code;
+- non-negative receipt totals when present;
 - item-level `rawName`, `normalizedName`, `totalPrice`, `categoryId`, `tags`, `confidence`, `flags`, and `kind`;
 - confidence values between `0` and `1`;
 - item `kind` values from `item`, `discount`, `fee`, `tax`, `total`, or `unclear`;
 - flags from the existing receipt draft item flag set.
+
+Runtime validation also adds review warnings for total/item mismatches, low-confidence drafts or items, unclear items, and category ids outside available hints. Those warnings keep the existing review flow explicit instead of silently confirming uncertain extraction data.
 
 The schema does not include transaction, account, Dashboard, recurring, bank, or FX fields. Those concerns remain outside extraction.
 

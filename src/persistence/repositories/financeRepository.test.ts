@@ -8,6 +8,7 @@ import {
 import { buildFinanceOverview } from "../../domain/financeViews";
 import { groceryReceiptText } from "../../receipt-parser/fixtures";
 import { mockEmailReceiptText } from "../../receipt-ingestion/fixtures";
+import { type ReceiptExtractionProvider } from "../../receipt-ingestion/types";
 import {
   confirmReceiptDraftAndReload,
   confirmRecurringCsvImportAndReload,
@@ -1385,6 +1386,58 @@ describe("finance repository transaction CRUD", () => {
       beforeSnapshot.receiptDraftItems,
     );
     expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+  });
+
+  it("rejects invalid AI extraction JSON without creating partial drafts", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const invalidProvider: ReceiptExtractionProvider = {
+      providerName: "invalid-test-provider",
+      async extractReceiptDraft() {
+        return {
+          draft: {
+            confidence: 0.9,
+            currency: "usd",
+            items: [
+              {
+                categoryId: "dairy",
+                confidence: 0.8,
+                flags: [],
+                kind: "item",
+                normalizedName: "milk",
+                rawName: "Milk",
+                tags: ["dairy"],
+                totalPrice: 3,
+              },
+            ],
+            totalAmount: 3,
+            warnings: [],
+          },
+          extractedAt: "2026-06-04T10:16:00.000Z",
+          providerName: "invalid-test-provider",
+        };
+      },
+    };
+
+    const result = await simulateAiReceiptExtractionAndSaveDraftAndReload(
+      {
+        rawText: mockEmailReceiptText,
+        sourceKind: "gmail",
+      },
+      invalidProvider,
+    );
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toBe(
+      "AI extraction currency must be a three-letter uppercase currency code.",
+    );
+    expect(afterSnapshot.receiptDrafts).toEqual(beforeSnapshot.receiptDrafts);
+    expect(afterSnapshot.receiptDraftItems).toEqual(
+      beforeSnapshot.receiptDraftItems,
+    );
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterSnapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(afterSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
   });
 });
 

@@ -30,9 +30,13 @@ import {
 } from "../receipt-ingestion/manualAiExtractionSimulator";
 import {
   type ReceiptExtractionCategoryHint,
+  type ReceiptExtractionProvider,
   type ReceiptExtractionResult,
   type ReceiptTextCandidate,
 } from "../receipt-ingestion/types";
+import {
+  validateReceiptExtractionResult,
+} from "../receipt-ingestion/receiptExtractionValidation";
 import {
   addRecurringExpense,
   buildLocalJsonRestorePreview,
@@ -296,15 +300,20 @@ export async function saveParsedReceiptDraftAndReload(
 
 export async function simulateAiReceiptExtractionAndSaveDraftAndReload(
   input: ManualAiExtractionInput,
+  provider: ReceiptExtractionProvider = mockAiReceiptExtractionProvider,
 ): Promise<ReceiptDraftActionResult> {
   try {
     const candidate = buildManualAiReceiptCandidate(input);
     const { snapshot } = await getFinanceSnapshot();
-    const extraction = await mockAiReceiptExtractionProvider.extractReceiptDraft(
-      buildReceiptExtractionRequest(
-        candidate,
-        categoriesToExtractionHints(snapshot.categories),
+    const categoryHints = categoriesToExtractionHints(snapshot.categories);
+    const extraction = validateReceiptExtractionResult(
+      await provider.extractReceiptDraft(
+        buildReceiptExtractionRequest(candidate, categoryHints),
       ),
+      {
+        categoryIds: snapshot.categories.map((category) => category.id),
+        source: candidate.source,
+      },
     );
     const draft = await saveReceiptDraft(
       aiExtractionResultToReceiptDraftInput(candidate, extraction),

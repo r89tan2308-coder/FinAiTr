@@ -36,7 +36,7 @@ Current Dashboard analytics are deterministic local app views. They are derived 
 - local recurring expense records;
 - manual display-currency settings.
 
-AI receipt ingestion is an intake layer, not a Dashboard analytics source by itself. Phase 8A includes a local-only manual simulator for email-like and document-like receipt text. Its job is to receive receipt text, extract a structured receipt draft through a mock provider, and send that draft through the existing human review and confirm flow.
+AI receipt ingestion is an intake layer, not a Dashboard analytics source by itself. Phase 8A includes a local-only manual simulator for email-like and document-like receipt text. Its job is to receive receipt text, extract a structured receipt draft through a mock provider, validate the extraction shape, and send that draft through the existing human review and confirm flow.
 
 Future receipt text sources are:
 
@@ -45,7 +45,7 @@ Future receipt text sources are:
 - Google Drive files that contain receipt text;
 - Google Docs documents that contain receipt text.
 
-Current mock AI extraction and future real AI extraction must create receipt drafts only. They must not create transactions, confirm receipts, update Dashboard totals, or skip human review. Dashboard impact still happens only after the user reviews a draft and explicitly confirms it into one final receipt plus one linked transaction.
+Current mock AI extraction and future real AI extraction must create receipt drafts only after runtime extraction validation passes. They must not create transactions, confirm receipts, update Dashboard totals, or skip human review. Dashboard impact still happens only after the user reviews a draft and explicitly confirms it into one final receipt plus one linked transaction.
 
 Monthly trend analytics are deterministic Dashboard views. Trend spend is derived from transactions only, income is shown separately when category metadata marks transactions as income, recurring expenses remain a separate estimate, and confirmed receipt items remain item-level detail rather than extra spending.
 
@@ -92,7 +92,7 @@ The user pastes raw receipt text, such as text copied from an OCR app. The app p
 
 ### Manual AI extraction simulator
 
-The user pastes raw email-like or document-like receipt text, optionally adds source metadata, and runs the local simulator. The app creates a receipt draft only. The user must still review and confirm the draft before a transaction is created or Dashboard analytics change.
+The user pastes raw email-like or document-like receipt text, optionally adds source metadata, and runs the local simulator. The app validates the simulated extraction JSON before saving. Invalid extraction data is rejected without creating draft rows. Valid extraction creates a receipt draft only, with mismatch, unknown item, and low-confidence signals kept as review warnings or flags. The user must still review and confirm the draft before a transaction is created or Dashboard analytics change.
 
 ### Receipt review
 
@@ -136,7 +136,7 @@ The first MVP is successful when:
 
 - manual transactions can be created, edited, deleted, and filtered;
 - pasted receipt text can produce editable receipt drafts;
-- mock AI extraction can produce editable receipt drafts without changing Dashboard totals before confirmation;
+- mock AI extraction can produce schema-validated editable receipt drafts without changing Dashboard totals before confirmation;
 - confirmed receipts produce item-level analytics;
 - recurring expenses can be managed and included in the dashboard;
 - dashboard analytics update from local app data;

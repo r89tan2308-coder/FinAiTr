@@ -546,6 +546,38 @@ Harden the existing CSV export, transaction import, and recurring import flows b
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` is updated with exact validation results and next phase.
 
+### Phase 8E: AI receipt extraction prompt QA and schema validation
+
+### Goal
+
+Validate AI extraction JSON at runtime before it can become a receipt draft, while keeping the manual simulator local-only and draft-only.
+
+### Scope
+
+- Strengthen the receipt extraction prompt template with strict JSON output rules.
+- Validate AI extraction provider results before `saveReceiptDraft` is called.
+- Validate merchant, receipt date, currency, total, items, source metadata, warnings, and confidence where applicable.
+- Reject malformed extraction results before any IndexedDB mutation.
+- Add warnings, not automatic confirmation, for total/item mismatches, unknown categories, unclear items, and low confidence.
+- Keep AI extraction output limited to `receiptDrafts` and `receiptDraftItems`.
+- Add tests for valid extraction, missing required fields, malformed items, invalid currency or amounts, mismatch warnings, unknown items, low confidence, invalid source metadata, and no partial draft creation.
+- Update product, architecture, decision, and progress docs.
+
+### Non-goals
+
+- No real AI API calls.
+- No Gmail, Drive, Docs, OAuth, backend, scheduled sync, or OCR integration.
+- No receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring, FX, or Dashboard semantic changes.
+- No direct transactions, final receipts, final receipt items, recurring expenses, or FX writes from AI extraction.
+
+### Acceptance
+
+- Invalid AI extraction results return validation errors before receipt draft writes.
+- Valid AI extraction results still save editable receipt drafts only.
+- Total/item mismatches, unknown categories, unclear items, and low confidence are surfaced as review warnings or flags.
+- A failed AI extraction validation leaves receipt drafts, draft items, transactions, final receipts, and final receipt items unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` is updated with exact validation results and next phase.
 ## Deferred until after first MVP
 
 - Real OCR provider.

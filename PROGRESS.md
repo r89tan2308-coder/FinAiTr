@@ -3131,4 +3131,93 @@ Result: succeeded. Found 0 vulnerabilities.
 
 ### Next recommended phase
 
-Phase 8E: MVP stabilization and manual QA before any new CSV import surface or post-MVP bank/reconciliation mapping work.
+Phase 8E: AI receipt extraction prompt QA and schema validation before MVP stabilization/manual QA.
+
+## 2026-06-23: Phase 8E AI receipt extraction prompt QA and schema validation completed
+
+### Goal
+
+Validate AI receipt extraction JSON before it can create receipt drafts, while keeping the manual simulator local-only and draft-only.
+
+### Completed
+
+- Added runtime validation for AI extraction provider results in `src/receipt-ingestion/receiptExtractionValidation.ts`.
+- Validated provider metadata, source metadata, merchant, receipt date, currency, receipt total, item fields, warnings, and confidence before receipt draft writes.
+- Wired `simulateAiReceiptExtractionAndSaveDraftAndReload` to validate extraction output before converting it to `ReceiptDraftInput` or calling `saveReceiptDraft`.
+- Kept the manual AI simulator local/mock-only; no real AI, OCR, Gmail, Drive, Docs, OAuth, backend, or scheduled sync was added.
+- Kept AI extraction output limited to `receiptDrafts` and `receiptDraftItems`.
+- Added validation warnings and flags for total/item mismatches, low-confidence drafts or items, unclear items, and category ids outside available hints.
+- Strengthened the receipt extraction prompt template with strict JSON-only, no-extra-fields, date, currency, amount, confidence, warning, and draft-only rules.
+- Strengthened the documented extraction JSON schema with min item count, uppercase currency pattern, non-negative totals, positive quantities, and non-empty string array items.
+- Added focused validation tests for valid extraction, missing required fields, malformed items, invalid currency and amounts, total/item mismatch warnings, unknown/unclear items, low confidence, and invalid source metadata.
+- Added a service/repository boundary test proving invalid AI extraction JSON is rejected without creating partial drafts or mutating transactions, final receipts, or final receipt items.
+- Updated product, plan, architecture, and decision docs for Phase 8E.
+- Kept receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring, FX, and Dashboard semantics unchanged.
+
+### Changed files
+
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PRODUCT_SPEC.md`
+- `PROGRESS.md`
+- `src/receipt-ingestion/receiptExtractionContract.ts`
+- `src/receipt-ingestion/receiptExtractionValidation.ts`
+- `src/receipt-ingestion/receiptExtractionValidation.test.ts`
+- `src/services/financeDataService.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+
+### Validation commands and results
+
+```powershell
+npm run test -- src\receipt-ingestion\receiptExtractionValidation.test.ts src\receipt-ingestion\manualAiExtractionSimulator.test.ts src\persistence\repositories\financeRepository.test.ts --run
+```
+
+Result: succeeded. 3 test files passed, 41 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 17 test files passed, 125 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- The manual AI extraction simulator remains local/mock-only and heuristic; it is not a real AI provider.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, live FX, crypto/brokerage, bank matching, and payment execution remain out of scope.
+
+### Next recommended phase
+
+Phase 8F: MVP stabilization and manual QA before starting any Phase 9A or real external integration work.

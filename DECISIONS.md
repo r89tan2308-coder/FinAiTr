@@ -532,3 +532,23 @@ Consequences:
 - Recurring monthly estimates change only after confirmed recurring CSV imports.
 - Receipt item CSV import, final receipt import, receipt draft import, account/category import, CSV bank matching, reconciliation import, and external integrations remain out of scope.
 - JSON backup/restore/reset, receipt confirmation, item analytics, recurring CRUD behavior, FX semantics, and Dashboard semantics remain unchanged.
+## 2026-06-23: Phase 8E validates AI extraction JSON before draft writes
+
+Decision:
+
+Add runtime validation for AI receipt extraction results before the manual simulator can save receipt drafts. Keep the simulator local/mock-only and keep AI extraction output limited to receipt drafts and draft items.
+
+Rationale:
+
+The receipt extraction contract and prompt describe structured JSON, but TypeScript types and prompt text do not protect IndexedDB from malformed provider output at runtime. Validating provider metadata, source metadata, required draft fields, item fields, dates, currency codes, amounts, warnings, and confidence before `saveReceiptDraft` keeps the AI intake boundary reviewable and prevents partial draft creation from bad extraction data.
+
+Consequences:
+
+- `financeDataService` validates extraction results before converting them to `ReceiptDraftInput` or calling `saveReceiptDraft`.
+- Invalid extraction results are rejected before receipt draft or draft item writes.
+- Valid extraction results still create editable receipt drafts only.
+- Total/item mismatches, unknown categories, unclear items, and low confidence become review warnings or item flags, not automatic confirmation.
+- The receipt extraction prompt and JSON schema now state stricter output rules for required fields, currency format, dates, amounts, confidence, warnings, and no extra fields.
+- AI extraction still cannot create transactions, final receipts, final receipt items, Dashboard totals, recurring expenses, FX changes, or external provider records.
+- Real AI API calls, Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR, live FX, bank APIs, crypto/brokerage, bank matching, and payment execution remain out of scope.
+- Receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring, FX, and Dashboard semantics remain unchanged.
