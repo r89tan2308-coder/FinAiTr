@@ -3047,3 +3047,88 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8D-B3: stabilize transaction and recurring CSV import UX/docs before deciding whether any broader receipt CSV import or bank/reconciliation mapping belongs in a later post-MVP phase.
+
+## 2026-06-23: Phase 8D-B3 CSV import/export QA and shared safety polish completed
+
+### Goal
+
+Harden the existing CSV export, transaction CSV import, and recurring CSV import flows without adding any new import surface.
+
+### Completed
+
+- Added malformed quoted CSV coverage for transaction CSV import preview.
+- Added malformed quoted CSV coverage for recurring CSV import preview.
+- Expanded repository CSV export coverage so transactions, confirmed receipt items, and recurring expenses exports are all proven read-only.
+- Added repository-level transaction CSV import batch safety coverage: an invalid later row rejects the batch without writing earlier valid rows.
+- Added repository-level recurring CSV import batch safety coverage: an invalid later row rejects the batch without writing earlier valid rows.
+- Documented duplicate detection as warning-only behavior for the existing import flows.
+- Documented that transaction imports remain `csv_import` transaction writes only after confirmation.
+- Documented that recurring imports remain recurring-only, never create transactions, and can affect only the recurring estimate after confirmation.
+- Kept Dashboard monthly spend semantics unchanged except for already-supported confirmed transaction CSV imports.
+- Kept CSV export, JSON backup/restore/reset, receipt confirmation, item analytics, recurring CRUD, and FX semantics unchanged.
+- Did not add receipt item CSV import, final receipt import, receipt draft import, account/category import, bank matching, backend, Gmail/Drive/Docs/OAuth, OCR, AI APIs, live FX, bank APIs, crypto, brokerage, or payment execution.
+
+### Changed files
+
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PRODUCT_SPEC.md`
+- `PROGRESS.md`
+- `src/domain/csvRecurringImport.test.ts`
+- `src/domain/csvTransactionImport.test.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+
+### Validation commands and results
+
+```powershell
+npm run test -- src\domain\csvExport.test.ts src\domain\csvTransactionImport.test.ts src\domain\csvRecurringImport.test.ts src\pages\SettingsPage.test.tsx src\persistence\repositories\financeRepository.test.ts --run
+```
+
+Result: succeeded. 5 test files passed, 54 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 16 test files passed, 116 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- Receipt item CSV import, final receipt import, receipt draft import, account/category import, bank matching, and external integrations remain out of scope.
+
+### Next recommended phase
+
+Phase 8E: MVP stabilization and manual QA before any new CSV import surface or post-MVP bank/reconciliation mapping work.

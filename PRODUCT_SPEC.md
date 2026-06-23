@@ -115,11 +115,16 @@ The user exports transactions, confirmed receipt items, or recurring expenses fr
 The user imports transaction rows from a local CSV file in Settings. The app parses the file in the browser, previews rows before any write, rejects malformed required fields, warns about likely duplicates, and only writes valid transactions after the user types a strong confirmation phrase.
 
 Transaction CSV import stores new local transactions with the original imported amount/currency and keeps display-currency conversion as a derived view. Receipt items, final receipts, receipt drafts, and external integrations are not imported from transaction CSV.
+
 ### CSV recurring import
 
 The user imports recurring expense rows from a local CSV file in Settings. The app parses the file in the browser, previews rows before any write, validates required recurring fields, warns about likely duplicates, and only writes valid recurring expenses after the user types a strong confirmation phrase.
 
 Recurring CSV import stores new local recurring expense records with the original amount/currency. Confirmed recurring imports may update the separate recurring monthly estimate after confirmation, but they do not create transactions and do not change Dashboard monthly transaction spend. Receipt items, final receipts, receipt drafts, transactions, and external integrations are not imported from recurring CSV.
+
+### CSV import/export safety
+
+CSV export never writes local data. Malformed CSV files and invalid transaction or recurring rows are rejected before import writes. Duplicate-like rows are warnings, not automatic rejections. Confirmed transaction CSV imports can affect Dashboard monthly spend because they create transactions; confirmed recurring CSV imports can affect only the recurring estimate and never create transactions.
 
 ### Local backup, restore, and reset
 

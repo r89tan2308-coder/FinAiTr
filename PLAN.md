@@ -507,17 +507,44 @@ Add safe local recurring expense CSV import after transaction CSV import is stab
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` is updated with exact validation results and next phase.
 
-### Phase 8D-B3: CSV import hardening and deferred import decisions
+### Phase 8D-B3: CSV import/export QA and shared safety polish
 
 ### Goal
 
-Review CSV import behavior after transaction and recurring imports are both stable before considering any broader import surface.
+Harden the existing CSV export, transaction import, and recurring import flows before any broader CSV import surface is considered.
 
 ### Scope
 
-- Stabilize transaction and recurring CSV import UX and docs.
-- Keep receipt item, final receipt, and receipt draft import deferred until a separate product decision.
-- Decide whether any bank/reconciliation mapping belongs in a later post-MVP phase.
+- Review and polish existing transaction and recurring CSV import preview/confirm behavior.
+- Keep transaction and recurring import previews consistent for file errors, row errors, warnings, duplicate warnings, and confirmation safety.
+- Keep invalid CSV files and invalid row batches from partially mutating IndexedDB.
+- Keep CSV exports read-only for transactions, confirmed receipt items, and recurring expenses.
+- Document duplicate detection as warning-only behavior.
+- Preserve imported transaction source as `csv_import`.
+- Preserve recurring CSV import as recurring-only: no transactions are created.
+- Keep Dashboard monthly spend affected only by confirmed transaction imports.
+- Keep recurring monthly estimate affected only by confirmed recurring imports.
+- Add or improve focused tests for CSV escaping, parse errors, duplicate warnings, confirmation safety, no partial mutation, and read-only exports.
+- Keep receipt item, final receipt, receipt draft, account, category, bank matching, and reconciliation imports deferred until a separate product decision.
+
+### Non-goals
+
+- No new CSV import types.
+- No receipt item, final receipt, receipt draft, account, or category CSV import.
+- No JSON backup/restore behavior changes.
+- No receipt confirmation, item analytics, recurring CRUD, FX, Dashboard semantics, or external integration changes.
+
+### Acceptance
+
+- Malformed quoted CSV files return file errors before row import.
+- Invalid confirmed import batches do not partially write valid rows before the invalid row.
+- Duplicate-like rows remain warnings, not automatic rejections.
+- CSV export stays read-only for all supported export kinds.
+- Imported transactions continue to create local `csv_import` transactions only after confirmation.
+- Imported recurring expenses continue to create local `rec-csv-*` recurring records only after confirmation.
+- Recurring imports do not create transactions and do not change Dashboard monthly transaction spend.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` is updated with exact validation results and next phase.
 
 ## Deferred until after first MVP
 

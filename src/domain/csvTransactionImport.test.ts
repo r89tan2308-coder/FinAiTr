@@ -99,6 +99,19 @@ describe("transaction CSV import preview", () => {
     ]);
   });
 
+  it("returns file errors for malformed quoted CSV before row import", () => {
+    const preview = buildTransactionCsvImportPreview(
+      'date,merchant,account_name,category_name,amount,currency\r\n2026-06-10,"Unclosed,Everyday card,Software,10,USD',
+      createTestSnapshot(),
+    );
+
+    expect(preview).toMatchObject({
+      canImport: false,
+      fileErrors: ["CSV contains an unclosed quoted value."],
+      rows: [],
+    });
+  });
+
   it("rejects files with missing required headers before row import", () => {
     const preview = buildTransactionCsvImportPreview(
       "merchant,amount\r\nNo account,10\r\n",

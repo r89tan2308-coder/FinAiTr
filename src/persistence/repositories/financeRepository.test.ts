@@ -36,6 +36,8 @@ import {
   exportLocalJsonBackup,
   getFinanceSnapshot,
   getReceiptDraftRecordById,
+  importRecurringCsvRows,
+  importTransactionCsvRows,
   listReceiptDraftRecords,
   resetLocalDataToSeed,
   saveReceiptDraft,
@@ -239,16 +241,42 @@ describe("finance repository transaction CRUD", () => {
     });
   });
 
-  it("exports local CSV without mutating persisted data", async () => {
+  it("exports every local CSV kind without mutating persisted data", async () => {
     const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const confirmedReceiptIds = new Set(
+      beforeSnapshot.receipts
+        .filter((receipt) => receipt.status === "confirmed")
+        .map((receipt) => receipt.id),
+    );
+    const expectations = [
+      {
+        header: "transaction_id,date,merchant",
+        kind: "transactions" as const,
+        rowCount: beforeSnapshot.transactions.length,
+      },
+      {
+        header: "receipt_item_id,receipt_id,receipt_date",
+        kind: "confirmed_receipt_items" as const,
+        rowCount: beforeSnapshot.receiptItems.filter((item) =>
+          confirmedReceiptIds.has(item.receiptId),
+        ).length,
+      },
+      {
+        header: "recurring_id,name,merchant",
+        kind: "recurring_expenses" as const,
+        rowCount: beforeSnapshot.recurringExpenses.length,
+      },
+    ];
 
-    const result = await exportLocalCsv("transactions");
-    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+    for (const expectation of expectations) {
+      const result = await exportLocalCsv(expectation.kind);
+      const afterSnapshot = (await getFinanceSnapshot()).snapshot;
 
-    expect(result.kind).toBe("transactions");
-    expect(result.rowCount).toBe(beforeSnapshot.transactions.length);
-    expect(result.content).toContain("transaction_id,date,merchant");
-    expect(afterSnapshot).toEqual(beforeSnapshot);
+      expect(result.kind).toBe(expectation.kind);
+      expect(result.rowCount).toBe(expectation.rowCount);
+      expect(result.content).toContain(expectation.header);
+      expect(afterSnapshot).toEqual(beforeSnapshot);
+    }
   });
 
   it("previews and confirms transaction CSV import through the service boundary", async () => {
@@ -339,6 +367,83 @@ describe("finance repository transaction CRUD", () => {
     );
     expect(afterSnapshot).toEqual(beforeSnapshot);
   });
+
+  it("rejects repository transaction CSV batches without partial writes", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    await expect(
+      importTransactionCsvRows([
+        {
+          accountId: "account-card",
+          amount: 10,
+          categoryId: "software",
+          currency: "USD",
+          date: "2026-06-16",
+          description: "Valid row before invalid account",
+          merchant: "Valid CSV Row",
+          tags: ["csv"],
+        },
+        {
+          accountId: "missing-account",
+          amount: 11,
+          categoryId: "software",
+          currency: "USD",
+          date: "2026-06-17",
+          description: "Invalid account row",
+          merchant: "Invalid CSV Row",
+          tags: ["csv"],
+        },
+      ]),
+    ).rejects.toThrow("CSV import account is not available: missing-account.");
+
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterSnapshot.recurringExpenses).toEqual(
+      beforeSnapshot.recurringExpenses,
+    );
+  });
+
+  it("rejects repository recurring CSV batches without partial writes", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    await expect(
+      importRecurringCsvRows([
+        {
+          accountId: "account-card",
+          amount: 15,
+          categoryId: "software",
+          currency: "USD",
+          frequency: "monthly",
+          merchant: "Valid Recurring Row",
+          name: "Valid Recurring Row",
+          nextDueDate: "2026-06-29",
+          status: "active",
+          tags: ["csv"],
+        },
+        {
+          accountId: "account-card",
+          amount: 16,
+          categoryId: "missing-category",
+          currency: "USD",
+          frequency: "monthly",
+          merchant: "Invalid Recurring Row",
+          name: "Invalid Recurring Row",
+          nextDueDate: "2026-06-30",
+          status: "active",
+          tags: ["csv"],
+        },
+      ]),
+    ).rejects.toThrow("CSV import category is not available: missing-category.");
+
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(afterSnapshot.recurringExpenses).toEqual(
+      beforeSnapshot.recurringExpenses,
+    );
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+  });
+
   it("previews and confirms recurring CSV import through the service boundary", async () => {
     const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
     const beforeOverview = buildFinanceOverview(beforeSnapshot, {
@@ -432,6 +537,7 @@ describe("finance repository transaction CRUD", () => {
     );
     expect(afterSnapshot).toEqual(beforeSnapshot);
   });
+
   it("does not mutate persisted data when backup objects are changed", async () => {
     const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
     const backup = await exportLocalJsonBackup();

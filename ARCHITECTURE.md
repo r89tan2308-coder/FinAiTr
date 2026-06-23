@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 8D-B2 React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, safe reset to seed data, read-only local CSV exports, transaction CSV import preview/confirm, and recurring expense CSV import preview/confirm.
+The repository now has a Phase 8D-B3 React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, safe reset to seed data, read-only local CSV exports, transaction CSV import preview/confirm, and recurring expense CSV import preview/confirm.
 
 Existing files:
 
@@ -29,6 +29,7 @@ Existing files:
 - Phase 8D-A Settings tools for read-only transactions, confirmed receipt items, and recurring expenses CSV export.
 - Phase 8D-B1 Settings tools for transactions-only CSV import preview, row validation, duplicate warnings, strong confirmation, and confirmed local writes.
 - Phase 8D-B2 Settings tools for recurring expense CSV import preview, row validation, duplicate warnings, strong confirmation, and confirmed local writes.
+- Phase 8D-B3 shared CSV import/export QA coverage for malformed CSV parse errors, warning-only duplicate behavior, read-only exports for all supported CSV kinds, and no partial writes from failed import batches.
 
 Still missing by design until later phases:
 
@@ -379,6 +380,8 @@ Confirmed imports create new local recurring expenses with new `rec-csv-*` ids. 
 Preview calls do not mutate IndexedDB. Confirm calls reject previews with file errors or row errors before calling the repository. Repository writes re-check IndexedDB availability, required recurring validity, active account ids, and category ids before `bulkAdd`.
 
 Confirmed recurring imports may change only the separate recurring monthly estimate after confirmation. They do not change Dashboard monthly transaction spend and do not add rows to the Transactions list.
+
+Phase 8D-B3 adds no new CSV write paths. It hardens the existing CSV flows with shared safety coverage: malformed quoted CSV returns file errors before row import, all supported export kinds remain read-only, duplicate detection remains warning-only, and repository import batch failures do not partially write rows.
 
 ## Derived views
 

@@ -108,6 +108,19 @@ describe("recurring CSV import preview", () => {
     ]);
   });
 
+  it("returns file errors for malformed quoted CSV before row import", () => {
+    const preview = buildRecurringCsvImportPreview(
+      'name,account_name,frequency,next_due_date,amount,currency\r\n"Unclosed,Everyday card,monthly,2026-06-30,10,USD',
+      createTestSnapshot(),
+    );
+
+    expect(preview).toMatchObject({
+      canImport: false,
+      fileErrors: ["CSV contains an unclosed quoted value."],
+      rows: [],
+    });
+  });
+
   it("rejects files with missing required headers before row import", () => {
     const preview = buildRecurringCsvImportPreview(
       "name,amount\r\nNo account,10\r\n",

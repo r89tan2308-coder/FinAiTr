@@ -508,3 +508,27 @@ Consequences:
 - Receipt item CSV import, final receipt import, receipt draft import, CSV bank matching, and external integrations remain out of scope.
 - CSV export, transaction CSV import, JSON backup/restore/reset, receipt confirmation, item analytics, recurring CRUD behavior, FX semantics, and Dashboard monthly spend semantics remain unchanged.
 - Real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching and payment execution remain out of scope.
+
+## 2026-06-23: Phase 8D-B3 hardens existing CSV flows without expanding import scope
+
+Decision:
+
+Keep Phase 8D-B3 focused on shared QA and safety coverage for the existing CSV export, transaction import, and recurring import flows. Do not add new CSV import types.
+
+Rationale:
+
+Transaction and recurring imports already cover the MVP write surfaces that can be safely previewed and confirmed locally. Before considering receipt, account, category, bank, or reconciliation imports, the existing CSV paths need stronger proof that malformed files, invalid rows, duplicate-like data, and export actions behave consistently and do not accidentally mutate local data.
+
+Consequences:
+
+- CSV export remains read-only for transactions, confirmed receipt items, and recurring expenses.
+- Malformed quoted CSV returns file errors before row import.
+- Invalid transaction and recurring import batches are rejected without partial writes.
+- Duplicate detection remains warning-only and does not automatically reject rows.
+- Confirmed transaction imports continue to create local `csv_import` transactions only.
+- Confirmed recurring imports continue to create local `rec-csv-*` recurring expenses only.
+- Recurring CSV import does not create transactions and does not change Dashboard monthly transaction spend.
+- Dashboard monthly spend changes only after confirmed transaction CSV imports.
+- Recurring monthly estimates change only after confirmed recurring CSV imports.
+- Receipt item CSV import, final receipt import, receipt draft import, account/category import, CSV bank matching, reconciliation import, and external integrations remain out of scope.
+- JSON backup/restore/reset, receipt confirmation, item analytics, recurring CRUD behavior, FX semantics, and Dashboard semantics remain unchanged.
