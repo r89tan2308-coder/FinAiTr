@@ -10,6 +10,26 @@ Dev server: `npm run dev -- --port 5174`; Vite used `http://127.0.0.1:5176/` bec
 - No product semantics were intentionally changed for transactions, receipts, recurring expenses, FX, JSON backup/restore, CSV import/export, or Dashboard analytics.
 - QA verification stayed inside the existing `SettingsPage -> financeDataService -> financeRepository -> Dexie/domain` boundaries.
 
+## Phase 9A Planning QA
+
+Phase 9A is a documentation-only checkpoint. It does not require new browser runtime QA because no product code, OAuth flow, Google API client, backend, scheduled sync, or real provider read is added.
+
+Planning checks:
+
+- [x] `GOOGLE_INTEGRATION_PLAN.md` defines Gmail, Google Drive, and Google Docs source-provider architecture.
+- [x] OAuth scopes are documented with a narrow selected-file Drive/Docs first path and deferred restricted Gmail/broad Drive paths.
+- [x] Backend requirements are documented for Gmail body import, scheduled sync, refresh-token storage, revocation, rate limits, and restricted-scope data handling.
+- [x] Receipt discovery rules are explicit and user-controlled for Gmail, Drive, and Docs.
+- [x] Duplicate detection covers provider source identity and content fingerprints.
+- [x] Source text still flows through extraction validation, receipt drafts, review, and explicit confirmation before Dashboard impact.
+- [x] Failure modes, rate limits, user consent, logging, privacy, and deletion expectations are documented.
+- [x] No runtime checklist item is marked passed for real Google integration because that integration is not implemented yet.
+
+Future Google integration QA gates:
+
+- Drive/Docs selected-file import must verify consent copy, selected-file access only, unsupported file handling, duplicate warnings, draft-only writes, and disconnect cleanup.
+- Gmail import must verify restricted-scope consent, backend token handling, candidate listing, selected-message body fetch only, duplicate warnings, draft-only writes, rate-limit behavior, revocation, and deletion cleanup.
+- Scheduled sync must verify backend-only cursors, refresh-token rotation/revocation, backoff, visible sync status, no silent broad scans, and user-controlled disable/delete behavior.
 ## Browser Smoke Results
 
 - Dashboard: Passed. Verified Dashboard, monthly trend, spend by category, item analytics, item search/category controls, confirmed receipt item drilldown, recent transactions, and display-currency formatted amounts render in the in-app browser.

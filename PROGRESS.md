@@ -3375,3 +3375,83 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 9A planning: define post-MVP integration scope and guardrails before any real external integration work. Do not start implementation until the Phase 8F checkpoint is committed and pushed.
+## 2026-06-23: Phase 9A Gmail, Drive, and Docs integration planning completed
+
+### Goal
+
+Define future Google source integration architecture and guardrails before any real OAuth, Google API client, backend, scheduled sync, or provider-read implementation starts.
+
+### Completed
+
+- Added `GOOGLE_INTEGRATION_PLAN.md` as the detailed Phase 9A planning artifact.
+- Documented future Gmail, Google Drive, and Google Docs source-provider architecture behind `ReceiptTextSourceProvider`.
+- Documented the future source flow: Google auth/session -> candidate listing -> user selection -> source text -> extraction validation -> receipt draft -> human review -> explicit confirmation -> final receipt and linked transaction.
+- Documented OAuth, consent, security, privacy, logging, and deletion expectations.
+- Documented minimal scope choices and tradeoffs, including a narrow selected-file Drive/Docs first path with `drive.file` and deferred restricted Gmail/broad Drive scopes.
+- Documented that Gmail body import and any scheduled sync require backend/security planning before implementation.
+- Documented receipt discovery rules for Gmail, Drive, and Docs.
+- Documented duplicate detection using provider source identity plus content fingerprints.
+- Documented failure modes, rate-limit expectations, user consent rules, logging limits, and disconnect/deletion behavior.
+- Added future phases 9B through 9F for OAuth/security planning, Drive/Docs selected-file import, Gmail import, scheduled sync, and production hardening.
+- Updated `PLAN.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `PRODUCT_SPEC.md`, and `QA_CHECKLIST.md` to reflect Phase 9A as planning-only.
+- Kept product runtime behavior unchanged; no source files under `src` were changed.
+- Did not add OAuth, Google packages, backend code, real Gmail/Drive/Docs sync, scheduled sync, OCR, real AI calls, live FX, bank APIs, crypto, brokerage, bank matching, or payment execution.
+
+### Changed files
+
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PRODUCT_SPEC.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 18 test files passed, 128 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known limitations
+
+- Phase 9A is planning-only. No real Google OAuth, Gmail, Drive, Docs, backend, scheduled sync, or provider read exists yet.
+- Google scope sensitivity and verification requirements can change, so Phase 9B should re-check official Google documentation before any implementation.
+- Future restricted-scope Gmail or broad Drive work requires a backend/security plan, consent copy, token storage design, revocation/deletion behavior, logging limits, and verification readiness before product code is added.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9B: OAuth and security architecture spike. Re-check official Google documentation, decide frontend-only selected-file Drive/Docs import versus backend-backed provider auth, draft consent/privacy copy, define token storage/revocation/deletion/logging, and keep real Gmail/Drive/Docs data sync deferred until that plan is approved.

@@ -12,7 +12,7 @@ The first MVP is limited to:
 - manual local currency conversion settings for USD, RUB, EUR, and GBP;
 - local JSON backup/restore/reset, local CSV export, local transaction CSV import preview/confirm, and local recurring expense CSV import preview/confirm.
 
-Real bank APIs, Google Drive, OCR APIs, crypto, brokerage, payment execution, live exchange-rate fetching, and credentials are out of scope.
+Real bank APIs, Gmail, Google Drive, Google Docs, OCR APIs, crypto, brokerage, payment execution, live exchange-rate fetching, and credentials are out of scope.
 
 ## Validation baseline
 
@@ -620,6 +620,44 @@ Stabilize the current local-first MVP with a documented manual QA checklist and 
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` is updated with exact validation results and the next recommended phase.
 
+## Phase 9A: Gmail, Drive, and Docs integration planning
+
+### Goal
+
+Define the future Google source integration architecture and guardrails before any real OAuth, API client, backend, or data sync work starts.
+
+### Scope
+
+- Add a dedicated Google integration planning document.
+- Define future Gmail, Google Drive, and Google Docs source-provider architecture.
+- Define OAuth, consent, security, privacy, logging, and deletion requirements.
+- Define minimal Google scopes and why each scope is or is not appropriate for early implementation.
+- Decide when a backend is required for OAuth token handling, scheduled sync, and restricted-scope data.
+- Define receipt discovery rules for Gmail, Drive, and Docs.
+- Define duplicate detection for imported messages, files, documents, and extracted content.
+- Define how Google source text flows through extraction validation, receipt drafts, review, and confirmation.
+- Define expected failure modes, rate limits, user consent, and data deletion behavior.
+- Add future implementation phases for Google integration.
+- Update product, architecture, decision, QA, and progress docs where relevant.
+
+### Non-goals
+
+- No OAuth implementation.
+- No Google packages or API clients.
+- No backend code.
+- No real Gmail, Drive, or Docs sync.
+- No scheduled sync or background jobs.
+- No real AI API calls.
+- No runtime product behavior changes.
+
+### Acceptance
+
+- `GOOGLE_INTEGRATION_PLAN.md` documents the future provider architecture, scopes, backend decision, discovery rules, duplicate detection, failure handling, privacy, deletion, and rollout phases.
+- `PLAN.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `PRODUCT_SPEC.md`, `QA_CHECKLIST.md`, and `PROGRESS.md` reflect Phase 9A as planning-only.
+- Docs state that imported Google source text can create validated receipt drafts only, and Dashboard impact still requires human review and explicit receipt confirmation.
+- Docs state that Gmail body import and scheduled sync require backend/security planning before implementation.
+- Product runtime behavior is unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 ## Deferred until after first MVP
 
 - Real OCR provider.

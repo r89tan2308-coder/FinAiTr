@@ -49,13 +49,29 @@ Current mock AI extraction and future real AI extraction must create receipt dra
 
 Monthly trend analytics are deterministic Dashboard views. Trend spend is derived from transactions only, income is shown separately when category metadata marks transactions as income, recurring expenses remain a separate estimate, and confirmed receipt items remain item-level detail rather than extra spending.
 
+## Future Google source integrations
+
+Phase 9A plans future Gmail, Google Drive, and Google Docs receipt sources without implementing them. The detailed architecture, OAuth scope choices, backend decision, discovery rules, duplicate detection, privacy rules, deletion expectations, and rollout phases live in `GOOGLE_INTEGRATION_PLAN.md`.
+
+Future Google integrations are source intake features only. They should help the user find receipt-like source text, then create a schema-validated editable receipt draft. They must not create transactions, confirm receipts, update Dashboard totals, create recurring expenses, change FX settings, or skip the existing review flow.
+
+User-visible expectations:
+
+- The user explicitly starts each Google import flow.
+- The app explains which Google data is requested and why before requesting OAuth consent.
+- Manual Drive/Docs selected-file import should be the first implementation path, using the narrowest practical selected-file scope.
+- Gmail body import and scheduled sync are deferred until backend token handling, restricted-scope verification, privacy, logging, and deletion behavior are designed.
+- Duplicate imported messages, files, documents, or extracted receipt content produce warnings and require a user choice.
+- Disconnecting a future provider must revoke grants when possible and delete provider tokens, cursors, cached candidate metadata, and diagnostics while preserving user-created local finance records by default.
 ## Non-goals
 
 The first MVP must not include:
 
 - real bank API integration;
 - stored bank credentials;
+- real Gmail integration;
 - real Google Drive integration;
+- real Google Docs integration;
 - real OCR API keys or provider calls;
 - crypto exchange integration;
 - brokerage or investment account integration;
@@ -66,7 +82,7 @@ The first MVP must not include:
 
 Future integrations may be planned, but not implemented, until the local-first MVP is stable.
 
-Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. Phase 8A may use those contracts through a local manual simulator. Neither phase may add real Gmail, Google Drive, Google Docs, OAuth, backend jobs, scheduled sync, OCR APIs, or AI API calls.
+Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. Phase 8A may use those contracts through a local manual simulator. Phase 9A may document future Gmail, Google Drive, and Google Docs source integration guardrails. None of these phases may add real Gmail, Google Drive, Google Docs, OAuth, backend jobs, scheduled sync, OCR APIs, or AI API calls.
 
 ## Primary user
 
@@ -94,6 +110,9 @@ The user pastes raw receipt text, such as text copied from an OCR app. The app p
 
 The user pastes raw email-like or document-like receipt text, optionally adds source metadata, and runs the local simulator. The app validates the simulated extraction JSON before saving. Invalid extraction data is rejected without creating draft rows. Valid extraction creates a receipt draft only, with mismatch, unknown item, and low-confidence signals kept as review warnings or flags. The user must still review and confirm the draft before a transaction is created or Dashboard analytics change.
 
+### Future Google receipt source import (planned)
+
+The user will explicitly select or search receipt-like Google source content, review candidate messages/files/documents, and choose what to import. The app will extract source text, validate the extraction shape, and save an editable receipt draft only. Dashboard analytics will change only after the user reviews and confirms the draft into a final receipt and linked transaction.
 ### Receipt review
 
 The user edits the parsed receipt, adjusts item names, categories, tags, and prices, sees a mismatch warning if item totals do not match receipt total, then confirms the receipt. The confirmed receipt contributes to analytics and creates or links a transaction.
@@ -151,5 +170,6 @@ The first MVP is successful when:
 - local JSON backup restore rejects invalid files and requires confirmation;
 - local data reset requires confirmation and restores baseline data;
 - MVP QA is documented before post-MVP integrations;
+- future Gmail/Drive/Docs integration planning is documented before any real Google implementation;
 - local data is not sent to external services;
 - validation commands pass.

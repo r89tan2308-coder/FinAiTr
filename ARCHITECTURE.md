@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 8F React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, safe reset to seed data, read-only local CSV exports, transaction CSV import preview/confirm, recurring expense CSV import preview/confirm, and a documented MVP stabilization QA checklist.
+The repository now has a Phase 9A planning checkpoint on top of the Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation only for future Gmail, Google Drive, and Google Docs source integrations.
 
 Existing files:
 
@@ -10,6 +10,7 @@ Existing files:
 - `finance_ai_tracker_codex_plan_ru.md`
 - project planning docs;
 - `QA_CHECKLIST.md` for Phase 8F manual browser QA and known limitations;
+- `GOOGLE_INTEGRATION_PLAN.md` for Phase 9A Google source integration planning;
 - Vite app scaffold;
 - PWA manifest and SVG app icon placeholders;
 - dashboard, transaction, receipt, recurring, category, and settings screens reading through the finance data service;
@@ -33,11 +34,14 @@ Existing files:
 - Phase 8D-B3 shared CSV import/export QA coverage for malformed CSV parse errors, warning-only duplicate behavior, read-only exports for all supported CSV kinds, and no partial writes from failed import batches.
 - Phase 8E AI receipt extraction prompt QA and runtime schema validation before draft creation.
 - Phase 8F MVP stabilization QA checklist, browser smoke notes, known limitations, and transaction UI regression coverage.
+- Phase 9A planning docs for future Gmail, Google Drive, and Google Docs source integrations, including OAuth scopes, backend requirements, discovery rules, duplicate detection, privacy, deletion, failure modes, and rollout phases.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
 - receipt item, final receipt, or receipt draft CSV import;
+- real Gmail, Google Drive, or Google Docs source adapters;
+- OAuth, provider token storage, backend sync, scheduled sync, and restricted-scope Google verification work;
 
 ## Target stack
 
@@ -700,7 +704,7 @@ Parsed receipt preview state starts inside `ReceiptsPage`. In Phase 5A, the user
 
 ## Future receipt ingestion providers
 
-Phase 7C added contract-only placeholders in `src/receipt-ingestion`. Phase 8A wires only a local manual simulator into the Receipts screen. Real source adapters remain future work.
+Phase 7C added contract-only placeholders in `src/receipt-ingestion`. Phase 8A wires only a local manual simulator into the Receipts screen. Phase 9A documents the future Google source integration architecture in `GOOGLE_INTEGRATION_PLAN.md`. Real source adapters remain future work.
 
 Future receipt text sources are represented by `ReceiptTextSourceProvider`:
 
@@ -729,6 +733,39 @@ Source providers return text candidates only. They must not parse accounting mea
 
 Current persisted receipt source values are `pasted_text`, `manual_upload_mock`, and `ai_extraction_mock`. Phase 8A stores optional source metadata on receipt drafts and final receipts as normal object fields; it does not add a Dexie schema version because the metadata is not indexed. Real Gmail, Drive, and Docs adapters still require explicit implementation phases before they can write data.
 
+## Phase 9A Google source integration plan
+
+`GOOGLE_INTEGRATION_PLAN.md` is the source of truth for future Gmail, Google Drive, and Google Docs intake. Phase 9A is documentation-only and does not add OAuth, API clients, backend code, scheduled sync, or real provider reads.
+
+Future Google source flow:
+
+```text
+Google auth/session
+  -> Gmail/Drive/Docs ReceiptTextSourceProvider
+  -> listCandidates
+  -> user selects candidates
+  -> getCandidateText
+  -> ReceiptExtractionProvider
+  -> receiptExtractionValidation
+  -> save ReceiptDraft and ReceiptDraftItem rows
+  -> human review
+  -> explicit confirm receipt
+  -> final Receipt, final ReceiptItem rows, and one linked Transaction
+```
+
+OAuth and backend rules:
+
+- Manual Drive/Docs selected-file import should be the first implementation path, preferably with the narrow `drive.file` scope.
+- Gmail message body import is deferred because `gmail.readonly` is a restricted scope and requires backend/security planning before implementation.
+- Broad Drive discovery is deferred because broad Drive scopes are restricted and carry verification obligations.
+- Scheduled sync requires a backend for refresh-token storage, revocation, rate limits, cursors, and background jobs.
+- OAuth client secrets, refresh tokens, and access tokens must never be stored in IndexedDB, JSON backups, CSV exports, receipt source metadata, committed config, or local logs.
+
+Source metadata can be preserved on receipt drafts and final receipts only as user-facing receipt evidence: provider kind, account subject/hash, message/file/document id, attachment id when applicable, revision marker or modified timestamp, title/subject, sender/owner, received/modified/fetched timestamp, safe source URL, duplicate key, and content fingerprint.
+
+Duplicate detection should combine a source identity key with a content fingerprint based on normalized merchant, receipt date, rounded total, currency, and normalized text hash. Duplicate matches warn the user and require a choice; they must not silently overwrite drafts, confirmed receipts, or linked transactions.
+
+Google source providers are discovery and text-read adapters only. They must not parse accounting meaning, create transactions, confirm receipts, mutate recurring expenses, change FX settings, or update Dashboard totals directly.
 ## AI receipt extraction contract and simulator
 
 `ReceiptExtractionProvider` is the future boundary between raw receipt text and structured draft data:
@@ -985,15 +1022,16 @@ Still future boundaries:
 
 - `OcrProvider`: image or file to text.
 - `CategoryClassifier`: item text to category/tags if category hints outgrow the current parser heuristics.
-- source adapters for future bank, CSV, crypto, and brokerage data.
+- source adapters for future Gmail, Google Drive, Google Docs, bank, CSV, crypto, and brokerage data.
+- backend OAuth/token storage boundary for future restricted-scope Google integrations and scheduled sync.
 
 Provider implementation rules:
 
-- no provider credentials in code, config, docs, or tests;
-- no source provider writes transactions or final receipts directly;
+- no provider credentials in code, config, docs, tests, IndexedDB records, JSON backups, CSV exports, or source metadata;
+- no source provider writes transactions, final receipts, recurring expenses, FX settings, or Dashboard-impacting records directly;
 - no extraction provider writes persistence directly;
-- no AI provider bypasses receipt review or confirmation;
+- no AI provider bypasses receipt review, extraction validation, or confirmation;
 - no receipt item independently changes Dashboard spend totals;
 - no live FX provider updates local manual FX settings unless a later phase explicitly changes the currency architecture.
 
-The first MVP uses deterministic local logic and mock or contract-only providers only.
+The first MVP uses deterministic local logic and mock or contract-only providers only. Phase 9A keeps future Google integration at the planning layer until a later phase explicitly implements OAuth, provider adapters, and any required backend.

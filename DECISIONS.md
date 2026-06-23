@@ -13,7 +13,7 @@ This proves the core value, item-level personal finance analytics, without requi
 Consequences:
 
 - CSV import/export is deferred until after the first MVP.
-- Real bank, Google Drive, OCR, crypto, and brokerage integrations are out of scope.
+- Real bank, Gmail, Google Drive, Google Docs, OCR, crypto, and brokerage integrations are out of scope.
 - Future integrations require updates to `PLAN.md` and `DECISIONS.md`.
 
 ## 2026-06-03: Use PWA plus local persistence as the target architecture
@@ -573,3 +573,24 @@ Consequences:
 - Transaction page create/edit/delete callback behavior now has focused UI regression coverage.
 - Existing transaction, receipt, recurring, FX, JSON backup/restore, CSV import/export, and Dashboard semantics remain unchanged.
 - After the Phase 8F checkpoint is committed and pushed, the next recommended phase is Phase 9A planning for post-MVP integration scope and guardrails; real integrations should still wait for that planning update.
+## 2026-06-23: Phase 9A plans Google source integrations before implementation
+
+Decision:
+
+Document future Gmail, Google Drive, and Google Docs receipt-source integration architecture before adding OAuth, Google API clients, backend code, scheduled sync, or real provider reads. Keep Phase 9A planning-only in `GOOGLE_INTEGRATION_PLAN.md` and related project docs.
+
+Rationale:
+
+Google receipt sources can expose sensitive mailbox, Drive, and document data. Gmail body reads and broad Drive discovery use restricted scopes, and long-lived refresh tokens or scheduled sync require backend security, revocation, logging, deletion, consent, and verification planning. The current MVP accounting model is already stable and should not be bypassed by external sources.
+
+Consequences:
+
+- Future Google providers stay behind `ReceiptTextSourceProvider` and return receipt-like text candidates only.
+- Google source text can create receipt drafts only after extraction validation passes.
+- Human review and explicit confirmation remain required before any final receipt, linked transaction, or Dashboard impact.
+- Manual Drive/Docs selected-file import using the narrowest practical selected-file scope, preferably `drive.file`, is the preferred first implementation path.
+- Gmail body import is deferred until backend token handling, restricted-scope verification, privacy, deletion, logging, and rate-limit behavior are designed.
+- Scheduled sync is backend-only and remains a separate later phase.
+- OAuth client secrets, access tokens, and refresh tokens must not be stored in IndexedDB, JSON backups, CSV exports, receipt source metadata, committed config, or local logs.
+- Duplicate source documents/messages and duplicate extracted receipt content must warn the user and require a choice instead of silently overwriting records.
+- Phase 9A changes documentation only and does not change product runtime behavior.
