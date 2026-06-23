@@ -126,6 +126,10 @@ Recurring CSV import stores new local recurring expense records with the origina
 
 CSV export never writes local data. Malformed CSV files and invalid transaction or recurring rows are rejected before import writes. Duplicate-like rows are warnings, not automatic rejections. Confirmed transaction CSV imports can affect Dashboard monthly spend because they create transactions; confirmed recurring CSV imports can affect only the recurring estimate and never create transactions.
 
+### MVP stabilization QA
+
+Before post-MVP integrations, the local MVP must have a documented QA checklist covering the core browser workflows, data ownership flows, CSV import/export safety, display-currency behavior, and remaining known limitations. Phase 8F uses browser smoke plus automated component/domain/repository tests because native file-picker flows need human browser verification even when file parsing and write paths are covered by tests.
+
 ### Local backup, restore, and reset
 
 The user exports a local JSON backup from Settings. The user can import a previously exported FinAiTr backup, review a restore summary, type a strong confirmation phrase, and replace local app data only after validation passes. The user can also reset local app data after typing a strong confirmation phrase. Reset clears app-owned IndexedDB data on this device, restores baseline seed data, and refreshes the app views.
@@ -146,5 +150,6 @@ The first MVP is successful when:
 - local recurring CSV import previews rows, rejects invalid data, warns about duplicates, and requires confirmation;
 - local JSON backup restore rejects invalid files and requires confirmation;
 - local data reset requires confirmation and restores baseline data;
+- MVP QA is documented before post-MVP integrations;
 - local data is not sent to external services;
 - validation commands pass.

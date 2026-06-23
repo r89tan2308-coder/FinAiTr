@@ -578,6 +578,48 @@ Validate AI extraction JSON at runtime before it can become a receipt draft, whi
 - A failed AI extraction validation leaves receipt drafts, draft items, transactions, final receipts, and final receipt items unchanged.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` is updated with exact validation results and next phase.
+
+### Phase 8F: MVP stabilization and manual QA pass
+
+#### Goal
+
+Stabilize the current local-first MVP with a documented manual QA checklist and regression coverage before any post-MVP integration planning starts.
+
+#### Scope
+
+- Add or update a QA checklist for manual browser testing.
+- Verify the current MVP workflows:
+  - manual transaction CRUD;
+  - recurring expense CRUD;
+  - receipt paste parser -> draft -> review -> confirm;
+  - manual AI extraction simulator -> draft -> review -> confirm;
+  - item analytics, search, filter, and drilldown;
+  - Dashboard monthly trends;
+  - JSON export, reset, and restore;
+  - CSV export;
+  - transaction CSV import preview/confirm;
+  - recurring CSV import preview/confirm;
+  - display currency and manual FX rates.
+- Fix only small bugs found during QA.
+- Improve unclear labels, empty states, or validation messages only when low-risk.
+- Add focused regression tests for any bugs fixed or coverage gaps found.
+- Update architecture, decision, product, QA, and progress docs with results and known limitations.
+
+#### Non-goals
+
+- No new product features.
+- No real Gmail, Drive, Docs, OAuth, backend, AI API, OCR, live FX, bank API, crypto, brokerage, bank matching, or payment execution integration.
+- No semantic changes for transactions, receipts, recurring expenses, FX, JSON backup/restore, CSV import/export, or Dashboard analytics.
+- No bypassing service or repository boundaries.
+
+#### Acceptance
+
+- QA checklist documents the manual browser pass and known limitations.
+- Critical flows are verified through browser smoke, automated regression tests, or an explicitly recorded limitation.
+- Any bug fixes have focused regression tests.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` is updated with exact validation results and the next recommended phase.
+
 ## Deferred until after first MVP
 
 - Real OCR provider.

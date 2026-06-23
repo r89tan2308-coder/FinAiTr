@@ -3221,3 +3221,157 @@ Result: succeeded. Git printed line-ending normalization warnings only.
 ### Next recommended phase
 
 Phase 8F: MVP stabilization and manual QA before starting any Phase 9A or real external integration work.
+
+## 2026-06-23: Phase 8F MVP stabilization and manual QA pass completed
+
+### Goal
+
+Document and verify the current local-first MVP before any post-MVP integration work starts.
+
+### Completed
+
+- Added `QA_CHECKLIST.md` for Phase 8F manual browser QA.
+- Recorded browser-smoke results for Dashboard, Transactions, Receipts, Recurring, and Settings.
+- Mapped the eleven required MVP flows to browser-smoke and automated-test evidence:
+  - manual transaction CRUD;
+  - recurring expense CRUD;
+  - receipt paste parser -> draft -> review -> confirm;
+  - manual AI extraction simulator -> draft -> review -> confirm;
+  - item analytics/search/filter/drilldown;
+  - Dashboard monthly trends;
+  - JSON export/reset/restore;
+  - CSV export;
+  - transaction CSV import preview/confirm;
+  - recurring CSV import preview/confirm;
+  - display currency and manual FX rates.
+- Added focused `TransactionsPage` regression tests for manual transaction create, validation, edit, and delete callback behavior.
+- Updated `PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, and `DECISIONS.md` for Phase 8F.
+- Kept product runtime behavior unchanged; no product feature, integration, or semantic change was added.
+- Did not add Gmail, Drive, Docs, OAuth, backend, AI API, OCR, live FX, bank APIs, crypto, brokerage, bank matching, or payment execution.
+
+### Browser verification
+
+```powershell
+npm run dev -- --port 5174
+```
+
+Result: initial sandboxed Vite start failed with `spawn EPERM`; approved `Start-Process` outside the sandbox started Vite successfully. Ports 5174 and 5175 were occupied, so Vite served the app at `http://127.0.0.1:5176/`.
+
+In-app browser smoke result: succeeded.
+
+- Dashboard rendered monthly trend, spend by category, item analytics, item search/category controls, drilldown, recent transactions, and display-currency amounts.
+- Transactions rendered the add form, date/amount/currency/merchant/account/category/note/tags controls, filters, sort, seeded list, and add action.
+- Receipts rendered pasted parser controls, manual AI extraction simulator controls, parser preview, saved drafts, draft review, and receipt inbox.
+- Recurring rendered create controls, recurring currency/account/category/frequency/status fields, recurring list, source amounts, and converted monthly estimate.
+- Settings rendered display currency/manual FX controls, JSON export/restore/reset controls, CSV export controls, transaction and recurring CSV import controls, confirmation fields, and app status.
+
+### Changed files
+
+- `QA_CHECKLIST.md`
+- `src/pages/TransactionsPage.test.tsx`
+- `PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+
+### Validation commands and results
+
+```powershell
+npm run test -- src\pages\TransactionsPage.test.tsx --run
+```
+
+Initial result: failed because the new test expected a stale validation-field accessible name and a non-existent `Confirm delete` label.
+
+Fix: adjusted the test expectations to the current UI accessible name behavior and the existing `Confirm` delete button.
+
+Final result: succeeded. 1 test file passed, 3 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+git diff --check
+```
+
+Initial result: failed because edited Markdown/test files had new blank lines at EOF.
+
+Fix: normalized modified files to one final newline and no trailing blank EOF line.
+
+Final result before `PROGRESS.md` update: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 18 test files passed, 128 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Checkpoint validation rerun
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 18 test files passed, 128 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+### Known limitations
+
+- In-app browser smoke did not automate native file selection for JSON restore or CSV imports. File parsing, preview, confirmation, and repository write safety are covered by component/domain/repository tests. A human should repeat native file-picker restore/import steps in a normal browser before a release or demo checkpoint.
+- Browser smoke verified page rendering and controls. Data-mutating browser entry is covered by component and repository tests because browser automation for local React controlled inputs can be unreliable in this environment.
+- The manual AI extraction simulator remains local/mock-only and heuristic; it is not a real AI provider.
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9A planning: define post-MVP integration scope and guardrails before any real external integration work. Do not start implementation until the Phase 8F checkpoint is committed and pushed.

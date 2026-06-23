@@ -485,6 +485,7 @@ Consequences:
 - Receipt item CSV import, final receipt import, receipt draft import, recurring expense CSV import, CSV bank matching, and external integrations remain out of scope.
 - CSV export, JSON backup/restore/reset, receipt confirmation, item analytics, recurring expense behavior, FX semantics, and Dashboard monthly spend semantics remain unchanged except that confirmed imported transactions contribute to normal transaction-derived Dashboard totals.
 - Real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching and payment execution remain out of scope.
+
 ## 2026-06-23: Phase 8D-B2 imports recurring CSV after preview and confirmation
 
 Decision:
@@ -532,6 +533,7 @@ Consequences:
 - Recurring monthly estimates change only after confirmed recurring CSV imports.
 - Receipt item CSV import, final receipt import, receipt draft import, account/category import, CSV bank matching, reconciliation import, and external integrations remain out of scope.
 - JSON backup/restore/reset, receipt confirmation, item analytics, recurring CRUD behavior, FX semantics, and Dashboard semantics remain unchanged.
+
 ## 2026-06-23: Phase 8E validates AI extraction JSON before draft writes
 
 Decision:
@@ -552,3 +554,22 @@ Consequences:
 - AI extraction still cannot create transactions, final receipts, final receipt items, Dashboard totals, recurring expenses, FX changes, or external provider records.
 - Real AI API calls, Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR, live FX, bank APIs, crypto/brokerage, bank matching, and payment execution remain out of scope.
 - Receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring, FX, and Dashboard semantics remain unchanged.
+
+## 2026-06-23: Phase 8F documents MVP QA before post-MVP integrations
+
+Decision:
+
+Run MVP stabilization as a documentation and verification pass, not as a feature-expansion phase. Keep the QA evidence in `QA_CHECKLIST.md`, add focused transaction page regression coverage, and use browser smoke plus existing automated tests to verify current local workflows.
+
+Rationale:
+
+The MVP now has multiple data-changing surfaces: manual transactions, receipt draft review/confirmation, recurring expenses, JSON backup/restore/reset, CSV export, transaction CSV import, recurring CSV import, and manual FX settings. Before any real integration work starts, the current behavior needs an explicit QA checkpoint that records what was verified, what is covered by tests, and what still needs native browser file-picker verification by a human.
+
+Consequences:
+
+- Phase 8F does not add new product features or external integrations.
+- The QA checklist maps the eleven MVP workflows to browser-smoke and automated-test evidence.
+- Native file-picker restore/import steps are documented as manual browser limitations for automation while file parsing, preview, confirmation, and repository write safety remain test-covered.
+- Transaction page create/edit/delete callback behavior now has focused UI regression coverage.
+- Existing transaction, receipt, recurring, FX, JSON backup/restore, CSV import/export, and Dashboard semantics remain unchanged.
+- After the Phase 8F checkpoint is committed and pushed, the next recommended phase is Phase 9A planning for post-MVP integration scope and guardrails; real integrations should still wait for that planning update.
