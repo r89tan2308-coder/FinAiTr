@@ -109,6 +109,13 @@ The user sees total monthly spend, spend by category, spend by merchant, top pro
 ### CSV export
 
 The user exports transactions, confirmed receipt items, or recurring expenses from Settings as browser-downloaded CSV files. CSV export is read-only, preserves original amount/currency fields, and includes display-currency columns for reporting where useful.
+
+### CSV transaction import
+
+The user imports transaction rows from a local CSV file in Settings. The app parses the file in the browser, previews rows before any write, rejects malformed required fields, warns about likely duplicates, and only writes valid transactions after the user types a strong confirmation phrase.
+
+Transaction CSV import stores new local transactions with the original imported amount/currency and keeps display-currency conversion as a derived view. Receipt items, final receipts, receipt drafts, recurring expenses, and external integrations are not imported from CSV in this phase.
+
 ### Local backup, restore, and reset
 
 The user exports a local JSON backup from Settings. The user can import a previously exported FinAiTr backup, review a restore summary, type a strong confirmation phrase, and replace local app data only after validation passes. The user can also reset local app data after typing a strong confirmation phrase. Reset clears app-owned IndexedDB data on this device, restores baseline seed data, and refreshes the app views.
@@ -125,6 +132,7 @@ The first MVP is successful when:
 - dashboard analytics update from local app data;
 - local JSON backup export works without a backend;
 - local CSV export works without a backend;
+- local transaction CSV import previews rows, rejects invalid data, and requires confirmation;
 - local JSON backup restore rejects invalid files and requires confirmation;
 - local data reset requires confirmation and restores baseline data;
 - local data is not sent to external services;

@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 8D-A React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, safe reset to seed data, and read-only local CSV exports.
+The repository now has a Phase 8D-A React + TypeScript + Vite app shell plus Phase 7D Dashboard trend polish with local-first data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, a tested deterministic receipt text parser core, a Receipts screen parser preview for pasted text, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, and Settings tools for local JSON backup export, local JSON import/restore, safe reset to seed data, read-only local CSV exports, and transaction CSV import preview/confirm.
 
 Existing files:
 
@@ -27,11 +27,13 @@ Existing files:
 - Phase 8B Settings tools for versioned local JSON backup export and strong-confirmation local data reset.
 - Phase 8C Settings tools for validated local JSON backup import/restore with preview and strong confirmation.
 - Phase 8D-A Settings tools for read-only transactions, confirmed receipt items, and recurring expenses CSV export.
+- Phase 8D-B1 Settings tools for transactions-only CSV import preview, row validation, duplicate warnings, strong confirmation, and confirmed local writes.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
-- CSV import preview/confirm;
+- recurring expense CSV import;
+- receipt item, final receipt, or receipt draft CSV import;
 
 ## Target stack
 
@@ -62,7 +64,7 @@ No backend is required for the first MVP.
 
 ## Implemented source layout
 
-Phase 8D-A uses this layout:
+Phase 8D-B1 uses this layout:
 
 ```text
 src/
@@ -319,7 +321,34 @@ CSV formatting lives in `src/domain/csvExport.ts`. The serializer emits stable h
 
 CSV export preserves original amounts and currencies. Display-currency columns use the existing local manual FX settings only for reporting. Confirmed receipt item rows use the linked final receipt currency because receipt item records do not have their own currency field.
 
-CSV export does not change JSON backup/restore/reset behavior, receipt confirmation, item analytics, recurring expenses, FX settings, or Dashboard monthly spend semantics. CSV import remains a separate future Phase 8D-B preview/confirm flow.
+CSV export does not change JSON backup/restore/reset behavior, receipt confirmation, item analytics, recurring expenses, FX settings, or Dashboard monthly spend semantics. Transaction CSV import is handled by the separate Phase 8D-B1 preview/confirm flow below.
+
+## Local CSV transaction import
+
+Phase 8D-B1 adds transactions-only CSV import to Settings. Import is browser-local, has no backend, and writes nothing until the user confirms a valid preview.
+
+CSV transaction import flow:
+
+```text
+SettingsPage transactions CSV file input
+  -> financeDataService previewTransactionCsvImportFromText(rawCsv)
+  -> getFinanceSnapshot
+  -> domain csvTransactionImport preview builder
+  -> SettingsPage row preview with errors, warnings, and duplicate warnings
+  -> SettingsPage strong confirmation phrase
+  -> financeDataService confirmTransactionCsvImportAndReload(preview)
+  -> financeRepository importTransactionCsvRows(validRows)
+  -> Dexie transactions bulkAdd in an IndexedDB transaction
+  -> loadFinanceData refreshes shared Dashboard and Transactions state
+```
+
+`src/domain/csvTransactionImport.ts` parses CSV locally, accepts Phase 8D-A transaction export headers plus simple transaction headers, validates required date, amount, currency, merchant or description, account, and category fields, and resolves account/category by id or name against the current snapshot. Invalid rows stay in the preview and block import. Unsupported currencies are warnings because the transaction model stores original currency and display conversion remains derived from manual FX settings.
+
+Likely duplicates are warnings, not errors. The duplicate key uses date, rounded amount, uppercased currency, normalized merchant/description, and account id, and checks both existing transactions and earlier rows in the same CSV file.
+
+Confirmed imports create new local transactions with source `csv_import` and new `tx-csv-*` ids. CSV `transaction_id`, source, receipt id, display amount, display currency, and timestamps are ignored for writes. The import path does not create receipts, receipt items, receipt drafts, recurring expenses, or external provider records.
+
+Preview calls do not mutate IndexedDB. Confirm calls reject previews with file errors or row errors before calling the repository. Repository writes re-check IndexedDB availability, required transaction validity, active account ids, and category ids before `bulkAdd`.
 
 ## Derived views
 
@@ -464,7 +493,7 @@ Recurring CRUD writes only to `recurringExpenses`. It does not create transactio
 - `accountId`
 - `categoryId`
 - `description`
-- `source`: `manual`, `receipt`, `csv_mock`, `adjustment`
+- `source`: `manual`, `receipt`, `csv_import`, `adjustment`
 - `receiptId`
 - `tags`
 - `createdAt`

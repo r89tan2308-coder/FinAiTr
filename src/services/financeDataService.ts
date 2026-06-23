@@ -4,6 +4,10 @@ import {
   type FinanceOverview,
 } from "../domain/financeViews";
 import {
+  buildTransactionCsvImportPreview,
+  type TransactionCsvImportPreview,
+} from "../domain/csvTransactionImport";
+import {
   type Category,
   type CurrencySettings,
   type FinanceSnapshot,
@@ -37,6 +41,7 @@ import {
   exportLocalJsonBackup,
   getReceiptDraftRecordById,
   getFinanceSnapshot,
+  importTransactionCsvRows,
   listReceiptDraftRecords,
   resetLocalDataToSeed,
   restoreLocalJsonBackup,
@@ -54,6 +59,7 @@ import {
   type ReceiptDraftUpdateInput,
   type ReceiptDraftRecord,
   type RepositoryStorageMode,
+  type TransactionCsvImportRowInput,
 } from "../persistence/repositories/financeRepository";
 import {
   RecurringExpenseValidationError,
@@ -68,6 +74,8 @@ export type {
   LocalCsvExportKind,
   LocalJsonBackup,
   LocalJsonRestorePreview,
+  TransactionCsvImportPreview,
+  TransactionCsvImportRowInput,
   ManualAiExtractionInput,
   ReceiptDraftConfirmationInput,
   ReceiptDraftConfirmationRecord,
@@ -158,6 +166,19 @@ export interface LocalBackupExportActionResult {
 export interface LocalCsvExportActionResult {
   csv?: LocalCsvExport;
   errorMessage?: string;
+  ok: boolean;
+}
+
+export interface TransactionCsvImportPreviewActionResult {
+  errorMessage?: string;
+  ok: boolean;
+  preview?: TransactionCsvImportPreview;
+}
+
+export interface TransactionCsvImportActionResult {
+  data?: FinanceDataState;
+  errorMessage?: string;
+  importedCount?: number;
   ok: boolean;
 }
 
@@ -406,6 +427,58 @@ export async function exportLocalCsvForDownload(
     return {
       errorMessage:
         error instanceof Error ? error.message : "Local CSV could not be exported.",
+      ok: false,
+    };
+  }
+}
+
+export async function previewTransactionCsvImportFromText(
+  rawCsv: string,
+): Promise<TransactionCsvImportPreviewActionResult> {
+  try {
+    const { snapshot } = await getFinanceSnapshot();
+
+    return {
+      ok: true,
+      preview: buildTransactionCsvImportPreview(rawCsv, snapshot),
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Transaction CSV could not be validated.",
+      ok: false,
+    };
+  }
+}
+
+export async function confirmTransactionCsvImportAndReload(
+  preview: TransactionCsvImportPreview,
+): Promise<TransactionCsvImportActionResult> {
+  if (!preview.canImport) {
+    return {
+      errorMessage: "Transaction CSV import requires a valid preview with no row errors.",
+      ok: false,
+    };
+  }
+
+  try {
+    const importedTransactions = await importTransactionCsvRows(
+      preview.importableRows,
+    );
+
+    return {
+      data: await loadFinanceData(),
+      importedCount: importedTransactions.length,
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Transaction CSV could not be imported.",
       ok: false,
     };
   }

@@ -8,6 +8,7 @@ import { SettingsPage } from "../pages/SettingsPage";
 import { TransactionsPage } from "../pages/TransactionsPage";
 import {
   createInitialFinanceDataState,
+  confirmTransactionCsvImportAndReload,
   confirmReceiptDraftAndReload,
   createManualTransactionAndReload,
   createRecurringExpenseAndReload,
@@ -17,6 +18,7 @@ import {
   exportLocalCsvForDownload,
   exportLocalJsonBackupForDownload,
   loadFinanceData,
+  previewTransactionCsvImportFromText,
   previewLocalJsonBackupRestoreFromText,
   resetLocalDataAndReload,
   restoreLocalJsonBackupAndReload,
@@ -31,6 +33,7 @@ import {
   type ReceiptDraftActionResult,
   type RecurringExpenseActionResult,
   type TransactionActionResult,
+  type TransactionCsvImportActionResult,
   updateTransactionAndReload,
 } from "../services/financeDataService";
 import { appRoutes, type RouteId } from "./routes";
@@ -108,6 +111,15 @@ export function App() {
     return result;
   }
 
+  function applyTransactionCsvImportActionResult(
+    result: TransactionCsvImportActionResult,
+  ) {
+    if (result.ok && result.data) {
+      setFinanceData(result.data);
+    }
+
+    return result;
+  }
   return (
     <AppShell
       activeRoute={activeRoute}
@@ -218,6 +230,12 @@ export function App() {
           onExportLocalBackup={exportLocalJsonBackupForDownload}
           onExportLocalCsv={exportLocalCsvForDownload}
           onPreviewLocalBackupRestore={previewLocalJsonBackupRestoreFromText}
+          onPreviewTransactionCsvImport={previewTransactionCsvImportFromText}
+          onConfirmTransactionCsvImport={async (preview) =>
+            applyTransactionCsvImportActionResult(
+              await confirmTransactionCsvImportAndReload(preview),
+            )
+          }
           onResetLocalData={async () =>
             applyLocalDataResetActionResult(await resetLocalDataAndReload())
           }

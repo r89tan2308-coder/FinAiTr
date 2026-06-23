@@ -25,6 +25,9 @@ import {
   type LocalBackupRestorePreviewActionResult,
   type LocalCsvExportActionResult,
   type LocalCsvExportKind,
+  type TransactionCsvImportActionResult,
+  type TransactionCsvImportPreview,
+  type TransactionCsvImportPreviewActionResult,
   type LocalDataResetActionResult,
   type LocalJsonBackup,
   type LocalJsonRestorePreview,
@@ -37,9 +40,15 @@ interface SettingsPageProps {
   onExportLocalCsv: (
     kind: LocalCsvExportKind,
   ) => Promise<LocalCsvExportActionResult>;
+  onConfirmTransactionCsvImport: (
+    preview: TransactionCsvImportPreview,
+  ) => Promise<TransactionCsvImportActionResult>;
   onPreviewLocalBackupRestore: (
     rawJson: string,
   ) => Promise<LocalBackupRestorePreviewActionResult>;
+  onPreviewTransactionCsvImport: (
+    rawCsv: string,
+  ) => Promise<TransactionCsvImportPreviewActionResult>;
   onResetLocalData: () => Promise<LocalDataResetActionResult>;
   onRestoreLocalBackup: (
     backup: LocalJsonBackup,
@@ -61,6 +70,7 @@ interface CurrencyFormValues {
 
 const resetConfirmationPhrase = "RESET LOCAL DATA";
 const restoreConfirmationPhrase = "RESTORE LOCAL DATA";
+const transactionCsvImportConfirmationPhrase = "IMPORT TRANSACTIONS CSV";
 const csvExportLabels: Record<LocalCsvExportKind, string> = {
   confirmed_receipt_items: "Confirmed receipt items",
   recurring_expenses: "Recurring expenses",
@@ -73,8 +83,10 @@ export function SettingsPage({
   onExportLocalBackup,
   onExportLocalCsv,
   onPreviewLocalBackupRestore,
+  onPreviewTransactionCsvImport,
   onResetLocalData,
   onRestoreLocalBackup,
+  onConfirmTransactionCsvImport,
   onUpdateCurrencySettings,
   snapshot,
   status,
@@ -91,6 +103,12 @@ export function SettingsPage({
   const [backupStatus, setBackupStatus] = useState<"idle" | "exporting">("idle");
   const [csvExportStatus, setCsvExportStatus] = useState<
     "idle" | LocalCsvExportKind
+  >("idle");
+  const [transactionCsvConfirmation, setTransactionCsvConfirmation] = useState("");
+  const [transactionCsvPreview, setTransactionCsvPreview] =
+    useState<TransactionCsvImportPreview>();
+  const [transactionCsvStatus, setTransactionCsvStatus] = useState<
+    "idle" | "previewing" | "importing"
   >("idle");
   const [localDataMessage, setLocalDataMessage] = useState<string>();
   const [localDataError, setLocalDataError] = useState<string>();
@@ -235,6 +253,98 @@ export function SettingsPage({
     }
   }
 
+  async function previewTransactionCsvImport(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const selectedFile = event.target.files?.[0];
+
+    setTransactionCsvConfirmation("");
+    setTransactionCsvPreview(undefined);
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    if (!selectedFile) {
+      return;
+    }
+
+    setTransactionCsvStatus("previewing");
+
+    try {
+      const rawCsv = await readTextFile(
+        selectedFile,
+        "Transaction CSV file could not be read.",
+      );
+      const result = await onPreviewTransactionCsvImport(rawCsv);
+
+      if (result.ok && result.preview) {
+        setTransactionCsvPreview(result.preview);
+
+        if (
+          result.preview.fileErrors.length > 0 ||
+          result.preview.errorCount > 0
+        ) {
+          setLocalDataError("Transaction CSV has errors. Fix the file before import.");
+          return;
+        }
+
+        setLocalDataMessage("Transaction CSV validated. Review rows before import.");
+        return;
+      }
+
+      setLocalDataError(
+        result.errorMessage ?? "Transaction CSV file could not be validated.",
+      );
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error
+          ? error.message
+          : "Transaction CSV file could not be validated.",
+      );
+    } finally {
+      setTransactionCsvStatus("idle");
+    }
+  }
+
+  async function importTransactionCsv(): Promise<void> {
+    if (!transactionCsvPreview) {
+      setLocalDataError("Select a valid transaction CSV file before import.");
+      setLocalDataMessage(undefined);
+      return;
+    }
+
+    if (transactionCsvConfirmation !== transactionCsvImportConfirmationPhrase) {
+      setLocalDataError(`Type ${transactionCsvImportConfirmationPhrase} before import.`);
+      setLocalDataMessage(undefined);
+      return;
+    }
+
+    setTransactionCsvStatus("importing");
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    try {
+      const result = await onConfirmTransactionCsvImport(transactionCsvPreview);
+
+      if (result.ok) {
+        setTransactionCsvConfirmation("");
+        setTransactionCsvPreview(undefined);
+        setLocalDataMessage(
+          `Imported ${result.importedCount ?? 0} transactions from CSV.`,
+        );
+        return;
+      }
+
+      setLocalDataError(result.errorMessage ?? "Transaction CSV could not be imported.");
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error
+          ? error.message
+          : "Transaction CSV could not be imported.",
+      );
+    } finally {
+      setTransactionCsvStatus("idle");
+    }
+  }
   async function previewRestoreBackup(
     event: ChangeEvent<HTMLInputElement>,
   ): Promise<void> {
@@ -530,6 +640,103 @@ export function SettingsPage({
               </div>
             </div>
 
+            <div className="settings-action-block">
+              <strong>CSV transaction import</strong>
+              <p className="settings-note">
+                Preview transaction rows from a local CSV file before writing them
+                to IndexedDB.
+              </p>
+              <label className="field">
+                <span>Transactions CSV file</span>
+                <input
+                  accept=".csv,text/csv"
+                  aria-label="Transactions CSV file"
+                  disabled={transactionCsvStatus !== "idle"}
+                  onChange={(event) => void previewTransactionCsvImport(event)}
+                  type="file"
+                />
+              </label>
+
+              {transactionCsvPreview && (
+                <div className="settings-restore-preview" role="status">
+                  <strong>Transaction CSV preview</strong>
+                  <span>
+                    {transactionCsvPreview.rowCount} rows, {transactionCsvPreview.validRowCount}{" "}
+                    valid, {transactionCsvPreview.errorCount} errors,{" "}
+                    {transactionCsvPreview.warningCount} warnings
+                  </span>
+                  <div className="settings-preview-grid">
+                    <span>Importable {transactionCsvPreview.importableRows.length}</span>
+                    <span>Duplicates {transactionCsvPreview.duplicateCount}</span>
+                    <span>File errors {transactionCsvPreview.fileErrors.length}</span>
+                    <span>Columns {transactionCsvPreview.headers.length}</span>
+                  </div>
+                  {transactionCsvPreview.fileErrors.length > 0 && (
+                    <ul>
+                      {transactionCsvPreview.fileErrors.map((error) => (
+                        <li key={error}>{error}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="settings-import-rows">
+                    {transactionCsvPreview.rows.map((row) => (
+                      <article
+                        className={importPreviewRowClassName(row)}
+                        key={row.rowNumber}
+                      >
+                        <strong>Row {row.rowNumber}</strong>
+                        <span>{formatCsvImportRowSummary(row)}</span>
+                        {row.errors.length > 0 && (
+                          <ul aria-label={`Row ${row.rowNumber} errors`}>
+                            {row.errors.map((error) => (
+                              <li key={error}>{error}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {row.warnings.length > 0 && (
+                          <ul aria-label={`Row ${row.rowNumber} warnings`}>
+                            {row.warnings.map((warning) => (
+                              <li key={warning}>{warning}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <label className="field">
+                <span>Transaction CSV confirmation</span>
+                <input
+                  aria-label="Transaction CSV confirmation"
+                  onChange={(event) => {
+                    setTransactionCsvConfirmation(event.target.value);
+                    setLocalDataError(undefined);
+                    setLocalDataMessage(undefined);
+                  }}
+                  placeholder={transactionCsvImportConfirmationPhrase}
+                  value={transactionCsvConfirmation}
+                />
+              </label>
+              <button
+                className="primary-button"
+                disabled={
+                  transactionCsvStatus !== "idle" ||
+                  !transactionCsvPreview?.canImport ||
+                  transactionCsvConfirmation !== transactionCsvImportConfirmationPhrase ||
+                  storageMode !== "indexeddb"
+                }
+                onClick={() => void importTransactionCsv()}
+                type="button"
+              >
+                <Upload aria-hidden="true" size={18} />
+                {transactionCsvStatus === "importing"
+                  ? "Importing"
+                  : "Import transactions CSV"}
+              </button>
+            </div>
+
             <div className="settings-action-block settings-danger-block">
               <div className="settings-warning-title">
                 <Upload aria-hidden="true" size={20} />
@@ -667,6 +874,36 @@ export function SettingsPage({
   );
 }
 
+function formatCsvImportRowSummary(
+  row: TransactionCsvImportPreview["rows"][number],
+): string {
+  if (!row.input) {
+    return "Not importable";
+  }
+
+  return [
+    row.input.date,
+    row.input.merchant,
+    `${row.input.amount} ${row.input.currency}`,
+    row.input.accountId,
+    row.input.categoryId,
+  ].join(" - ");
+}
+
+function importPreviewRowClassName(
+  row: TransactionCsvImportPreview["rows"][number],
+): string {
+  if (row.errors.length > 0) {
+    return "settings-import-row settings-import-row-error";
+  }
+
+  if (row.warnings.length > 0) {
+    return "settings-import-row settings-import-row-warning";
+  }
+
+  return "settings-import-row";
+}
+
 function currencySettingsToFormValues(
   settings: CurrencySettings,
 ): CurrencyFormValues {
@@ -719,7 +956,10 @@ function formatDateTime(value: string): string {
   return value.replace("T", " ").slice(0, 16);
 }
 
-function readTextFile(file: File): Promise<string> {
+function readTextFile(
+  file: File,
+  errorMessage = "Backup file could not be read.",
+): Promise<string> {
   if (typeof file.text === "function") {
     return file.text();
   }
@@ -728,7 +968,7 @@ function readTextFile(file: File): Promise<string> {
     const reader = new FileReader();
 
     reader.addEventListener("error", () => {
-      reject(new Error("Backup file could not be read."));
+      reject(new Error(errorMessage));
     });
     reader.addEventListener("load", () => {
       resolve(typeof reader.result === "string" ? reader.result : "");

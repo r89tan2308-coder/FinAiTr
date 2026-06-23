@@ -10,7 +10,7 @@ The first MVP is limited to:
 - recurring expenses;
 - dashboard analytics;
 - manual local currency conversion settings for USD, RUB, EUR, and GBP;
-- local JSON backup/restore/reset and local CSV export.
+- local JSON backup/restore/reset, local CSV export, and local transaction CSV import preview/confirm.
 
 Real bank APIs, Google Drive, OCR APIs, crypto, brokerage, payment execution, live exchange-rate fetching, and credentials are out of scope.
 
@@ -424,19 +424,55 @@ Add read-only browser CSV exports for the main local MVP datasets without adding
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` is updated.
 
-### Phase 8D-B: CSV import preview and confirm
+### Phase 8D-B1: Transaction CSV import preview and confirm
 
 ### Goal
 
-Plan and implement a safe local CSV import flow after export-only behavior is stable.
+Add a safe local transaction CSV import flow after export-only behavior is stable.
 
 ### Scope
 
-- CSV import preview before any write.
-- Explicit confirmation before writing imported rows.
-- Validation and clear rejection of malformed rows.
-- Preserve local-first service/repository boundaries.
-- No external integrations.
+- Transactions CSV import only.
+- Browser-local CSV parsing with no backend or external service.
+- Preview before any write to IndexedDB.
+- Required row validation for date, amount, currency, merchant or description, account, and category.
+- Row-level errors and warnings.
+- Likely duplicate warnings based on date, amount, currency, merchant/description, and account.
+- Explicit confirmation before writing importable rows.
+- Write path stays inside Settings -> financeDataService -> financeRepository -> Dexie.
+- Preserve original imported amount and currency; FX remains display-only.
+
+### Out of scope
+
+- Receipt item CSV import.
+- Final receipt or receipt draft CSV import.
+- Recurring expense CSV import.
+- CSV bank matching or reconciliation.
+- External integrations, backend services, OCR, AI APIs, live FX, bank APIs, crypto, or brokerage flows.
+
+### Acceptance criteria
+
+- User can select a transactions CSV in Settings and see a preview before writes.
+- Invalid files and invalid rows are rejected before mutation.
+- Row-level errors identify malformed required fields.
+- Duplicate-like rows show warnings, not silent imports.
+- Import requires the strong confirmation phrase.
+- Confirmed valid rows persist as local `csv_import` transactions.
+- Dashboard and Transactions update only after confirmation.
+- CSV export, JSON backup/restore/reset, receipt confirmation, item analytics, recurring, and FX semantics are unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` is updated with exact validation results and next phase.
+
+### Phase 8D-B2: Future CSV import expansion
+
+### Goal
+
+Plan any broader CSV import support only after transaction import is stable.
+
+### Scope
+
+- Decide whether recurring expense CSV import belongs in MVP follow-up scope.
+- Keep receipt item, final receipt, and receipt draft import deferred until a separate product decision.
 
 ## Deferred until after first MVP
 

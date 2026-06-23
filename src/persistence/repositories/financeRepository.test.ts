@@ -10,11 +10,13 @@ import { groceryReceiptText } from "../../receipt-parser/fixtures";
 import { mockEmailReceiptText } from "../../receipt-ingestion/fixtures";
 import {
   confirmReceiptDraftAndReload,
+  confirmTransactionCsvImportAndReload,
   createRecurringExpenseAndReload,
   deleteReceiptDraftAndReload,
   getReceiptDraftById,
   listReceiptDrafts,
   previewLocalJsonBackupRestoreFromText,
+  previewTransactionCsvImportFromText,
   saveParsedReceiptDraftAndReload,
   simulateAiReceiptExtractionAndSaveDraftAndReload,
   updateReceiptDraftAndReload,
@@ -247,6 +249,94 @@ describe("finance repository transaction CRUD", () => {
     expect(afterSnapshot).toEqual(beforeSnapshot);
   });
 
+  it("previews and confirms transaction CSV import through the service boundary", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const rawCsv =
+      "date,merchant,description,account_name,category_name,amount,currency,tags\r\n" +
+      "2026-06-15,CSV Import Merchant,Imported from CSV,Everyday card,Software,50,EUR,import; csv";
+
+    const previewResult = await previewTransactionCsvImportFromText(rawCsv);
+    const afterPreviewSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(previewResult.ok).toBe(true);
+    expect(previewResult.preview).toMatchObject({
+      canImport: true,
+      errorCount: 0,
+      validRowCount: 1,
+    });
+    expect(afterPreviewSnapshot).toEqual(beforeSnapshot);
+
+    const preview = previewResult.preview;
+
+    if (!preview) {
+      throw new Error("Expected transaction CSV preview.");
+    }
+
+    const importResult = await confirmTransactionCsvImportAndReload(preview);
+
+    expect(importResult.ok).toBe(true);
+    expect(importResult.importedCount).toBe(1);
+
+    const afterSnapshot = importResult.data?.snapshot;
+    const afterOverview = importResult.data?.overview;
+    const imported = afterSnapshot?.transactions.find(
+      (transaction) => transaction.merchant === "CSV Import Merchant",
+    );
+
+    expect(imported).toMatchObject({
+      accountId: "account-card",
+      amount: 50,
+      categoryId: "software",
+      currency: "EUR",
+      date: "2026-06-15",
+      description: "Imported from CSV",
+      source: "csv_import",
+      tags: ["import", "csv"],
+    });
+    expect(imported?.id.startsWith("tx-csv-")).toBe(true);
+    expect(afterSnapshot?.transactions).toHaveLength(
+      beforeSnapshot.transactions.length + 1,
+    );
+    expect(afterOverview?.monthlySpend).toBe(
+      roundMoney(
+        beforeOverview.monthlySpend +
+          convertMoney(50, "EUR", "RUB", defaultCurrencySettings),
+      ),
+    );
+  });
+
+  it("rejects invalid transaction CSV confirmation without mutating data", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const rawCsv =
+      "date,merchant,account_name,category_name,amount,currency\r\n" +
+      "not-a-date,,Everyday card,Unknown,0,";
+
+    const previewResult = await previewTransactionCsvImportFromText(rawCsv);
+
+    expect(previewResult.ok).toBe(true);
+    expect(previewResult.preview).toMatchObject({
+      canImport: false,
+      validRowCount: 0,
+    });
+
+    const preview = previewResult.preview;
+
+    if (!preview) {
+      throw new Error("Expected invalid transaction CSV preview.");
+    }
+
+    const importResult = await confirmTransactionCsvImportAndReload(preview);
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(importResult.ok).toBe(false);
+    expect(importResult.errorMessage).toBe(
+      "Transaction CSV import requires a valid preview with no row errors.",
+    );
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+  });
   it("does not mutate persisted data when backup objects are changed", async () => {
     const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
     const backup = await exportLocalJsonBackup();

@@ -2857,3 +2857,103 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8D-B: implement CSV import preview/confirm with validation and explicit confirmation before any write.
+
+## 2026-06-22: Phase 8D-B1 transaction CSV import preview/confirm implemented
+
+### Completed
+
+- Added transactions-only CSV import in Settings.
+- Added browser-local CSV parsing and preview before any IndexedDB write.
+- Added row-level validation for date, amount, currency, merchant or description, account, and category.
+- Added account/category resolution by id or name from the current local snapshot.
+- Added row-level file errors, row errors, warnings, and likely duplicate warnings.
+- Added duplicate detection against existing transactions and earlier rows in the same CSV file using date, rounded amount, currency, merchant/description, and account.
+- Added explicit strong confirmation with `IMPORT TRANSACTIONS CSV` before import writes.
+- Added confirmed import write path through Settings -> financeDataService -> financeRepository -> Dexie.
+- Reviewed imported transaction source naming and changed the source value to real local csv_import instead of a mock-specific value.
+- Imported rows create new local csv_import transactions with new 	x-csv-* ids.
+- Preserved original imported amount and currency; FX remains display-only.
+- Confirmed imported transactions update Dashboard and Transactions only after confirmation.
+- Kept CSV export, JSON backup/restore/reset, receipt confirmation, item analytics, recurring, and FX semantics unchanged.
+- Did not add receipt item CSV import, final receipt import, receipt draft import, recurring expense CSV import, bank matching, backend, Gmail/Drive/Docs/OAuth, OCR, AI APIs, live FX, bank APIs, crypto, brokerage, or payment execution.
+
+### Changed files
+
+- `PRODUCT_SPEC.md`
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/domain/models.ts`
+- `src/domain/csvTransactionImport.ts`
+- `src/domain/csvTransactionImport.test.ts`
+- `src/pages/SettingsPage.tsx`
+- `src/pages/SettingsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/services/financeDataService.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Initial result: failed with TypeScript narrowing errors in `src/domain/csvTransactionImport.ts` because resolved account/category records were not narrowed after row error collection.
+
+Fix: added explicit `accountRecord` and `categoryRecord` guards before building importable row input.
+
+Final result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- src\domain\csvTransactionImport.test.ts src\pages\SettingsPage.test.tsx src\persistence\repositories\financeRepository.test.ts --run
+```
+
+Initial result: failed in the invalid-date preview test because `isValidIsoDate` called `toISOString()` on an invalid Date.
+
+Fix: added a `Number.isNaN(parsed.getTime())` guard before calling `toISOString()`.
+
+Final result: succeeded. 3 test files passed, 36 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 15 test files passed, 104 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- Receipt item CSV import, final receipt import, receipt draft import, recurring expense CSV import, bank matching, and external integrations remain out of scope.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+
+### Next recommended phase
+
+Phase 8D-B2: decide whether recurring expense CSV import belongs in MVP follow-up scope. Keep receipt item, final receipt, and receipt draft CSV import deferred until a separate product decision.

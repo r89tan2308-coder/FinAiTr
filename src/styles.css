@@ -606,6 +606,34 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.settings-import-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-import-row {
+  background: #ffffff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.settings-import-row-error {
+  border-color: #fecaca;
+}
+
+.settings-import-row-warning {
+  border-color: #fed7aa;
+}
+
+.settings-import-row strong,
+.settings-import-row span,
+.settings-import-row li {
+  overflow-wrap: anywhere;
+}
+
 .empty-state {
   background: #ffffff;
   border: 1px dashed #cbd5df;

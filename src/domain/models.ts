@@ -20,7 +20,7 @@ export type AccountType =
 export type TransactionSource =
   | "manual"
   | "receipt"
-  | "csv_mock"
+  | "csv_import"
   | "adjustment";
 
 export type ReceiptStatus = "draft" | "needs_review" | "confirmed" | "rejected";

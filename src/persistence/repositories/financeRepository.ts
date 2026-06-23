@@ -10,6 +10,7 @@ import {
   type LocalCsvExport,
   type LocalCsvExportKind,
 } from "../../domain/csvExport";
+import { type TransactionCsvImportRowInput } from "../../domain/csvTransactionImport";
 import {
   type Category,
   type CurrencyCode,
@@ -44,7 +45,11 @@ const seedVersionKey = "seedVersion";
 const currencySettingsKey = "currencySettings";
 
 export type RepositoryStorageMode = "indexeddb" | "seed_fallback";
-export type { LocalCsvExport, LocalCsvExportKind };
+export type {
+  LocalCsvExport,
+  LocalCsvExportKind,
+  TransactionCsvImportRowInput,
+};
 
 export interface FinanceRepositorySnapshot {
   snapshot: FinanceSnapshot;
@@ -512,6 +517,64 @@ export async function addManualTransaction(
   return transaction;
 }
 
+export async function importTransactionCsvRows(
+  inputs: TransactionCsvImportRowInput[],
+): Promise<Transaction[]> {
+  assertIndexedDbWritable("transaction CSV import");
+
+  if (inputs.length === 0) {
+    throw new Error("Select at least one valid transaction row before import.");
+  }
+
+  inputs.forEach(assertValidTransactionCsvImportInput);
+  await ensureSeedData();
+
+  return financeDb.transaction(
+    "rw",
+    [financeDb.accounts, financeDb.categories, financeDb.transactions],
+    async () => {
+      const [accounts, categories] = await Promise.all([
+        financeDb.accounts.toArray(),
+        financeDb.categories.toArray(),
+      ]);
+      const activeAccountIds = new Set(
+        accounts
+          .filter((account) => !account.isArchived)
+          .map((account) => account.id),
+      );
+      const categoryIds = new Set(categories.map((category) => category.id));
+      const now = new Date().toISOString();
+      const transactions = inputs.map((input): Transaction => {
+        if (!activeAccountIds.has(input.accountId)) {
+          throw new Error(`CSV import account is not available: ${input.accountId}.`);
+        }
+
+        if (!categoryIds.has(input.categoryId)) {
+          throw new Error(`CSV import category is not available: ${input.categoryId}.`);
+        }
+
+        return {
+          id: createRecordId("tx-csv"),
+          accountId: input.accountId,
+          amount: roundMoney(input.amount),
+          categoryId: input.categoryId,
+          createdAt: now,
+          currency: input.currency,
+          date: input.date,
+          description: input.description?.trim() || undefined,
+          merchant: input.merchant.trim() || input.description?.trim() || "",
+          source: "csv_import",
+          tags: [...input.tags],
+          updatedAt: now,
+        };
+      });
+
+      await financeDb.transactions.bulkAdd(transactions);
+
+      return transactions;
+    },
+  );
+}
 export async function updateTransaction(
   transactionId: string,
   input: TransactionInput,
@@ -1070,6 +1133,15 @@ function assertIndexedDbWritable(action: string): void {
   }
 }
 
+function assertValidTransactionCsvImportInput(
+  input: TransactionCsvImportRowInput,
+): void {
+  assertValidTransactionInput(input);
+
+  if (!input.categoryId) {
+    throw new Error("Category is required for CSV transaction import.");
+  }
+}
 function createRecordId(prefix: string): string {
   const randomId = globalThis.crypto?.randomUUID?.();
 

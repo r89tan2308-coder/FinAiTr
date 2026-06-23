@@ -12,6 +12,9 @@ import {
   type LocalCsvExportKind,
   type LocalDataResetActionResult,
   type LocalJsonBackup,
+  type TransactionCsvImportActionResult,
+  type TransactionCsvImportPreview,
+  type TransactionCsvImportPreviewActionResult,
 } from "../services/financeDataService";
 
 const originalCreateObjectUrl = URL.createObjectURL;
@@ -132,6 +135,82 @@ describe("SettingsPage local data tools", () => {
     expect(revokeObjectUrl).toHaveBeenCalledWith("blob:finaitr-csv");
     expect(screen.getByRole("status")).toHaveTextContent(
       "Transactions CSV exported.",
+    );
+  });
+
+  it("previews a transactions CSV and requires strong confirmation before import", async () => {
+    const user = userEvent.setup();
+    const preview = buildTestTransactionCsvPreview();
+    const onPreviewTransactionCsvImport = vi.fn(
+      async (rawCsv: string): Promise<TransactionCsvImportPreviewActionResult> => {
+        expect(rawCsv).toContain("Preview Merchant");
+
+        return {
+          ok: true,
+          preview,
+        };
+      },
+    );
+    const onConfirmTransactionCsvImport = vi.fn(
+      async (): Promise<TransactionCsvImportActionResult> => ({
+        data: {
+          overview: buildFinanceOverview(seedSnapshot),
+          snapshot: seedSnapshot,
+          status: "ready",
+          storageMode: "indexeddb",
+        },
+        importedCount: 1,
+        ok: true,
+      }),
+    );
+
+    renderSettingsPage({
+      onConfirmTransactionCsvImport,
+      onPreviewTransactionCsvImport,
+    });
+
+    const importButton = screen.getByRole("button", {
+      name: "Import transactions CSV",
+    });
+    const confirmationInput = screen.getByLabelText("Transaction CSV confirmation");
+    const csvFile = new File(
+      [
+        "date,merchant,account_name,category_name,amount,currency\r\n" +
+          "2026-06-10,Preview Merchant,Everyday card,Software,12,USD\r\n",
+      ],
+      "transactions.csv",
+      { type: "text/csv" },
+    );
+
+    expect(importButton).toBeDisabled();
+
+    await user.upload(screen.getByLabelText("Transactions CSV file"), csvFile);
+
+    await waitFor(() =>
+      expect(onPreviewTransactionCsvImport).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText("Transaction CSV preview")).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 rows, 1 valid, 0 errors, 1 warnings/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Likely duplicate of an existing transaction.")).toBeInTheDocument();
+    expect(importButton).toBeDisabled();
+
+    await user.type(confirmationInput, "IMPORT");
+
+    expect(importButton).toBeDisabled();
+    expect(onConfirmTransactionCsvImport).not.toHaveBeenCalled();
+
+    await user.clear(confirmationInput);
+    await user.type(confirmationInput, "IMPORT TRANSACTIONS CSV");
+
+    expect(importButton).toBeEnabled();
+
+    await user.click(importButton);
+
+    expect(onConfirmTransactionCsvImport).toHaveBeenCalledWith(preview);
+    await waitFor(() =>
+      expect(screen.getByText("Imported 1 transactions from CSV.")).toBeInTheDocument(),
     );
   });
 
@@ -270,6 +349,12 @@ interface RenderSettingsOptions {
   onPreviewLocalBackupRestore?: (
     rawJson: string,
   ) => Promise<LocalBackupRestorePreviewActionResult>;
+  onPreviewTransactionCsvImport?: (
+    rawCsv: string,
+  ) => Promise<TransactionCsvImportPreviewActionResult>;
+  onConfirmTransactionCsvImport?: (
+    preview: TransactionCsvImportPreview,
+  ) => Promise<TransactionCsvImportActionResult>;
   onResetLocalData?: () => Promise<LocalDataResetActionResult>;
   onRestoreLocalBackup?: (
     backup: LocalJsonBackup,
@@ -302,6 +387,26 @@ function renderSettingsPage(options: RenderSettingsOptions = {}) {
           backup: buildTestBackup(),
           ok: true,
           preview: buildTestRestorePreview(),
+        }))
+      }
+      onPreviewTransactionCsvImport={
+        options.onPreviewTransactionCsvImport ??
+        (async () => ({
+          ok: true,
+          preview: buildTestTransactionCsvPreview(),
+        }))
+      }
+      onConfirmTransactionCsvImport={
+        options.onConfirmTransactionCsvImport ??
+        (async () => ({
+          data: {
+            overview: buildFinanceOverview(seedSnapshot),
+            snapshot: seedSnapshot,
+            status: "ready",
+            storageMode: "indexeddb",
+          },
+          importedCount: 1,
+          ok: true,
         }))
       }
       onResetLocalData={
@@ -350,6 +455,54 @@ function readBlobText(blob: Blob): Promise<string> {
   });
 }
 
+function buildTestTransactionCsvPreview(): TransactionCsvImportPreview {
+  return {
+    canImport: true,
+    duplicateCount: 1,
+    errorCount: 0,
+    fileErrors: [],
+    headers: ["date", "merchant", "account_name", "category_name", "amount", "currency"],
+    importableRows: [
+      {
+        accountId: "account-card",
+        amount: 12,
+        categoryId: "software",
+        currency: "USD",
+        date: "2026-06-10",
+        merchant: "Preview Merchant",
+        tags: [],
+      },
+    ],
+    rowCount: 1,
+    rows: [
+      {
+        errors: [],
+        input: {
+          accountId: "account-card",
+          amount: 12,
+          categoryId: "software",
+          currency: "USD",
+          date: "2026-06-10",
+          merchant: "Preview Merchant",
+          tags: [],
+        },
+        isDuplicate: true,
+        rowNumber: 2,
+        values: {
+          account_name: "Everyday card",
+          amount: "12",
+          category_name: "Software",
+          currency: "USD",
+          date: "2026-06-10",
+          merchant: "Preview Merchant",
+        },
+        warnings: ["Likely duplicate of an existing transaction."],
+      },
+    ],
+    validRowCount: 1,
+    warningCount: 1,
+  };
+}
 function buildTestCsvExport(kind: LocalCsvExportKind) {
   return {
     content: "id\r\n",

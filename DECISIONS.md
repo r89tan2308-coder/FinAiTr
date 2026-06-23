@@ -463,3 +463,25 @@ Consequences:
 - Exporting CSV must not mutate transactions, receipts, receipt items, drafts, recurring expenses, FX settings, app metadata, or JSON backup/restore/reset behavior.
 - CSV import is not implemented in Phase 8D-A; Phase 8D-B must add preview, validation, and explicit confirmation before any import write path.
 - Real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching and payment execution remain out of scope.
+
+## 2026-06-22: Phase 8D-B1 imports transaction CSV after preview and confirmation
+
+Decision:
+
+Add Settings support for transactions-only CSV import with browser-local parsing, row preview, row-level validation errors, duplicate warnings, and a strong confirmation phrase before any IndexedDB write. The write path stays inside `SettingsPage -> financeDataService -> financeRepository -> Dexie`, and imported rows become new local `csv_import` transactions.
+
+Rationale:
+
+CSV export is now stable and read-only, so the next lowest-risk import step is transaction rows only. Keeping preview and confirmation separate from repository writes prevents malformed CSV files from mutating local data and keeps import behavior reviewable before expanding to any other dataset.
+
+Consequences:
+
+- Transaction CSV preview does not mutate IndexedDB.
+- Required import fields are date, amount, currency, merchant or description, account, and category.
+- Accounts and categories resolve by id or name against the current local snapshot.
+- Likely duplicates are warnings based on date, rounded amount, currency, merchant/description, and account, not automatic rejections.
+- Confirmed imports create new `tx-csv-*` transactions with source `csv_import` and ignore CSV transaction ids, source values, receipt ids, display amounts, display currency, and timestamps for writes.
+- Original imported amount and currency are preserved; manual FX remains display-only.
+- Receipt item CSV import, final receipt import, receipt draft import, recurring expense CSV import, CSV bank matching, and external integrations remain out of scope.
+- CSV export, JSON backup/restore/reset, receipt confirmation, item analytics, recurring expense behavior, FX semantics, and Dashboard monthly spend semantics remain unchanged except that confirmed imported transactions contribute to normal transaction-derived Dashboard totals.
+- Real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching and payment execution remain out of scope.
