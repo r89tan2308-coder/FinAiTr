@@ -10,6 +10,7 @@ import {
   createInitialFinanceDataState,
   confirmTransactionCsvImportAndReload,
   confirmReceiptDraftAndReload,
+  confirmRecurringCsvImportAndReload,
   createManualTransactionAndReload,
   createRecurringExpenseAndReload,
   deleteReceiptDraftAndReload,
@@ -20,6 +21,7 @@ import {
   loadFinanceData,
   previewTransactionCsvImportFromText,
   previewLocalJsonBackupRestoreFromText,
+  previewRecurringCsvImportFromText,
   resetLocalDataAndReload,
   restoreLocalJsonBackupAndReload,
   saveParsedReceiptDraftAndReload,
@@ -32,6 +34,7 @@ import {
   type LocalDataResetActionResult,
   type ReceiptDraftActionResult,
   type RecurringExpenseActionResult,
+  type RecurringCsvImportActionResult,
   type TransactionActionResult,
   type TransactionCsvImportActionResult,
   updateTransactionAndReload,
@@ -113,6 +116,16 @@ export function App() {
 
   function applyTransactionCsvImportActionResult(
     result: TransactionCsvImportActionResult,
+  ) {
+    if (result.ok && result.data) {
+      setFinanceData(result.data);
+    }
+
+    return result;
+  }
+
+  function applyRecurringCsvImportActionResult(
+    result: RecurringCsvImportActionResult,
   ) {
     if (result.ok && result.data) {
       setFinanceData(result.data);
@@ -230,10 +243,16 @@ export function App() {
           onExportLocalBackup={exportLocalJsonBackupForDownload}
           onExportLocalCsv={exportLocalCsvForDownload}
           onPreviewLocalBackupRestore={previewLocalJsonBackupRestoreFromText}
+          onPreviewRecurringCsvImport={previewRecurringCsvImportFromText}
           onPreviewTransactionCsvImport={previewTransactionCsvImportFromText}
           onConfirmTransactionCsvImport={async (preview) =>
             applyTransactionCsvImportActionResult(
               await confirmTransactionCsvImportAndReload(preview),
+            )
+          }
+          onConfirmRecurringCsvImport={async (preview) =>
+            applyRecurringCsvImportActionResult(
+              await confirmRecurringCsvImportAndReload(preview),
             )
           }
           onResetLocalData={async () =>

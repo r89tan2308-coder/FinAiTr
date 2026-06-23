@@ -10,7 +10,7 @@ The first MVP is limited to:
 - recurring expenses;
 - dashboard analytics;
 - manual local currency conversion settings for USD, RUB, EUR, and GBP;
-- local JSON backup/restore/reset, local CSV export, and local transaction CSV import preview/confirm.
+- local JSON backup/restore/reset, local CSV export, local transaction CSV import preview/confirm, and local recurring expense CSV import preview/confirm.
 
 Real bank APIs, Google Drive, OCR APIs, crypto, brokerage, payment execution, live exchange-rate fetching, and credentials are out of scope.
 
@@ -463,16 +463,61 @@ Add a safe local transaction CSV import flow after export-only behavior is stabl
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` is updated with exact validation results and next phase.
 
-### Phase 8D-B2: Future CSV import expansion
+### Phase 8D-B2: Recurring expense CSV import preview and confirm
 
 ### Goal
 
-Plan any broader CSV import support only after transaction import is stable.
+Add safe local recurring expense CSV import after transaction CSV import is stable.
 
 ### Scope
 
-- Decide whether recurring expense CSV import belongs in MVP follow-up scope.
+- Recurring expenses CSV import only.
+- Browser-local CSV parsing with no backend or external service.
+- Preview before any write to IndexedDB.
+- Required row validation for name, amount, currency, frequency, next due date, and account.
+- Optional category resolution by id or name when supplied.
+- Row-level errors and warnings.
+- Likely duplicate warnings based on name, merchant/description, amount, currency, frequency, and next due date.
+- Explicit confirmation before writing importable rows.
+- Write path stays inside Settings -> financeDataService -> financeRepository -> Dexie.
+- Preserve original imported amount and currency; FX remains display-only.
+- Imported recurring expenses may affect only the separate recurring monthly estimate after confirmation.
+- Imported recurring expenses must not create transactions or change Dashboard monthly transaction spend.
+
+### Out of scope
+
+- Transaction CSV import changes.
+- Receipt item CSV import.
+- Final receipt or receipt draft CSV import.
+- Auto-creating transactions from recurring expenses.
+- CSV bank matching or reconciliation.
+- External integrations, backend services, OCR, AI APIs, live FX, bank APIs, crypto, or brokerage flows.
+
+### Acceptance criteria
+
+- User can select a recurring expenses CSV in Settings and see a preview before writes.
+- Invalid files and invalid rows are rejected before mutation.
+- Row-level errors identify malformed required fields.
+- Duplicate-like rows show warnings, not silent imports.
+- Import requires the strong confirmation phrase.
+- Confirmed valid rows persist as local `rec-csv-*` recurring expenses.
+- Recurring monthly estimate updates only after confirmation.
+- Dashboard monthly transaction spend and Transactions data are unchanged by recurring CSV import.
+- CSV export, transaction CSV import, JSON backup/restore/reset, receipt confirmation, item analytics, recurring CRUD, and FX semantics are unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` is updated with exact validation results and next phase.
+
+### Phase 8D-B3: CSV import hardening and deferred import decisions
+
+### Goal
+
+Review CSV import behavior after transaction and recurring imports are both stable before considering any broader import surface.
+
+### Scope
+
+- Stabilize transaction and recurring CSV import UX and docs.
 - Keep receipt item, final receipt, and receipt draft import deferred until a separate product decision.
+- Decide whether any bank/reconciliation mapping belongs in a later post-MVP phase.
 
 ## Deferred until after first MVP
 

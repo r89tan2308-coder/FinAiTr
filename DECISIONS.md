@@ -485,3 +485,26 @@ Consequences:
 - Receipt item CSV import, final receipt import, receipt draft import, recurring expense CSV import, CSV bank matching, and external integrations remain out of scope.
 - CSV export, JSON backup/restore/reset, receipt confirmation, item analytics, recurring expense behavior, FX semantics, and Dashboard monthly spend semantics remain unchanged except that confirmed imported transactions contribute to normal transaction-derived Dashboard totals.
 - Real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching and payment execution remain out of scope.
+## 2026-06-23: Phase 8D-B2 imports recurring CSV after preview and confirmation
+
+Decision:
+
+Add Settings support for recurring-expense-only CSV import with browser-local parsing, row preview, row-level validation errors, duplicate warnings, and a strong confirmation phrase before any IndexedDB write. The write path stays inside `SettingsPage -> financeDataService -> financeRepository -> Dexie`, and imported rows become new local `rec-csv-*` recurring expenses.
+
+Rationale:
+
+Recurring expenses are planning records with a smaller accounting blast radius than receipts or bank imports, but they still affect Dashboard recurring estimates. Keeping the import as a separate preview/confirm flow prevents malformed CSV files from mutating local recurring data and avoids accidentally creating transactions from subscription records.
+
+Consequences:
+
+- Recurring CSV preview does not mutate IndexedDB.
+- Required import fields are name, amount, currency, frequency, next due date, and account.
+- Category is optional unless supplied; supplied accounts and categories resolve by id or name against the current local snapshot.
+- Likely duplicates are warnings based on name, merchant/description, amount, currency, frequency, and next due date, not automatic rejections.
+- Confirmed imports create new `rec-csv-*` recurring expenses and ignore CSV ids, display amounts, display currency, and timestamps for writes.
+- Original imported amount and currency are preserved; manual FX remains display-only.
+- Confirmed recurring imports can update only the separate recurring monthly estimate after confirmation.
+- Confirmed recurring imports do not create transactions and do not change Dashboard monthly transaction spend.
+- Receipt item CSV import, final receipt import, receipt draft import, CSV bank matching, and external integrations remain out of scope.
+- CSV export, transaction CSV import, JSON backup/restore/reset, receipt confirmation, item analytics, recurring CRUD behavior, FX semantics, and Dashboard monthly spend semantics remain unchanged.
+- Real Gmail/Drive/Docs/OAuth/backend/OCR/AI APIs/live FX/bank APIs/crypto/brokerage/bank matching and payment execution remain out of scope.

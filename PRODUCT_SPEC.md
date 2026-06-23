@@ -24,7 +24,7 @@ The first MVP is limited to local-first personal finance workflows:
 
 The MVP must be useful without bank access, server accounts, cloud storage, or real OCR.
 
-Local data ownership is part of the MVP. The user can export app-owned local data to a versioned JSON backup, restore from a previously exported FinAiTr backup with validation and strong confirmation, export read-only CSV files for transactions, confirmed receipt items, and recurring expenses, and reset this device's local app data back to the baseline seed state with strong confirmation.
+Local data ownership is part of the MVP. The user can export app-owned local data to a versioned JSON backup, restore from a previously exported FinAiTr backup with validation and strong confirmation, export read-only CSV files for transactions, confirmed receipt items, and recurring expenses, import transaction and recurring expense CSV files through preview and strong confirmation, and reset this device's local app data back to the baseline seed state with strong confirmation.
 
 ## Current analytics vs future AI ingestion
 
@@ -114,7 +114,12 @@ The user exports transactions, confirmed receipt items, or recurring expenses fr
 
 The user imports transaction rows from a local CSV file in Settings. The app parses the file in the browser, previews rows before any write, rejects malformed required fields, warns about likely duplicates, and only writes valid transactions after the user types a strong confirmation phrase.
 
-Transaction CSV import stores new local transactions with the original imported amount/currency and keeps display-currency conversion as a derived view. Receipt items, final receipts, receipt drafts, recurring expenses, and external integrations are not imported from CSV in this phase.
+Transaction CSV import stores new local transactions with the original imported amount/currency and keeps display-currency conversion as a derived view. Receipt items, final receipts, receipt drafts, and external integrations are not imported from transaction CSV.
+### CSV recurring import
+
+The user imports recurring expense rows from a local CSV file in Settings. The app parses the file in the browser, previews rows before any write, validates required recurring fields, warns about likely duplicates, and only writes valid recurring expenses after the user types a strong confirmation phrase.
+
+Recurring CSV import stores new local recurring expense records with the original amount/currency. Confirmed recurring imports may update the separate recurring monthly estimate after confirmation, but they do not create transactions and do not change Dashboard monthly transaction spend. Receipt items, final receipts, receipt drafts, transactions, and external integrations are not imported from recurring CSV.
 
 ### Local backup, restore, and reset
 
@@ -133,6 +138,7 @@ The first MVP is successful when:
 - local JSON backup export works without a backend;
 - local CSV export works without a backend;
 - local transaction CSV import previews rows, rejects invalid data, and requires confirmation;
+- local recurring CSV import previews rows, rejects invalid data, warns about duplicates, and requires confirmation;
 - local JSON backup restore rejects invalid files and requires confirmation;
 - local data reset requires confirmation and restores baseline data;
 - local data is not sent to external services;

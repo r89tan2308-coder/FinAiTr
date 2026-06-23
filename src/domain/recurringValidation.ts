@@ -2,6 +2,7 @@ import {
   type CurrencyCode,
   type RecurringExpense,
   type RecurringFrequency,
+  type RecurringStatus,
 } from "./models";
 
 export interface RecurringExpenseInput {
@@ -14,7 +15,7 @@ export interface RecurringExpenseInput {
   name: string;
   nextDueDate: string;
   note?: string;
-  status: "active" | "paused";
+  status: RecurringStatus;
   tags: string[];
 }
 
@@ -28,7 +29,7 @@ export interface RecurringExpenseFormValues {
   name: string;
   nextDueDate: string;
   note: string;
-  status: "active" | "paused";
+  status: RecurringStatus;
   tagsText: string;
 }
 
@@ -44,6 +45,7 @@ export class RecurringExpenseValidationError extends Error {
 }
 
 const validFrequencies: RecurringFrequency[] = ["weekly", "monthly", "yearly"];
+const validStatuses: RecurringStatus[] = ["active", "paused", "cancelled"];
 
 export function emptyRecurringExpenseFormValues(defaults: {
   accountId?: string;
@@ -137,6 +139,10 @@ export function validateRecurringExpenseInput(
 
   if (!validFrequencies.includes(input.frequency)) {
     errors.frequency = "Frequency is invalid.";
+  }
+
+  if (!validStatuses.includes(input.status)) {
+    errors.status = "Status is invalid.";
   }
 
   if (!isValidIsoDate(input.nextDueDate)) {

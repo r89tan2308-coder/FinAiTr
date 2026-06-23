@@ -4,6 +4,10 @@ import {
   type FinanceOverview,
 } from "../domain/financeViews";
 import {
+  buildRecurringCsvImportPreview,
+  type RecurringCsvImportPreview,
+} from "../domain/csvRecurringImport";
+import {
   buildTransactionCsvImportPreview,
   type TransactionCsvImportPreview,
 } from "../domain/csvTransactionImport";
@@ -41,6 +45,7 @@ import {
   exportLocalJsonBackup,
   getReceiptDraftRecordById,
   getFinanceSnapshot,
+  importRecurringCsvRows,
   importTransactionCsvRows,
   listReceiptDraftRecords,
   resetLocalDataToSeed,
@@ -59,6 +64,7 @@ import {
   type ReceiptDraftUpdateInput,
   type ReceiptDraftRecord,
   type RepositoryStorageMode,
+  type RecurringCsvImportRowInput,
   type TransactionCsvImportRowInput,
 } from "../persistence/repositories/financeRepository";
 import {
@@ -74,6 +80,8 @@ export type {
   LocalCsvExportKind,
   LocalJsonBackup,
   LocalJsonRestorePreview,
+  RecurringCsvImportPreview,
+  RecurringCsvImportRowInput,
   TransactionCsvImportPreview,
   TransactionCsvImportRowInput,
   ManualAiExtractionInput,
@@ -166,6 +174,19 @@ export interface LocalBackupExportActionResult {
 export interface LocalCsvExportActionResult {
   csv?: LocalCsvExport;
   errorMessage?: string;
+  ok: boolean;
+}
+
+export interface RecurringCsvImportPreviewActionResult {
+  errorMessage?: string;
+  ok: boolean;
+  preview?: RecurringCsvImportPreview;
+}
+
+export interface RecurringCsvImportActionResult {
+  data?: FinanceDataState;
+  errorMessage?: string;
+  importedCount?: number;
   ok: boolean;
 }
 
@@ -432,6 +453,57 @@ export async function exportLocalCsvForDownload(
   }
 }
 
+export async function previewRecurringCsvImportFromText(
+  rawCsv: string,
+): Promise<RecurringCsvImportPreviewActionResult> {
+  try {
+    const { snapshot } = await getFinanceSnapshot();
+
+    return {
+      ok: true,
+      preview: buildRecurringCsvImportPreview(rawCsv, snapshot),
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Recurring CSV could not be validated.",
+      ok: false,
+    };
+  }
+}
+
+export async function confirmRecurringCsvImportAndReload(
+  preview: RecurringCsvImportPreview,
+): Promise<RecurringCsvImportActionResult> {
+  if (!preview.canImport) {
+    return {
+      errorMessage: "Recurring CSV import requires a valid preview with no row errors.",
+      ok: false,
+    };
+  }
+
+  try {
+    const importedRecurringExpenses = await importRecurringCsvRows(
+      preview.importableRows,
+    );
+
+    return {
+      data: await loadFinanceData(),
+      importedCount: importedRecurringExpenses.length,
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Recurring CSV could not be imported.",
+      ok: false,
+    };
+  }
+}
 export async function previewTransactionCsvImportFromText(
   rawCsv: string,
 ): Promise<TransactionCsvImportPreviewActionResult> {

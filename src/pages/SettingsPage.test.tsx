@@ -12,6 +12,9 @@ import {
   type LocalCsvExportKind,
   type LocalDataResetActionResult,
   type LocalJsonBackup,
+  type RecurringCsvImportActionResult,
+  type RecurringCsvImportPreview,
+  type RecurringCsvImportPreviewActionResult,
   type TransactionCsvImportActionResult,
   type TransactionCsvImportPreview,
   type TransactionCsvImportPreviewActionResult,
@@ -214,6 +217,85 @@ describe("SettingsPage local data tools", () => {
     );
   });
 
+  it("previews a recurring CSV and requires strong confirmation before import", async () => {
+    const user = userEvent.setup();
+    const preview = buildTestRecurringCsvPreview();
+    const onPreviewRecurringCsvImport = vi.fn(
+      async (rawCsv: string): Promise<RecurringCsvImportPreviewActionResult> => {
+        expect(rawCsv).toContain("Preview SaaS");
+
+        return {
+          ok: true,
+          preview,
+        };
+      },
+    );
+    const onConfirmRecurringCsvImport = vi.fn(
+      async (): Promise<RecurringCsvImportActionResult> => ({
+        data: {
+          overview: buildFinanceOverview(seedSnapshot),
+          snapshot: seedSnapshot,
+          status: "ready",
+          storageMode: "indexeddb",
+        },
+        importedCount: 1,
+        ok: true,
+      }),
+    );
+
+    renderSettingsPage({
+      onConfirmRecurringCsvImport,
+      onPreviewRecurringCsvImport,
+    });
+
+    const importButton = screen.getByRole("button", {
+      name: "Import recurring CSV",
+    });
+    const confirmationInput = screen.getByLabelText("Recurring CSV confirmation");
+    const csvFile = new File(
+      [
+        "name,merchant,account_name,category_name,frequency,next_due_date,amount,currency\r\n" +
+          "Preview SaaS,Preview SaaS,Everyday card,Software,monthly,2026-06-28,12,USD\r\n",
+      ],
+      "recurring.csv",
+      { type: "text/csv" },
+    );
+
+    expect(importButton).toBeDisabled();
+
+    await user.upload(screen.getByLabelText("Recurring CSV file"), csvFile);
+
+    await waitFor(() =>
+      expect(onPreviewRecurringCsvImport).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText("Recurring CSV preview")).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 rows, 1 valid, 0 errors, 1 warnings/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Likely duplicate of an existing recurring expense."),
+    ).toBeInTheDocument();
+    expect(importButton).toBeDisabled();
+
+    await user.type(confirmationInput, "IMPORT");
+
+    expect(importButton).toBeDisabled();
+    expect(onConfirmRecurringCsvImport).not.toHaveBeenCalled();
+
+    await user.clear(confirmationInput);
+    await user.type(confirmationInput, "IMPORT RECURRING CSV");
+
+    expect(importButton).toBeEnabled();
+
+    await user.click(importButton);
+
+    expect(onConfirmRecurringCsvImport).toHaveBeenCalledWith(preview);
+    await waitFor(() =>
+      expect(
+        screen.getByText("Imported 1 recurring expenses from CSV."),
+      ).toBeInTheDocument(),
+    );
+  });
   it("requires strong confirmation before reset and reports success", async () => {
     const user = userEvent.setup();
     const onResetLocalData = vi.fn(
@@ -349,9 +431,15 @@ interface RenderSettingsOptions {
   onPreviewLocalBackupRestore?: (
     rawJson: string,
   ) => Promise<LocalBackupRestorePreviewActionResult>;
+  onPreviewRecurringCsvImport?: (
+    rawCsv: string,
+  ) => Promise<RecurringCsvImportPreviewActionResult>;
   onPreviewTransactionCsvImport?: (
     rawCsv: string,
   ) => Promise<TransactionCsvImportPreviewActionResult>;
+  onConfirmRecurringCsvImport?: (
+    preview: RecurringCsvImportPreview,
+  ) => Promise<RecurringCsvImportActionResult>;
   onConfirmTransactionCsvImport?: (
     preview: TransactionCsvImportPreview,
   ) => Promise<TransactionCsvImportActionResult>;
@@ -389,11 +477,31 @@ function renderSettingsPage(options: RenderSettingsOptions = {}) {
           preview: buildTestRestorePreview(),
         }))
       }
+      onPreviewRecurringCsvImport={
+        options.onPreviewRecurringCsvImport ??
+        (async () => ({
+          ok: true,
+          preview: buildTestRecurringCsvPreview(),
+        }))
+      }
       onPreviewTransactionCsvImport={
         options.onPreviewTransactionCsvImport ??
         (async () => ({
           ok: true,
           preview: buildTestTransactionCsvPreview(),
+        }))
+      }
+      onConfirmRecurringCsvImport={
+        options.onConfirmRecurringCsvImport ??
+        (async () => ({
+          data: {
+            overview: buildFinanceOverview(seedSnapshot),
+            snapshot: seedSnapshot,
+            status: "ready",
+            storageMode: "indexeddb",
+          },
+          importedCount: 1,
+          ok: true,
         }))
       }
       onConfirmTransactionCsvImport={
@@ -497,6 +605,71 @@ function buildTestTransactionCsvPreview(): TransactionCsvImportPreview {
           merchant: "Preview Merchant",
         },
         warnings: ["Likely duplicate of an existing transaction."],
+      },
+    ],
+    validRowCount: 1,
+    warningCount: 1,
+  };
+}
+function buildTestRecurringCsvPreview(): RecurringCsvImportPreview {
+  return {
+    canImport: true,
+    duplicateCount: 1,
+    errorCount: 0,
+    fileErrors: [],
+    headers: [
+      "name",
+      "merchant",
+      "account_name",
+      "category_name",
+      "frequency",
+      "next_due_date",
+      "amount",
+      "currency",
+    ],
+    importableRows: [
+      {
+        accountId: "account-card",
+        amount: 12,
+        categoryId: "software",
+        currency: "USD",
+        frequency: "monthly",
+        merchant: "Preview SaaS",
+        name: "Preview SaaS",
+        nextDueDate: "2026-06-28",
+        status: "active",
+        tags: [],
+      },
+    ],
+    rowCount: 1,
+    rows: [
+      {
+        errors: [],
+        input: {
+          accountId: "account-card",
+          amount: 12,
+          categoryId: "software",
+          currency: "USD",
+          frequency: "monthly",
+          merchant: "Preview SaaS",
+          name: "Preview SaaS",
+          nextDueDate: "2026-06-28",
+          status: "active",
+          tags: [],
+        },
+        isDuplicate: true,
+        rowNumber: 2,
+        values: {
+          account_name: "Everyday card",
+          amount: "12",
+          category_name: "Software",
+          currency: "USD",
+          frequency: "monthly",
+          merchant: "Preview SaaS",
+          name: "Preview SaaS",
+          next_due_date: "2026-06-28",
+        },
+        warnings: ["Likely duplicate of an existing recurring expense."],
       },
     ],
     validRowCount: 1,

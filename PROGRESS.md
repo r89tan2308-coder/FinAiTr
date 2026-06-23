@@ -2870,8 +2870,8 @@ Phase 8D-B: implement CSV import preview/confirm with validation and explicit co
 - Added duplicate detection against existing transactions and earlier rows in the same CSV file using date, rounded amount, currency, merchant/description, and account.
 - Added explicit strong confirmation with `IMPORT TRANSACTIONS CSV` before import writes.
 - Added confirmed import write path through Settings -> financeDataService -> financeRepository -> Dexie.
-- Reviewed imported transaction source naming and changed the source value to real local csv_import instead of a mock-specific value.
-- Imported rows create new local csv_import transactions with new 	x-csv-* ids.
+- Reviewed imported transaction source naming and changed the source value to real local `csv_import` instead of a mock-specific value.
+- Imported rows create new local `csv_import` transactions with new `tx-csv-*` ids.
 - Preserved original imported amount and currency; FX remains display-only.
 - Confirmed imported transactions update Dashboard and Transactions only after confirmation.
 - Kept CSV export, JSON backup/restore/reset, receipt confirmation, item analytics, recurring, and FX semantics unchanged.
@@ -2957,3 +2957,93 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8D-B2: decide whether recurring expense CSV import belongs in MVP follow-up scope. Keep receipt item, final receipt, and receipt draft CSV import deferred until a separate product decision.
+## 2026-06-23: Phase 8D-B2 recurring CSV import preview/confirm implemented
+
+### Completed
+
+- Added recurring-expense-only CSV import in Settings.
+- Added browser-local recurring CSV parsing and preview before any IndexedDB write.
+- Added row-level validation for name, amount, currency, frequency, next due date, and account.
+- Added optional category resolution by id or name when supplied.
+- Added file errors, row errors, warnings, and likely duplicate warnings.
+- Added duplicate detection against existing recurring expenses and earlier rows in the same CSV file using name, merchant or note, rounded amount, currency, frequency, and next due date.
+- Added explicit strong confirmation with `IMPORT RECURRING CSV` before recurring import writes.
+- Added confirmed import write path through Settings -> financeDataService -> financeRepository -> Dexie.
+- Imported rows create new local recurring expenses with new `rec-csv-*` ids.
+- Preserved original imported amount and currency; FX remains display-only.
+- Confirmed imported recurring expenses update only the separate recurring monthly estimate after confirmation.
+- Confirmed imported recurring expenses do not create transactions and do not change Dashboard monthly transaction spend.
+- Kept CSV export, transaction CSV import, JSON backup/restore/reset, receipt confirmation, item analytics, recurring CRUD, and FX semantics unchanged.
+- Did not add receipt item CSV import, final receipt import, receipt draft import, bank matching, backend, Gmail/Drive/Docs/OAuth, OCR, AI APIs, live FX, bank APIs, crypto, brokerage, or payment execution.
+
+### Changed files
+
+- `PRODUCT_SPEC.md`
+- `PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/domain/csvRecurringImport.ts`
+- `src/domain/csvRecurringImport.test.ts`
+- `src/domain/recurringValidation.ts`
+- `src/pages/SettingsPage.tsx`
+- `src/pages/SettingsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/services/financeDataService.ts`
+
+### Validation commands and results
+
+```powershell
+npm run test -- src\domain\csvRecurringImport.test.ts src\pages\SettingsPage.test.tsx src\persistence\repositories\financeRepository.test.ts --run
+```
+
+Result: succeeded. 3 test files passed, 39 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed line-ending normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 16 test files passed, 112 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known issues
+
+- `npm run test -- --run` succeeds, but npm prints a warning that `--run` is an unknown npm CLI config in this npm version.
+- Git prints CRLF normalization warnings on this Windows working tree.
+- Receipt item CSV import, final receipt import, receipt draft import, bank matching, and external integrations remain out of scope.
+- Real Gmail, Drive, Docs, OAuth, backend, scheduled sync, OCR API, AI API, bank API, crypto/brokerage, live FX, bank matching, and payment execution remain out of scope.
+
+### Next recommended phase
+
+Phase 8D-B3: stabilize transaction and recurring CSV import UX/docs before deciding whether any broader receipt CSV import or bank/reconciliation mapping belongs in a later post-MVP phase.

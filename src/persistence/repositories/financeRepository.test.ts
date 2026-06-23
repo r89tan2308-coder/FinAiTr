@@ -10,12 +10,14 @@ import { groceryReceiptText } from "../../receipt-parser/fixtures";
 import { mockEmailReceiptText } from "../../receipt-ingestion/fixtures";
 import {
   confirmReceiptDraftAndReload,
+  confirmRecurringCsvImportAndReload,
   confirmTransactionCsvImportAndReload,
   createRecurringExpenseAndReload,
   deleteReceiptDraftAndReload,
   getReceiptDraftById,
   listReceiptDrafts,
   previewLocalJsonBackupRestoreFromText,
+  previewRecurringCsvImportFromText,
   previewTransactionCsvImportFromText,
   saveParsedReceiptDraftAndReload,
   simulateAiReceiptExtractionAndSaveDraftAndReload,
@@ -334,6 +336,99 @@ describe("finance repository transaction CRUD", () => {
     expect(importResult.ok).toBe(false);
     expect(importResult.errorMessage).toBe(
       "Transaction CSV import requires a valid preview with no row errors.",
+    );
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+  });
+  it("previews and confirms recurring CSV import through the service boundary", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const rawCsv =
+      "name,merchant,note,account_name,category_name,status,frequency,next_due_date,amount,currency,tags\r\n" +
+      "CSV Recurring Merchant,CSV Recurring Merchant,Imported recurring,Everyday card,Software,active,monthly,2026-06-28,100,EUR,import; recurring";
+
+    const previewResult = await previewRecurringCsvImportFromText(rawCsv);
+    const afterPreviewSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(previewResult.ok).toBe(true);
+    expect(previewResult.preview).toMatchObject({
+      canImport: true,
+      errorCount: 0,
+      validRowCount: 1,
+    });
+    expect(afterPreviewSnapshot).toEqual(beforeSnapshot);
+
+    const preview = previewResult.preview;
+
+    if (!preview) {
+      throw new Error("Expected recurring CSV preview.");
+    }
+
+    const importResult = await confirmRecurringCsvImportAndReload(preview);
+
+    expect(importResult.ok).toBe(true);
+    expect(importResult.importedCount).toBe(1);
+
+    const afterSnapshot = importResult.data?.snapshot;
+    const afterOverview = importResult.data?.overview;
+    const imported = afterSnapshot?.recurringExpenses.find(
+      (expense) => expense.name === "CSV Recurring Merchant",
+    );
+
+    expect(imported).toMatchObject({
+      accountId: "account-card",
+      amount: 100,
+      categoryId: "software",
+      currency: "EUR",
+      frequency: "monthly",
+      merchant: "CSV Recurring Merchant",
+      name: "CSV Recurring Merchant",
+      nextDueDate: "2026-06-28",
+      note: "Imported recurring",
+      status: "active",
+      tags: ["import", "recurring"],
+    });
+    expect(imported?.id.startsWith("rec-csv-")).toBe(true);
+    expect(afterSnapshot?.recurringExpenses).toHaveLength(
+      beforeSnapshot.recurringExpenses.length + 1,
+    );
+    expect(afterSnapshot?.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterOverview?.monthlySpend).toBe(beforeOverview.monthlySpend);
+    expect(afterOverview?.recurringMonthlyTotal).toBe(
+      roundMoney(
+        beforeOverview.recurringMonthlyTotal +
+          convertMoney(100, "EUR", "RUB", defaultCurrencySettings),
+      ),
+    );
+  });
+
+  it("rejects invalid recurring CSV confirmation without mutating data", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const rawCsv =
+      "name,account_name,frequency,next_due_date,amount,currency\r\n" +
+      ",Unknown,daily,not-a-date,0,";
+
+    const previewResult = await previewRecurringCsvImportFromText(rawCsv);
+
+    expect(previewResult.ok).toBe(true);
+    expect(previewResult.preview).toMatchObject({
+      canImport: false,
+      validRowCount: 0,
+    });
+
+    const preview = previewResult.preview;
+
+    if (!preview) {
+      throw new Error("Expected invalid recurring CSV preview.");
+    }
+
+    const importResult = await confirmRecurringCsvImportAndReload(preview);
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(importResult.ok).toBe(false);
+    expect(importResult.errorMessage).toBe(
+      "Recurring CSV import requires a valid preview with no row errors.",
     );
     expect(afterSnapshot).toEqual(beforeSnapshot);
   });

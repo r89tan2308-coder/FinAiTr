@@ -25,6 +25,9 @@ import {
   type LocalBackupRestorePreviewActionResult,
   type LocalCsvExportActionResult,
   type LocalCsvExportKind,
+  type RecurringCsvImportActionResult,
+  type RecurringCsvImportPreview,
+  type RecurringCsvImportPreviewActionResult,
   type TransactionCsvImportActionResult,
   type TransactionCsvImportPreview,
   type TransactionCsvImportPreviewActionResult,
@@ -40,12 +43,18 @@ interface SettingsPageProps {
   onExportLocalCsv: (
     kind: LocalCsvExportKind,
   ) => Promise<LocalCsvExportActionResult>;
+  onConfirmRecurringCsvImport: (
+    preview: RecurringCsvImportPreview,
+  ) => Promise<RecurringCsvImportActionResult>;
   onConfirmTransactionCsvImport: (
     preview: TransactionCsvImportPreview,
   ) => Promise<TransactionCsvImportActionResult>;
   onPreviewLocalBackupRestore: (
     rawJson: string,
   ) => Promise<LocalBackupRestorePreviewActionResult>;
+  onPreviewRecurringCsvImport: (
+    rawCsv: string,
+  ) => Promise<RecurringCsvImportPreviewActionResult>;
   onPreviewTransactionCsvImport: (
     rawCsv: string,
   ) => Promise<TransactionCsvImportPreviewActionResult>;
@@ -71,6 +80,7 @@ interface CurrencyFormValues {
 const resetConfirmationPhrase = "RESET LOCAL DATA";
 const restoreConfirmationPhrase = "RESTORE LOCAL DATA";
 const transactionCsvImportConfirmationPhrase = "IMPORT TRANSACTIONS CSV";
+const recurringCsvImportConfirmationPhrase = "IMPORT RECURRING CSV";
 const csvExportLabels: Record<LocalCsvExportKind, string> = {
   confirmed_receipt_items: "Confirmed receipt items",
   recurring_expenses: "Recurring expenses",
@@ -83,9 +93,11 @@ export function SettingsPage({
   onExportLocalBackup,
   onExportLocalCsv,
   onPreviewLocalBackupRestore,
+  onPreviewRecurringCsvImport,
   onPreviewTransactionCsvImport,
   onResetLocalData,
   onRestoreLocalBackup,
+  onConfirmRecurringCsvImport,
   onConfirmTransactionCsvImport,
   onUpdateCurrencySettings,
   snapshot,
@@ -108,6 +120,12 @@ export function SettingsPage({
   const [transactionCsvPreview, setTransactionCsvPreview] =
     useState<TransactionCsvImportPreview>();
   const [transactionCsvStatus, setTransactionCsvStatus] = useState<
+    "idle" | "previewing" | "importing"
+  >("idle");
+  const [recurringCsvConfirmation, setRecurringCsvConfirmation] = useState("");
+  const [recurringCsvPreview, setRecurringCsvPreview] =
+    useState<RecurringCsvImportPreview>();
+  const [recurringCsvStatus, setRecurringCsvStatus] = useState<
     "idle" | "previewing" | "importing"
   >("idle");
   const [localDataMessage, setLocalDataMessage] = useState<string>();
@@ -345,6 +363,97 @@ export function SettingsPage({
       setTransactionCsvStatus("idle");
     }
   }
+
+  async function previewRecurringCsvImport(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const selectedFile = event.target.files?.[0];
+
+    setRecurringCsvConfirmation("");
+    setRecurringCsvPreview(undefined);
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    if (!selectedFile) {
+      return;
+    }
+
+    setRecurringCsvStatus("previewing");
+
+    try {
+      const rawCsv = await readTextFile(
+        selectedFile,
+        "Recurring CSV file could not be read.",
+      );
+      const result = await onPreviewRecurringCsvImport(rawCsv);
+
+      if (result.ok && result.preview) {
+        setRecurringCsvPreview(result.preview);
+
+        if (result.preview.fileErrors.length > 0 || result.preview.errorCount > 0) {
+          setLocalDataError("Recurring CSV has errors. Fix the file before import.");
+          return;
+        }
+
+        setLocalDataMessage("Recurring CSV validated. Review rows before import.");
+        return;
+      }
+
+      setLocalDataError(
+        result.errorMessage ?? "Recurring CSV file could not be validated.",
+      );
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error
+          ? error.message
+          : "Recurring CSV file could not be validated.",
+      );
+    } finally {
+      setRecurringCsvStatus("idle");
+    }
+  }
+
+  async function importRecurringCsv(): Promise<void> {
+    if (!recurringCsvPreview?.canImport) {
+      setLocalDataError("Select a valid recurring CSV file before import.");
+      setLocalDataMessage(undefined);
+      return;
+    }
+
+    if (recurringCsvConfirmation !== recurringCsvImportConfirmationPhrase) {
+      setLocalDataError(`Type ${recurringCsvImportConfirmationPhrase} before import.`);
+      setLocalDataMessage(undefined);
+      return;
+    }
+
+    setRecurringCsvStatus("importing");
+    setLocalDataError(undefined);
+    setLocalDataMessage(undefined);
+
+    try {
+      const result = await onConfirmRecurringCsvImport(recurringCsvPreview);
+
+      if (result.ok) {
+        setRecurringCsvConfirmation("");
+        setRecurringCsvPreview(undefined);
+        setLocalDataMessage(
+          `Imported ${result.importedCount ?? 0} recurring expenses from CSV.`,
+        );
+        return;
+      }
+
+      setLocalDataError(result.errorMessage ?? "Recurring CSV could not be imported.");
+    } catch (error) {
+      setLocalDataError(
+        error instanceof Error
+          ? error.message
+          : "Recurring CSV could not be imported.",
+      );
+    } finally {
+      setRecurringCsvStatus("idle");
+    }
+  }
+
   async function previewRestoreBackup(
     event: ChangeEvent<HTMLInputElement>,
   ): Promise<void> {
@@ -737,6 +846,102 @@ export function SettingsPage({
               </button>
             </div>
 
+            <div className="settings-action-block">
+              <strong>CSV recurring import</strong>
+              <p className="settings-note">
+                Preview recurring expense rows from a local CSV file before writing
+                them to IndexedDB.
+              </p>
+              <label className="field">
+                <span>Recurring CSV file</span>
+                <input
+                  accept=".csv,text/csv"
+                  aria-label="Recurring CSV file"
+                  disabled={recurringCsvStatus !== "idle"}
+                  onChange={(event) => void previewRecurringCsvImport(event)}
+                  type="file"
+                />
+              </label>
+
+              {recurringCsvPreview && (
+                <div className="settings-restore-preview" role="status">
+                  <strong>Recurring CSV preview</strong>
+                  <span>
+                    {recurringCsvPreview.rowCount} rows, {recurringCsvPreview.validRowCount}{" "}
+                    valid, {recurringCsvPreview.errorCount} errors,{" "}
+                    {recurringCsvPreview.warningCount} warnings
+                  </span>
+                  <div className="settings-preview-grid">
+                    <span>Importable {recurringCsvPreview.importableRows.length}</span>
+                    <span>Duplicates {recurringCsvPreview.duplicateCount}</span>
+                    <span>File errors {recurringCsvPreview.fileErrors.length}</span>
+                    <span>Columns {recurringCsvPreview.headers.length}</span>
+                  </div>
+                  {recurringCsvPreview.fileErrors.length > 0 && (
+                    <ul>
+                      {recurringCsvPreview.fileErrors.map((error) => (
+                        <li key={error}>{error}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="settings-import-rows">
+                    {recurringCsvPreview.rows.map((row) => (
+                      <article
+                        className={importPreviewRowClassName(row)}
+                        key={row.rowNumber}
+                      >
+                        <strong>Row {row.rowNumber}</strong>
+                        <span>{formatRecurringCsvImportRowSummary(row)}</span>
+                        {row.errors.length > 0 && (
+                          <ul aria-label={`Recurring row ${row.rowNumber} errors`}>
+                            {row.errors.map((error) => (
+                              <li key={error}>{error}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {row.warnings.length > 0 && (
+                          <ul aria-label={`Recurring row ${row.rowNumber} warnings`}>
+                            {row.warnings.map((warning) => (
+                              <li key={warning}>{warning}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <label className="field">
+                <span>Recurring CSV confirmation</span>
+                <input
+                  aria-label="Recurring CSV confirmation"
+                  onChange={(event) => {
+                    setRecurringCsvConfirmation(event.target.value);
+                    setLocalDataError(undefined);
+                    setLocalDataMessage(undefined);
+                  }}
+                  placeholder={recurringCsvImportConfirmationPhrase}
+                  value={recurringCsvConfirmation}
+                />
+              </label>
+              <button
+                className="primary-button"
+                disabled={
+                  recurringCsvStatus !== "idle" ||
+                  !recurringCsvPreview?.canImport ||
+                  recurringCsvConfirmation !== recurringCsvImportConfirmationPhrase ||
+                  storageMode !== "indexeddb"
+                }
+                onClick={() => void importRecurringCsv()}
+                type="button"
+              >
+                <Upload aria-hidden="true" size={18} />
+                {recurringCsvStatus === "importing"
+                  ? "Importing"
+                  : "Import recurring CSV"}
+              </button>
+            </div>
             <div className="settings-action-block settings-danger-block">
               <div className="settings-warning-title">
                 <Upload aria-hidden="true" size={20} />
@@ -890,9 +1095,29 @@ function formatCsvImportRowSummary(
   ].join(" - ");
 }
 
-function importPreviewRowClassName(
-  row: TransactionCsvImportPreview["rows"][number],
+function formatRecurringCsvImportRowSummary(
+  row: RecurringCsvImportPreview["rows"][number],
 ): string {
+  if (!row.input) {
+    return "Not importable";
+  }
+
+  return [
+    row.input.name,
+    `${row.input.amount} ${row.input.currency}`,
+    row.input.frequency,
+    row.input.nextDueDate,
+    row.input.accountId,
+    row.input.categoryId,
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
+function importPreviewRowClassName(row: {
+  errors: string[];
+  warnings: string[];
+}): string {
   if (row.errors.length > 0) {
     return "settings-import-row settings-import-row-error";
   }

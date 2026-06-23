@@ -10,6 +10,7 @@ import {
   type LocalCsvExport,
   type LocalCsvExportKind,
 } from "../../domain/csvExport";
+import { type RecurringCsvImportRowInput } from "../../domain/csvRecurringImport";
 import { type TransactionCsvImportRowInput } from "../../domain/csvTransactionImport";
 import {
   type Category,
@@ -48,6 +49,7 @@ export type RepositoryStorageMode = "indexeddb" | "seed_fallback";
 export type {
   LocalCsvExport,
   LocalCsvExportKind,
+  RecurringCsvImportRowInput,
   TransactionCsvImportRowInput,
 };
 
@@ -641,6 +643,67 @@ export async function addRecurringExpense(
   await financeDb.recurringExpenses.put(recurringExpense);
 
   return recurringExpense;
+}
+
+export async function importRecurringCsvRows(
+  inputs: RecurringCsvImportRowInput[],
+): Promise<RecurringExpense[]> {
+  assertIndexedDbWritable("recurring CSV import");
+
+  if (inputs.length === 0) {
+    throw new Error("Select at least one valid recurring expense row before import.");
+  }
+
+  inputs.forEach(assertValidRecurringExpenseInput);
+  await ensureSeedData();
+
+  return financeDb.transaction(
+    "rw",
+    [financeDb.accounts, financeDb.categories, financeDb.recurringExpenses],
+    async () => {
+      const [accounts, categories] = await Promise.all([
+        financeDb.accounts.toArray(),
+        financeDb.categories.toArray(),
+      ]);
+      const activeAccountIds = new Set(
+        accounts
+          .filter((account) => !account.isArchived)
+          .map((account) => account.id),
+      );
+      const categoryIds = new Set(categories.map((category) => category.id));
+      const now = new Date().toISOString();
+      const recurringExpenses = inputs.map((input): RecurringExpense => {
+        if (!activeAccountIds.has(input.accountId)) {
+          throw new Error(`CSV import account is not available: ${input.accountId}.`);
+        }
+
+        if (input.categoryId && !categoryIds.has(input.categoryId)) {
+          throw new Error(`CSV import category is not available: ${input.categoryId}.`);
+        }
+
+        return {
+          id: createRecordId("rec-csv"),
+          accountId: normalizeRequiredText(input.accountId, "Account is required."),
+          amount: roundMoney(input.amount),
+          categoryId: normalizeOptionalText(input.categoryId),
+          createdAt: now,
+          currency: normalizeRequiredText(input.currency, "Currency is required."),
+          frequency: input.frequency,
+          merchant: normalizeOptionalText(input.merchant),
+          name: normalizeRequiredText(input.name, "Name is required."),
+          nextDueDate: input.nextDueDate,
+          note: normalizeOptionalText(input.note),
+          status: input.status,
+          tags: [...input.tags],
+          updatedAt: now,
+        };
+      });
+
+      await financeDb.recurringExpenses.bulkAdd(recurringExpenses);
+
+      return recurringExpenses;
+    },
+  );
 }
 
 export async function updateRecurringExpense(
