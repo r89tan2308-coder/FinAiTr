@@ -807,6 +807,43 @@ Plan the privacy, consent, and user-facing disclosures required before any futur
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
 
+## Phase 9F: Manual Drive/Docs selected-file import prototype
+
+### Goal
+
+Add a local-only selected-file import path that models a future Google Drive/Docs import without connecting to Google, storing credentials, or changing the receipt review/confirm accounting boundary.
+
+### Scope
+
+- Add a Receipts screen local Drive/Docs file section for user-selected text-like files.
+- Support local `.txt`, `.md`, `.html`, and `.json` files that already contain safe receipt-like text.
+- Read selected file text in the browser only through the local file input.
+- Convert the selected file into a Drive/Docs-like receipt source candidate with source kind, file name/title, pseudo external id, content hash, modified time, fetched/imported time, and raw text evidence.
+- Route the candidate through the existing local mock AI extraction provider and runtime extraction validation.
+- Save receipt drafts and draft items only through the existing service/repository path.
+- Preserve source metadata on created drafts.
+- Reject duplicate selected files by provider kind plus pseudo source id or content hash before mutation.
+- Show file preview/status/errors before draft creation where practical.
+- Add unit, service, and Receipts page tests for success, unsupported file type, invalid extraction rejection, duplicate detection, metadata preservation, and unchanged Dashboard before confirmation.
+- Update Google integration, product, architecture, decision, QA, and progress docs.
+
+### Non-goals
+
+- No real Google Drive or Google Docs API calls.
+- No OAuth, Google Identity Services, Google API package, backend server, token storage, refresh handling, scheduled sync, provider revocation call, or provider data deletion runtime.
+- No real AI API calls or OCR.
+- No changes to receipt confirmation, analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, or Dashboard semantics.
+- No broad Drive scan, Gmail import, or provider sync.
+
+### Acceptance
+
+- A user can select a supported local text-like file on the Receipts screen and import it as a Google Drive/Docs-like source into a validated editable receipt draft.
+- Selected-file metadata includes source kind, file name/title, pseudo source id, content hash, modified time when available, fetched/imported time, extraction provider metadata, and raw text evidence.
+- Unsupported file types, empty files, duplicate selected files, and invalid extraction output are rejected before partial draft writes.
+- Dashboard, Transactions, final Receipts, receipt items, recurring expenses, FX settings, JSON backup/restore, and CSV behavior remain unchanged until the user reviews and confirms a draft.
+- Tests cover valid selected-file import, unsupported type, invalid extraction rejection, duplicate detection, metadata preservation, and Dashboard unchanged before confirmation.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
 ## Deferred until after first MVP
 
 - Real OCR provider.

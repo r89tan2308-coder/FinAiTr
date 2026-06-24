@@ -10,11 +10,15 @@ import {
 } from "../data/seedData";
 import { defaultCurrencySettings } from "../domain/currencySettings";
 import { type ReceiptDraft, type ReceiptDraftItem } from "../domain/models";
-import { mockEmailReceiptText } from "../receipt-ingestion/fixtures";
+import {
+  mockDocumentReceiptText,
+  mockEmailReceiptText,
+} from "../receipt-ingestion/fixtures";
 import { groceryReceiptText, mismatchReceiptText } from "../receipt-parser/fixtures";
 import { type ParsedReceiptDraft } from "../receipt-parser/types";
 import {
   type ManualAiExtractionInput,
+  type LocalDriveDocsSelectedFileInput,
   type MockGoogleReceiptSourceSummary,
   type ReceiptDraftActionResult,
   type ReceiptDraftConfirmationInput,
@@ -126,6 +130,45 @@ const mockGoogleDraft: ReceiptDraft = {
   warnings: ["Mock Google Drive source. No real Google API was called."],
 };
 
+const localSelectedFileDraft: ReceiptDraft = {
+  ...savedDraft,
+  confidence: 0.82,
+  currency: "USD",
+  date: "2026-06-05",
+  id: "receipt-draft-local-file-test",
+  merchant: "Cloud Tools",
+  rawText: mockDocumentReceiptText,
+  source: "ai_extraction_mock",
+  sourceMetadata: {
+    contentHash: "fnv1a-local01",
+    fetchedAt: "2026-06-24T12:00:00.000Z",
+    kind: "google_drive",
+    modifiedAt: "2026-06-05T09:30:00.000Z",
+    providerName: "local-mock-ai-extractor",
+    sourceId: "local-selected-file-fnv1a-local01",
+    sourceProviderName: "local-drive-docs-selected-file-provider",
+    title: "software-receipt.md",
+  },
+  total: 12,
+  warnings: [
+    "Local Google Drive selected-file prototype. No Google API was called.",
+  ],
+};
+
+const localSelectedFileDraftItem: ReceiptDraftItem = {
+  ...savedDraftItem,
+  categoryId: "software",
+  confidence: 0.76,
+  draftId: localSelectedFileDraft.id,
+  id: "receipt-draft-item-local-file-test",
+  normalizedName: "pro plan",
+  quantity: 1,
+  rawLine: "Pro plan 1 x 12.00",
+  rawName: "Pro plan",
+  tags: ["software"],
+  totalPrice: 12,
+  unitPrice: 12,
+};
 const mockGoogleDraftItem: ReceiptDraftItem = {
   ...savedDraftItem,
   categoryId: "medicine",
@@ -174,6 +217,9 @@ interface RenderReceiptsPageOptions {
   onIngestMockGoogleSource?: (
     candidateId: string,
   ) => Promise<ReceiptDraftActionResult>;
+  onImportLocalDriveDocsSelectedFile?: (
+    input: LocalDriveDocsSelectedFileInput,
+  ) => Promise<ReceiptDraftActionResult>;
   onSaveDraft?: (draft: ParsedReceiptDraft) => Promise<ReceiptDraftActionResult>;
   onSimulateAiExtraction?: (
     input: ManualAiExtractionInput,
@@ -197,6 +243,10 @@ function renderReceiptsPage(options: RenderReceiptsPageOptions = {}) {
       onDeleteDraft={options.onDeleteDraft ?? (async () => ({ ok: true }))}
       onIngestMockGoogleSource={
         options.onIngestMockGoogleSource ?? (async () => ({ ok: true }))
+      }
+      onImportLocalDriveDocsSelectedFile={
+        options.onImportLocalDriveDocsSelectedFile ??
+        (async () => ({ ok: true }))
       }
       onSaveDraft={options.onSaveDraft ?? (async () => ({ ok: true }))}
       onSimulateAiExtraction={
@@ -395,6 +445,47 @@ describe("ReceiptsPage parser preview", () => {
     expect(screen.getAllByLabelText("Raw receipt text")[1]).toHaveValue(
       mockEmailReceiptText,
     );
+  });
+
+  it("previews and imports a selected local Drive/Docs file", async () => {
+    const user = userEvent.setup();
+    const lastModified = Date.parse("2026-06-05T09:30:00.000Z");
+    const onImportLocalDriveDocsSelectedFile = vi.fn(
+      async (): Promise<ReceiptDraftActionResult> => ({
+        draft: {
+          draft: localSelectedFileDraft,
+          items: [localSelectedFileDraftItem],
+        },
+        ok: true,
+      }),
+    );
+    const file = new File([mockDocumentReceiptText], "software-receipt.md", {
+      lastModified,
+      type: "text/markdown",
+    });
+
+    renderReceiptsPage({ onImportLocalDriveDocsSelectedFile });
+
+    await user.upload(screen.getByLabelText("Drive or Docs text file"), file);
+
+    expect(await screen.findByText("software-receipt.md")).toBeInTheDocument();
+    expect(screen.getByText(/text characters ready/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Import selected file" }));
+
+    expect(onImportLocalDriveDocsSelectedFile).toHaveBeenCalledWith({
+      fileName: "software-receipt.md",
+      lastModified,
+      rawText: mockDocumentReceiptText,
+      sourceKind: "google_drive",
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Selected Drive/Docs file saved as draft for review.",
+    );
+    expect(screen.getByRole("heading", { name: "Cloud Tools" })).toBeVisible();
+    expect(
+      screen.getByText(/Google Drive · software-receipt\.md/),
+    ).toBeInTheDocument();
   });
 
   it("ingests a selected mock Google source and opens review", async () => {

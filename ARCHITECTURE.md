@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 9D OAuth/backend decision record and disabled backend skeleton on top of the Phase 9C disabled Google readiness skeleton, Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status. Phase 9D records the backend-required OAuth/security decision, adds disabled backend endpoint definitions and a no-op backend client. Phase 9E adds privacy, consent, and user-facing disclosure planning. The app still adds no real Google API, OAuth flow, backend server, scheduled sync, token storage, or real AI calls.
+The repository now has a Phase 9D OAuth/backend decision record and disabled backend skeleton on top of the Phase 9C disabled Google readiness skeleton, Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status. Phase 9D records the backend-required OAuth/security decision, adds disabled backend endpoint definitions and a no-op backend client. Phase 9E adds privacy, consent, and user-facing disclosure planning. Phase 9F adds a local-only manual Drive/Docs selected-file import prototype that reads supported user-selected text-like files in the browser and saves validated receipt drafts only. The app still adds no real Google API, OAuth flow, backend server, scheduled sync, token storage, OCR, or real AI calls.
 
 Existing files:
 
@@ -39,6 +39,7 @@ Existing files:
 - Phase 9C Google readiness skeleton with `.env.example` placeholders, disabled-by-default feature flags, a status model, disabled real-provider placeholders, and a Settings planned/not connected status.
 - Phase 9D Google OAuth/backend decision and disabled backend skeleton with no-op endpoint definitions, backend env flags, and tests proving no network or credential persistence behavior.
 - Phase 9E Google privacy, consent, and user-facing disclosure planning for future provider access.
+- Phase 9F local-only manual Drive/Docs selected-file import prototype for text-like files.
 
 Still missing by design until later phases:
 
@@ -890,7 +891,7 @@ Phase 9D invariants:
 - Placeholder config exposes booleans and missing env names, not configured client id, redirect URI, or backend URL values.
 - No authorization responses, access tokens, refresh tokens, provider sessions, client secrets, sync cursors, provider cookies, or Google source data are stored in IndexedDB, JSON backups, CSV exports, source metadata, tests, logs, or committed config.
 
-Existing product behavior remains unchanged. Phase 9B mock Google sources remain the only Google-like receipt source behavior in the runtime, and they still create receipt drafts only.
+Existing product behavior remains unchanged for real provider access. Phase 9B mock Google sources and Phase 9F local selected-file Drive/Docs import remain the only Google-like receipt source behavior in the runtime, and both create receipt drafts only.
 
 
 ## Phase 9E Google privacy and consent planning
@@ -909,6 +910,41 @@ Future Google connection copy must explain:
 - Disconnect must revoke provider access where possible and delete provider credential state, cached candidates, sync cursors, and diagnostics; local finance records remain unless separately deleted.
 
 Privacy and consent gates stay in `GOOGLE_INTEGRATION_PLAN.md`. They must be satisfied before any future phase adds real OAuth consent, provider reads, backend token handling, scheduled sync, or AI extraction provider calls.
+
+## Phase 9F Local Drive/Docs Selected-File Import
+
+Phase 9F implements the frontend-only exception documented in Phase 9D as a local prototype. It does not call Google Drive, Google Docs, OAuth, a backend, OCR, or a real AI provider.
+
+Runtime flow:
+
+```text
+ReceiptsPage local Drive/Docs file input
+  -> browser reads selected file text with File.text/FileReader
+  -> localDriveDocsSelectedFileSource builds a google_drive/google_docs candidate
+  -> duplicate check against local receipt drafts and final receipts
+  -> mockAiReceiptExtractionProvider
+  -> receiptExtractionValidation
+  -> financeRepository saveReceiptDraft
+  -> loadFinanceData
+  -> existing draft review UI
+```
+
+Implemented files:
+
+- `src/receipt-ingestion/localDriveDocsSelectedFileSource.ts`
+- `src/receipt-ingestion/localDriveDocsSelectedFileSource.test.ts`
+- `src/receipt-ingestion/sourceTextHash.ts`
+- `src/services/financeDataService.ts`
+- `src/pages/ReceiptsPage.tsx`
+
+Supported selected files are `.txt`, `.md`, `.markdown`, `.html`, `.htm`, and `.json`. The browser reads the selected file locally. HTML tags are stripped locally before extraction. JSON is parsed locally and uses `rawText`, `receiptText`, `text`, or `content` when present, otherwise the parsed JSON is stringified as local text evidence.
+
+Selected-file source metadata is stored only on receipt drafts/final receipts as normal receipt evidence: source kind `google_drive` or `google_docs`, file name/title, pseudo `local-selected-file-*` source id, stable content hash, modified time when the browser provides it, fetched/imported time, source provider name, extraction provider name, model name, and extraction timestamp. Raw selected text is stored as the receipt draft raw text, matching the existing receipt evidence model.
+
+Duplicate detection rejects a selected file before extraction or mutation when an existing draft or confirmed receipt has the same source kind plus pseudo source id or content hash. Rejections do not overwrite existing drafts, receipts, linked transactions, analytics, recurring expenses, FX settings, JSON backup/restore state, or CSV behavior.
+
+Saved output remains draft-only. Phase 9F writes only `receiptDrafts` and `receiptDraftItems` through the existing repository path. It does not create transactions, final receipts, final receipt items, recurring expenses, FX updates, JSON backup/restore changes, CSV changes, or Dashboard updates before the existing human review and explicit confirmation flow.
+
 ## AI receipt extraction contract and simulator
 
 `ReceiptExtractionProvider` is the future boundary between raw receipt text and structured draft data:

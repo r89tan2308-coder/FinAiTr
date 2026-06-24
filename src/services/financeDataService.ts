@@ -29,6 +29,11 @@ import {
   mockAiReceiptExtractionProvider,
 } from "../receipt-ingestion/manualAiExtractionSimulator";
 import {
+  buildLocalDriveDocsSelectedFileCandidate,
+  type LocalDriveDocsSelectedFileInput,
+  type LocalDriveDocsSelectedFileSourceKind,
+} from "../receipt-ingestion/localDriveDocsSelectedFileSource";
+import {
   getMockGoogleReceiptSourceCandidate,
   listMockGoogleReceiptSourceSummaries,
   type MockGoogleReceiptSourceSummary,
@@ -95,6 +100,8 @@ export type {
   TransactionCsvImportPreview,
   TransactionCsvImportRowInput,
   ManualAiExtractionInput,
+  LocalDriveDocsSelectedFileInput,
+  LocalDriveDocsSelectedFileSourceKind,
   MockGoogleReceiptSourceSummary,
   ReceiptDraftConfirmationInput,
   ReceiptDraftConfirmationRecord,
@@ -239,6 +246,10 @@ interface MockGoogleReceiptSourceIngestionOptions {
   sourceProviders?: readonly ReceiptTextSourceProvider[];
 }
 
+interface LocalDriveDocsSelectedFileIngestionOptions {
+  extractionProvider?: ReceiptExtractionProvider;
+}
+
 export async function createManualTransactionAndReload(
   input: TransactionInput,
 ): Promise<TransactionActionResult> {
@@ -351,6 +362,57 @@ export async function simulateAiReceiptExtractionAndSaveDraftAndReload(
 
 export function getMockGoogleReceiptSourceSummaries(): MockGoogleReceiptSourceSummary[] {
   return listMockGoogleReceiptSourceSummaries();
+}
+
+export async function importLocalDriveDocsSelectedFileAndReload(
+  input: LocalDriveDocsSelectedFileInput,
+  options: LocalDriveDocsSelectedFileIngestionOptions = {},
+): Promise<ReceiptDraftActionResult> {
+  try {
+    const candidate = buildLocalDriveDocsSelectedFileCandidate(input);
+    const { snapshot } = await getFinanceSnapshot();
+    const duplicateMessage = findDuplicateReceiptSource(
+      candidate,
+      snapshot,
+      `Local ${formatSourceKind(candidate.source.kind)} selected file`,
+    );
+
+    if (duplicateMessage) {
+      throw new Error(duplicateMessage);
+    }
+
+    const categoryHints = categoriesToExtractionHints(snapshot.categories);
+    const extractionProvider =
+      options.extractionProvider ?? mockAiReceiptExtractionProvider;
+    const extraction = validateReceiptExtractionResult(
+      await extractionProvider.extractReceiptDraft(
+        buildReceiptExtractionRequest(candidate, categoryHints),
+      ),
+      {
+        categoryIds: snapshot.categories.map((category) => category.id),
+        source: candidate.source,
+      },
+    );
+    const draft = await saveReceiptDraft(
+      aiExtractionResultToReceiptDraftInput(candidate, extraction),
+    );
+
+    return {
+      candidate,
+      data: await loadFinanceData(),
+      draft,
+      extraction,
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Selected Drive/Docs file could not be imported.",
+      ok: false,
+    };
+  }
 }
 
 export async function ingestMockGoogleReceiptSourceAndReload(
@@ -825,18 +887,19 @@ function aiExtractionResultToReceiptDraftInput(
 function findDuplicateReceiptSource(
   candidate: ReceiptTextCandidate,
   snapshot: FinanceSnapshot,
+  sourceLabel = `Mock ${formatSourceKind(candidate.source.kind)} source`,
 ): string | undefined {
   const { contentHash, kind, sourceId } = candidate.source;
 
   for (const draft of snapshot.receiptDrafts) {
     if (isDuplicateSourceMetadata(draft.sourceMetadata, kind, sourceId, contentHash)) {
-      return `Mock ${formatSourceKind(kind)} source has already been saved as receipt draft "${draft.merchant ?? draft.id}".`;
+      return `${sourceLabel} has already been saved as receipt draft "${draft.merchant ?? draft.id}".`;
     }
   }
 
   for (const receipt of snapshot.receipts) {
     if (isDuplicateSourceMetadata(receipt.sourceMetadata, kind, sourceId, contentHash)) {
-      return `Mock ${formatSourceKind(kind)} source has already been confirmed as receipt "${receipt.merchant ?? receipt.id}".`;
+      return `${sourceLabel} has already been confirmed as receipt "${receipt.merchant ?? receipt.id}".`;
     }
   }
 

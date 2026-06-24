@@ -453,10 +453,13 @@ Phase 9E: Privacy, consent, and user-facing disclosure planning.
 
 Phase 9F: Manual Drive/Docs selected-file import prototype.
 
-- Use the narrowest selected-file flow, preferably `drive.file`.
-- Import selected document/file text into receipt candidates.
-- Save validated drafts only.
-- No broad Drive scan, scheduled sync, Gmail import, backend credential persistence, or provider data sync unless the Phase 9D backend and Phase 9E consent gates require and validate those pieces.
+- Implemented as a local-only browser file-input prototype, not as real Google Drive or Docs access.
+- Supports selected `.txt`, `.md`, `.html`, and `.json` text-like files that already contain safe receipt-like text.
+- Reads selected file text in the browser only and maps it to a Drive/Docs-like receipt candidate with file name/title, pseudo source id, content hash, modified time, fetched/imported time, source kind, and raw text evidence.
+- Routes selected file text through the existing local mock AI extraction provider and runtime extraction validation.
+- Saves validated receipt drafts and draft items only, preserving source metadata on drafts.
+- Rejects duplicate selected files by source id or content hash before mutation.
+- No real Drive/Docs API calls, OAuth, broad Drive scan, scheduled sync, Gmail import, backend credential persistence, token storage, provider data sync, OCR, or real AI API calls.
 
 Phase 9G: Gmail manual receipt import planning/prototype.
 

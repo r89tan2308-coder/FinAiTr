@@ -671,3 +671,23 @@ Consequences:
 - Google user data must be used only for visible receipt import features; it must not be sold, used for ads, used for creditworthiness/lending, or exposed to human review without explicit user agreement or a narrow security/legal need.
 - Future implementation phases must satisfy the OAuth consent checklist in `GOOGLE_INTEGRATION_PLAN.md` before adding real provider access.
 - No runtime behavior, OAuth flow, Google API call, backend server, token storage, scheduled sync, or AI provider call is added in Phase 9E.
+
+## 2026-06-24: Phase 9F selected-file Drive/Docs import stays local-only
+
+Decision:
+
+Add a manual Drive/Docs selected-file import prototype that reads supported local text-like files in the browser, maps them to Google Drive/Docs-like source metadata, validates local mock extraction output, and saves receipt drafts only.
+
+Rationale:
+
+The product needs a usable selected-file intake path before real Google provider access. A local browser file-input prototype proves the Drive/Docs source metadata, duplicate detection, extraction validation, and draft/review/confirm boundary without OAuth, Google APIs, backend credential handling, restricted scopes, or provider data movement.
+
+Consequences:
+
+- Supported local selected-file extensions are `.txt`, `.md`, `.markdown`, `.html`, `.htm`, and `.json`.
+- The browser reads selected file text locally; no Google Drive, Google Docs, OAuth, backend, token storage, scheduled sync, OCR, or real AI provider call is added.
+- Selected files are treated as `google_drive` or `google_docs` receipt text candidates with file name/title, pseudo source id, content hash, modified/imported timestamps, and raw text evidence.
+- Duplicate selected files are rejected by source id or content hash before extraction or IndexedDB mutation.
+- Selected-file ingestion writes only receipt drafts and draft items after extraction validation passes.
+- Dashboard impact still requires human review and explicit receipt confirmation.
+- Receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.

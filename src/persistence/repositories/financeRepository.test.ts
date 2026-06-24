@@ -7,7 +7,10 @@ import {
 } from "../../domain/currencySettings";
 import { buildFinanceOverview } from "../../domain/financeViews";
 import { groceryReceiptText } from "../../receipt-parser/fixtures";
-import { mockEmailReceiptText } from "../../receipt-ingestion/fixtures";
+import {
+  mockDocumentReceiptText,
+  mockEmailReceiptText,
+} from "../../receipt-ingestion/fixtures";
 import { type ReceiptExtractionProvider } from "../../receipt-ingestion/types";
 import {
   confirmReceiptDraftAndReload,
@@ -18,6 +21,7 @@ import {
   getMockGoogleReceiptSourceSummaries,
   getReceiptDraftById,
   ingestMockGoogleReceiptSourceAndReload,
+  importLocalDriveDocsSelectedFileAndReload,
   listReceiptDrafts,
   previewLocalJsonBackupRestoreFromText,
   previewRecurringCsvImportFromText,
@@ -1499,6 +1503,157 @@ describe("finance repository transaction CRUD", () => {
     expect(afterSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
   });
 
+  it("imports a selected local Drive/Docs file as a validated draft without dashboard impact", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const lastModified = Date.parse("2026-06-05T09:30:00.000Z");
+
+    const result = await importLocalDriveDocsSelectedFileAndReload({
+      fileName: "software-receipt.md",
+      lastModified,
+      rawText: mockDocumentReceiptText,
+      sourceKind: "google_docs",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.candidate?.source).toMatchObject({
+      contentHash: expect.stringMatching(/^fnv1a-[0-9a-f]{8}$/),
+      kind: "google_docs",
+      modifiedAt: "2026-06-05T09:30:00.000Z",
+      sourceId: expect.stringMatching(/^local-selected-file-fnv1a-[0-9a-f]{8}$/),
+      sourceProviderName: "local-drive-docs-selected-file-provider",
+      title: "software-receipt.md",
+    });
+    expect(result.candidate?.warnings).toEqual(
+      expect.arrayContaining([
+        "Local Google Docs selected-file prototype. No Google API was called.",
+      ]),
+    );
+    expect(result.extraction).toMatchObject({
+      modelName: "local-heuristic-simulator",
+      providerName: "local-mock-ai-extractor",
+    });
+    expect(result.draft?.draft).toMatchObject({
+      merchant: "Cloud Tools",
+      rawText: mockDocumentReceiptText,
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        contentHash: result.candidate?.source.contentHash,
+        fetchedAt: expect.any(String),
+        kind: "google_docs",
+        modifiedAt: "2026-06-05T09:30:00.000Z",
+        modelName: "local-heuristic-simulator",
+        providerName: "local-mock-ai-extractor",
+        sourceId: result.candidate?.source.sourceId,
+        sourceProviderName: "local-drive-docs-selected-file-provider",
+        title: "software-receipt.md",
+      },
+      status: "draft",
+      total: 12,
+    });
+    expect(result.draft?.items.length).toBeGreaterThan(0);
+    expect(result.data?.snapshot.receiptDrafts).toHaveLength(
+      beforeSnapshot.receiptDrafts.length + 1,
+    );
+    expect(result.data?.snapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(result.data?.snapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(result.data?.snapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+    expect(result.data?.overview).toEqual(beforeOverview);
+  });
+
+  it("rejects duplicate selected local Drive/Docs files by content hash", async () => {
+    const first = await importLocalDriveDocsSelectedFileAndReload({
+      fileName: "software-receipt.md",
+      rawText: mockDocumentReceiptText,
+      sourceKind: "google_drive",
+    });
+    const beforeDuplicateSnapshot = (await getFinanceSnapshot()).snapshot;
+    const duplicate = await importLocalDriveDocsSelectedFileAndReload({
+      fileName: "renamed-software-receipt.txt",
+      rawText: mockDocumentReceiptText,
+      sourceKind: "google_drive",
+    });
+    const afterDuplicateSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(first.ok).toBe(true);
+    expect(duplicate.ok).toBe(false);
+    expect(duplicate.errorMessage).toContain(
+      "Local Google Drive selected file has already been saved as receipt draft",
+    );
+    expect(afterDuplicateSnapshot).toEqual(beforeDuplicateSnapshot);
+  });
+
+  it("rejects unsupported selected file types before draft creation", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    const result = await importLocalDriveDocsSelectedFileAndReload({
+      fileName: "receipt.pdf",
+      rawText: mockDocumentReceiptText,
+      sourceKind: "google_drive",
+    });
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toBe(
+      "Selected file type is not supported. Use .txt, .md, .html, or .json.",
+    );
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+  });
+
+  it("rejects invalid selected-file extraction output without creating partial drafts", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const invalidProvider: ReceiptExtractionProvider = {
+      providerName: "invalid-selected-file-provider",
+      async extractReceiptDraft() {
+        return {
+          draft: {
+            confidence: 0.8,
+            currency: "usd",
+            items: [
+              {
+                categoryId: "software",
+                confidence: 0.8,
+                flags: [],
+                kind: "item",
+                normalizedName: "pro plan",
+                rawName: "Pro plan",
+                tags: ["software"],
+                totalPrice: 12,
+              },
+            ],
+            totalAmount: 12,
+            warnings: [],
+          },
+          extractedAt: "2026-06-05T09:31:00.000Z",
+          providerName: "invalid-selected-file-provider",
+        };
+      },
+    };
+
+    const result = await importLocalDriveDocsSelectedFileAndReload(
+      {
+        fileName: "software-receipt.txt",
+        rawText: mockDocumentReceiptText,
+        sourceKind: "google_docs",
+      },
+      { extractionProvider: invalidProvider },
+    );
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toBe(
+      "AI extraction currency must be a three-letter uppercase currency code.",
+    );
+    expect(afterSnapshot.receiptDrafts).toEqual(beforeSnapshot.receiptDrafts);
+    expect(afterSnapshot.receiptDraftItems).toEqual(
+      beforeSnapshot.receiptDraftItems,
+    );
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterSnapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(afterSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+  });
   it("returns validation errors for mock AI extraction without changing data", async () => {
     const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
 

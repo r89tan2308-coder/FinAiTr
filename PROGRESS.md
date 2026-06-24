@@ -3821,3 +3821,121 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 9F: Manual Drive/Docs selected-file import prototype. Keep it selected-file only, narrow-scope-first with `drive.file` where possible, draft-only, and blocked from broad Drive scan, Gmail import, scheduled sync, backend credential persistence, or provider data sync unless the Phase 9D backend and Phase 9E consent gates are implemented and validated.
+## 2026-06-24: Phase 9F manual Drive/Docs selected-file import prototype completed
+
+### Goal
+
+Add a local-only selected-file import prototype for Drive/Docs-like receipt documents without adding real Google APIs, OAuth, backend code, token storage, OCR, or real AI provider calls.
+
+### Completed
+
+- Added a local Drive/Docs selected-file source builder:
+  - supports `.txt`, `.md`, `.markdown`, `.html`, `.htm`, and `.json` text-like files;
+  - normalizes local HTML by stripping tags;
+  - parses local JSON and uses `rawText`, `receiptText`, `text`, or `content` when available;
+  - computes a stable local content hash;
+  - creates a pseudo `local-selected-file-*` source id;
+  - preserves source kind, file name/title, modified time, fetched/imported time, source provider name, and raw text evidence.
+- Added a shared `stableTextHash` helper and reused it for mock Google source content hashing.
+- Added `importLocalDriveDocsSelectedFileAndReload` to `financeDataService`:
+  - builds a local selected-file candidate;
+  - rejects duplicate selected files by source kind plus pseudo source id or content hash before mutation;
+  - routes raw text through the existing local mock AI extraction provider;
+  - validates extraction output with `validateReceiptExtractionResult` before saving;
+  - writes only receipt drafts and draft items through the existing repository path;
+  - reloads finance data through the existing service boundary.
+- Added a Receipts screen `Local Drive/Docs file` section:
+  - source kind selector for Google Drive file or Google Docs document;
+  - browser-only file input for supported local text-like files;
+  - selected-file preview with file name, source kind, file size, modified timestamp, and text length;
+  - local file read errors before draft creation;
+  - import action that opens the saved draft in the existing review flow.
+- Added tests for:
+  - valid selected-file source candidate creation;
+  - unsupported selected file extension rejection;
+  - local HTML/JSON normalization;
+  - valid selected-file import into a validated receipt draft;
+  - selected-file source metadata preservation;
+  - duplicate selected-file rejection by content hash;
+  - invalid selected-file extraction rejection without partial draft writes;
+  - unchanged Dashboard/Transactions/final Receipts/receipt items before confirmation;
+  - Receipts UI selected-file preview and review opening after successful import.
+- Updated `PLAN.md`, `GOOGLE_INTEGRATION_PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` for Phase 9F.
+- Kept the hard non-goals out of scope:
+  - no real Google Drive or Google Docs API calls;
+  - no OAuth or Google Identity Services;
+  - no backend/server code;
+  - no token storage, provider session storage, refresh handling, scheduled sync, revocation call, or provider-data deletion runtime;
+  - no OCR;
+  - no real AI API calls;
+  - no receipt confirmation, analytics, JSON backup/restore, CSV import/export, recurring, FX, or Dashboard semantic changes.
+
+### Changed files
+
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/receipt-ingestion/localDriveDocsSelectedFileSource.ts`
+- `src/receipt-ingestion/localDriveDocsSelectedFileSource.test.ts`
+- `src/receipt-ingestion/sourceTextHash.ts`
+- `src/receipt-ingestion/mockGoogleSourceProvider.ts`
+- `src/services/financeDataService.ts`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded after normalizing extra EOF blank lines introduced by PowerShell writes. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 22 test files passed, 154 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known limitations
+
+- Phase 9F is local-only. It reads user-selected files from the browser file input and does not connect to Google Drive or Google Docs.
+- The selected-file prototype accepts text-like files only; it does not OCR images or PDFs.
+- `.html` and `.json` handling is local normalization for already-safe receipt-like text, not sanitization for rendering or arbitrary document processing.
+- Imported selected files still use the local mock AI extraction provider. No real AI provider exists.
+- Google OAuth, provider disconnect/revocation, provider-data deletion, backend token handling, Gmail import, broad Drive/Docs access, scheduled sync, and real provider data sync remain unimplemented.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9G: Gmail manual receipt import planning/prototype. Keep Gmail behind backend/security/restricted-scope planning, require explicit user query or selected messages, fetch receipt-like body text only for selected candidates, keep draft-only writes, and do not add scheduled sync or long-lived provider access until the Phase 9D backend and Phase 9E consent gates are implemented and validated.

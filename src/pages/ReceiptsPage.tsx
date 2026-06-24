@@ -4,14 +4,16 @@ import {
   ClipboardPaste,
   Edit3,
   Eraser,
+  FileText,
   Link2,
   RefreshCcw,
   Save,
   Sparkles,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ChangeEvent, useMemo, useState } from "react";
 import { PageSection } from "../components/PageSection";
 import {
   formatCurrencyAmount,
@@ -36,6 +38,7 @@ import {
   type Transaction,
 } from "../domain/models";
 import { mockEmailReceiptText } from "../receipt-ingestion/fixtures";
+import { isSupportedLocalDriveDocsSelectedFileName } from "../receipt-ingestion/localDriveDocsSelectedFileSource";
 import { groceryReceiptText } from "../receipt-parser/fixtures";
 import {
   type ParsedReceiptDraft,
@@ -44,6 +47,8 @@ import {
 import { parsePastedReceiptText } from "../services/receiptParserService";
 import {
   type ManualAiExtractionInput,
+  type LocalDriveDocsSelectedFileInput,
+  type LocalDriveDocsSelectedFileSourceKind,
   type MockGoogleReceiptSourceSummary,
   type ReceiptDraftConfirmationInput,
   type ReceiptDraftConfirmationRecord,
@@ -63,6 +68,9 @@ interface ReceiptsPageProps {
   onDeleteDraft: (draftId: string) => Promise<ReceiptDraftActionResult>;
   onIngestMockGoogleSource: (
     candidateId: string,
+  ) => Promise<ReceiptDraftActionResult>;
+  onImportLocalDriveDocsSelectedFile: (
+    input: LocalDriveDocsSelectedFileInput,
   ) => Promise<ReceiptDraftActionResult>;
   onSaveDraft: (draft: ParsedReceiptDraft) => Promise<ReceiptDraftActionResult>;
   onSimulateAiExtraction: (
@@ -88,6 +96,13 @@ interface DraftReviewFormValues {
   total: string;
 }
 
+interface SelectedFilePreview {
+  fileName: string;
+  lastModified?: number;
+  rawText: string;
+  size: number;
+}
+
 interface DraftReviewItemFormValues {
   categoryId: string;
   confidence: number;
@@ -111,6 +126,7 @@ export function ReceiptsPage({
   onConfirmDraft,
   onDeleteDraft,
   onIngestMockGoogleSource,
+  onImportLocalDriveDocsSelectedFile,
   onSaveDraft,
   onSimulateAiExtraction,
   onUpdateDraft,
@@ -127,6 +143,11 @@ export function ReceiptsPage({
   const [aiSourceReceivedAt, setAiSourceReceivedAt] = useState("");
   const [aiSourceSender, setAiSourceSender] = useState("");
   const [aiSourceTitle, setAiSourceTitle] = useState("");
+  const [selectedFileSourceKind, setSelectedFileSourceKind] =
+    useState<LocalDriveDocsSelectedFileSourceKind>("google_drive");
+  const [selectedFilePreview, setSelectedFilePreview] =
+    useState<SelectedFilePreview>();
+  const [selectedFileError, setSelectedFileError] = useState<string>();
   const [parsedDraft, setParsedDraft] = useState<ParsedReceiptDraft>();
   const [draftActionError, setDraftActionError] = useState<string>();
   const [draftActionMessage, setDraftActionMessage] = useState<string>();
@@ -263,6 +284,9 @@ export function ReceiptsPage({
     setAiSourceReceivedAt("");
     setAiSourceSender("");
     setAiSourceTitle("");
+    setSelectedFileSourceKind("google_drive");
+    setSelectedFilePreview(undefined);
+    setSelectedFileError(undefined);
     setParsedDraft(undefined);
     setDraftActionError(undefined);
     setDraftActionMessage(undefined);
@@ -508,6 +532,82 @@ export function ReceiptsPage({
     setDraftActionError(result.errorMessage ?? "Receipt draft could not be saved.");
   }
 
+  async function handleSelectedDriveDocsFileChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const file = event.currentTarget.files?.[0];
+
+    setSelectedFilePreview(undefined);
+    setSelectedFileError(undefined);
+    setDraftActionError(undefined);
+    setDraftActionMessage(undefined);
+
+    if (!file) {
+      return;
+    }
+
+    if (!isSupportedLocalDriveDocsSelectedFileName(file.name)) {
+      setSelectedFileError(
+        "Selected file type is not supported. Use .txt, .md, .html, or .json.",
+      );
+      return;
+    }
+
+    try {
+      const rawText = await readTextLikeFile(file);
+
+      if (!rawText.trim()) {
+        setSelectedFileError("Selected file does not contain receipt-like text.");
+        return;
+      }
+
+      setSelectedFilePreview({
+        fileName: file.name,
+        lastModified: file.lastModified,
+        rawText,
+        size: file.size,
+      });
+    } catch (error) {
+      setSelectedFileError(
+        error instanceof Error ? error.message : "Selected file could not be read.",
+      );
+    }
+  }
+
+  async function handleImportSelectedDriveDocsFile(): Promise<void> {
+    if (!selectedFilePreview) {
+      setSelectedFileError("Select a Drive/Docs text-like file before import.");
+      setDraftActionMessage(undefined);
+      return;
+    }
+
+    setDraftActionStatus("extracting");
+    setDraftActionError(undefined);
+    setDraftActionMessage(undefined);
+    setReviewFormError(undefined);
+    setSelectedFileError(undefined);
+
+    const result = await onImportLocalDriveDocsSelectedFile({
+      fileName: selectedFilePreview.fileName,
+      lastModified: selectedFilePreview.lastModified,
+      rawText: selectedFilePreview.rawText,
+      sourceKind: selectedFileSourceKind,
+    });
+
+    setDraftActionStatus("idle");
+
+    if (result.ok && result.draft) {
+      setSelectedFilePreview(undefined);
+      openDraftRecordReview(result.draft);
+      setDraftActionMessage("Selected Drive/Docs file saved as draft for review.");
+      return;
+    }
+
+    setDraftActionError(
+      result.errorMessage ?? "Selected Drive/Docs file could not be imported.",
+    );
+  }
+
   async function handleIngestMockGoogleSource(candidateId: string): Promise<void> {
     setDraftActionStatus("extracting");
     setDraftActionError(undefined);
@@ -715,6 +815,78 @@ export function ReceiptsPage({
         </div>
       </PageSection>
 
+      <PageSection title="Local Drive/Docs file">
+        <div className="form-panel receipt-input-panel">
+          <div className="form-grid">
+            <label className="field">
+              <span>Source type</span>
+              <select
+                aria-label="Selected file source type"
+                onChange={(event) =>
+                  setSelectedFileSourceKind(
+                    event.target.value as LocalDriveDocsSelectedFileSourceKind,
+                  )
+                }
+                value={selectedFileSourceKind}
+              >
+                <option value="google_drive">Google Drive file</option>
+                <option value="google_docs">Google Docs document</option>
+              </select>
+            </label>
+
+            <label className="field field-wide" htmlFor="local-drive-docs-file">
+              <span>Drive or Docs text file</span>
+              <input
+                accept=".txt,.md,.markdown,.html,.htm,.json,text/plain,text/markdown,text/html,application/json"
+                id="local-drive-docs-file"
+                onChange={(event) => void handleSelectedDriveDocsFileChange(event)}
+                type="file"
+              />
+            </label>
+          </div>
+
+          {selectedFilePreview && (
+            <div className="receipt-source-panel">
+              <strong>{selectedFilePreview.fileName}</strong>
+              <span>
+                {formatTitle(selectedFileSourceKind)} · {formatFileSize(selectedFilePreview.size)}
+              </span>
+              <span>{formatSelectedFileTimestamp(selectedFilePreview.lastModified)}</span>
+              <small>{selectedFilePreview.rawText.length} text characters ready.</small>
+            </div>
+          )}
+
+          {selectedFileError && (
+            <div className="status-banner" role="alert">
+              {selectedFileError}
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button
+              className="primary-button"
+              disabled={draftActionStatus === "extracting"}
+              onClick={() => void handleImportSelectedDriveDocsFile()}
+              type="button"
+            >
+              <Upload aria-hidden="true" size={18} />
+              {draftActionStatus === "extracting" ? "Importing" : "Import selected file"}
+            </button>
+            <button
+              className="secondary-button"
+              disabled={!selectedFilePreview || draftActionStatus === "extracting"}
+              onClick={() => {
+                setSelectedFilePreview(undefined);
+                setSelectedFileError(undefined);
+              }}
+              type="button"
+            >
+              <FileText aria-hidden="true" size={18} />
+              Clear file
+            </button>
+          </div>
+        </div>
+      </PageSection>
       <PageSection title="Mock Google sources">
         {mockGoogleSourceCandidates.length > 0 ? (
           <div className="item-list">
@@ -1240,6 +1412,20 @@ export function ReceiptsPage({
   );
 }
 
+function readTextLikeFile(file: File): Promise<string> {
+  if (typeof file.text === "function") {
+    return file.text();
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("Selected file could not be read."));
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.readAsText(file);
+  });
+}
+
 function ReceiptParserPreview({
   draft,
   isSaving,
@@ -1673,6 +1859,30 @@ function formatSourceMetadata(metadata: ReceiptDraftSourceMetadata): string {
   }
 
   return parts.join(" · ");
+}
+
+function formatFileSize(size: number): string {
+  if (size < 1024) {
+    return `${size} B`;
+  }
+
+  const kilobytes = size / 1024;
+
+  return kilobytes < 1024
+    ? `${Math.round(kilobytes * 10) / 10} KB`
+    : `${Math.round((kilobytes / 1024) * 10) / 10} MB`;
+}
+
+function formatSelectedFileTimestamp(value: number | undefined): string {
+  if (value === undefined || value <= 0) {
+    return "Modified time unknown";
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? "Modified time unknown"
+    : `Modified ${date.toISOString()}`;
 }
 
 function formatMockGoogleSourceSummary(

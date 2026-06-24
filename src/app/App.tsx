@@ -22,6 +22,7 @@ import {
   loadFinanceData,
   getMockGoogleReceiptSourceSummaries,
   ingestMockGoogleReceiptSourceAndReload,
+  importLocalDriveDocsSelectedFileAndReload,
   previewTransactionCsvImportFromText,
   previewLocalJsonBackupRestoreFromText,
   previewRecurringCsvImportFromText,
@@ -200,6 +201,11 @@ export function App() {
           onIngestMockGoogleSource={async (candidateId) =>
             applyReceiptDraftActionResult(
               await ingestMockGoogleReceiptSourceAndReload(candidateId),
+            )
+          }
+          onImportLocalDriveDocsSelectedFile={async (input) =>
+            applyReceiptDraftActionResult(
+              await importLocalDriveDocsSelectedFileAndReload(input),
             )
           }
           onSimulateAiExtraction={async (input) =>

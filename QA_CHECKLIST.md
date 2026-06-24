@@ -105,6 +105,27 @@ Future implementation QA gates:
 - [ ] Verify selected-file Drive/Docs import does not broad-scan Drive.
 - [ ] Verify Gmail import fetches body text only after user selection or explicit filters.
 - [ ] Verify disconnect revokes provider access where possible and deletes provider credential state, cached candidates, sync cursors, and diagnostics.
+
+## Phase 9F Local Drive/Docs Selected-File Import QA
+
+Phase 9F is a local-only browser selected-file prototype. It adds no OAuth flow, Google API client, backend server, token storage, scheduled sync, provider revocation call, OCR, or real AI provider read.
+
+Implemented QA checks:
+
+- [x] Supported local `.txt`, `.md`, `.html`, and `.json` selected files can be converted into Drive/Docs-like receipt text candidates.
+- [x] Unsupported file types are rejected before draft creation.
+- [x] Selected-file source metadata preserves source kind, file name/title, pseudo source id, content hash, modified time when available, fetched/imported time, provider/model metadata, and raw text evidence.
+- [x] Selected-file raw text flows through the existing local mock extraction provider and runtime extraction validation before `saveReceiptDraft`.
+- [x] Invalid selected-file extraction output is rejected without partial draft writes.
+- [x] Duplicate selected files are rejected by source id/content hash before mutation.
+- [x] Selected-file ingestion creates receipt drafts and draft items only.
+- [x] Dashboard, Transactions, final Receipts, confirmed receipt items, recurring expenses, FX, JSON backup/restore, and CSV behavior remain unchanged before explicit receipt confirmation.
+- [x] Receipts UI shows selected-file preview/status/error states and opens the existing review flow after successful import.
+
+Future QA gates remain open:
+
+- [ ] Verify any future real Google Drive/Docs selected-file provider uses narrow selected-file access, preferably `drive.file`, and does not broad-scan Drive.
+- [ ] Verify real provider disconnect/revocation/deletion behavior before enabling OAuth-backed Drive/Docs access.
 ## Browser Smoke Results
 
 - Dashboard: Passed. Verified Dashboard, monthly trend, spend by category, item analytics, item search/category controls, confirmed receipt item drilldown, recent transactions, and display-currency formatted amounts render in the in-app browser.
