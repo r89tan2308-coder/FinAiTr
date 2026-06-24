@@ -29,10 +29,16 @@ import {
   mockAiReceiptExtractionProvider,
 } from "../receipt-ingestion/manualAiExtractionSimulator";
 import {
+  getMockGoogleReceiptSourceCandidate,
+  listMockGoogleReceiptSourceSummaries,
+  type MockGoogleReceiptSourceSummary,
+} from "../receipt-ingestion/mockGoogleSourceProvider";
+import {
   type ReceiptExtractionCategoryHint,
   type ReceiptExtractionProvider,
   type ReceiptExtractionResult,
   type ReceiptTextCandidate,
+  type ReceiptTextSourceProvider,
 } from "../receipt-ingestion/types";
 import {
   validateReceiptExtractionResult,
@@ -89,6 +95,7 @@ export type {
   TransactionCsvImportPreview,
   TransactionCsvImportRowInput,
   ManualAiExtractionInput,
+  MockGoogleReceiptSourceSummary,
   ReceiptDraftConfirmationInput,
   ReceiptDraftConfirmationRecord,
   ReceiptDraftUpdateInput,
@@ -154,6 +161,7 @@ export interface RecurringExpenseActionResult {
 }
 
 export interface ReceiptDraftActionResult {
+  candidate?: ReceiptTextCandidate;
   confirmation?: ReceiptDraftConfirmationRecord;
   data?: FinanceDataState;
   draft?: ReceiptDraftRecord;
@@ -224,6 +232,11 @@ export interface LocalBackupRestoreActionResult {
   data?: FinanceDataState;
   errorMessage?: string;
   ok: boolean;
+}
+
+interface MockGoogleReceiptSourceIngestionOptions {
+  extractionProvider?: ReceiptExtractionProvider;
+  sourceProviders?: readonly ReceiptTextSourceProvider[];
 }
 
 export async function createManualTransactionAndReload(
@@ -331,6 +344,60 @@ export async function simulateAiReceiptExtractionAndSaveDraftAndReload(
         error instanceof Error
           ? error.message
           : "AI receipt extraction could not be simulated.",
+      ok: false,
+    };
+  }
+}
+
+export function getMockGoogleReceiptSourceSummaries(): MockGoogleReceiptSourceSummary[] {
+  return listMockGoogleReceiptSourceSummaries();
+}
+
+export async function ingestMockGoogleReceiptSourceAndReload(
+  candidateId: string,
+  options: MockGoogleReceiptSourceIngestionOptions = {},
+): Promise<ReceiptDraftActionResult> {
+  try {
+    const candidate = await getMockGoogleReceiptSourceCandidate(
+      candidateId,
+      options.sourceProviders,
+    );
+    const { snapshot } = await getFinanceSnapshot();
+    const duplicateMessage = findDuplicateReceiptSource(candidate, snapshot);
+
+    if (duplicateMessage) {
+      throw new Error(duplicateMessage);
+    }
+
+    const categoryHints = categoriesToExtractionHints(snapshot.categories);
+    const extractionProvider =
+      options.extractionProvider ?? mockAiReceiptExtractionProvider;
+    const extraction = validateReceiptExtractionResult(
+      await extractionProvider.extractReceiptDraft(
+        buildReceiptExtractionRequest(candidate, categoryHints),
+      ),
+      {
+        categoryIds: snapshot.categories.map((category) => category.id),
+        source: candidate.source,
+      },
+    );
+    const draft = await saveReceiptDraft(
+      aiExtractionResultToReceiptDraftInput(candidate, extraction),
+    );
+
+    return {
+      candidate,
+      data: await loadFinanceData(),
+      draft,
+      extraction,
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Mock Google receipt source could not be ingested.",
       ok: false,
     };
   }
@@ -753,6 +820,51 @@ function aiExtractionResultToReceiptDraftInput(
     total: extraction.draft.totalAmount,
     warnings: [...candidate.warnings, ...extraction.draft.warnings],
   };
+}
+
+function findDuplicateReceiptSource(
+  candidate: ReceiptTextCandidate,
+  snapshot: FinanceSnapshot,
+): string | undefined {
+  const { contentHash, kind, sourceId } = candidate.source;
+
+  for (const draft of snapshot.receiptDrafts) {
+    if (isDuplicateSourceMetadata(draft.sourceMetadata, kind, sourceId, contentHash)) {
+      return `Mock ${formatSourceKind(kind)} source has already been saved as receipt draft "${draft.merchant ?? draft.id}".`;
+    }
+  }
+
+  for (const receipt of snapshot.receipts) {
+    if (isDuplicateSourceMetadata(receipt.sourceMetadata, kind, sourceId, contentHash)) {
+      return `Mock ${formatSourceKind(kind)} source has already been confirmed as receipt "${receipt.merchant ?? receipt.id}".`;
+    }
+  }
+
+  return undefined;
+}
+
+function isDuplicateSourceMetadata(
+  metadata: FinanceSnapshot["receiptDrafts"][number]["sourceMetadata"],
+  kind: ReceiptTextCandidate["source"]["kind"],
+  sourceId: string | undefined,
+  contentHash: string | undefined,
+): boolean {
+  if (!metadata || metadata.kind !== kind) {
+    return false;
+  }
+
+  if (sourceId && metadata.sourceId === sourceId) {
+    return true;
+  }
+
+  return Boolean(contentHash && metadata.contentHash === contentHash);
+}
+
+function formatSourceKind(kind: ReceiptTextCandidate["source"]["kind"]): string {
+  return kind
+    .split("_")
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function categoriesToExtractionHints(

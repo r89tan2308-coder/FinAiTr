@@ -2658,6 +2658,7 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8D: plan and implement local CSV import/export through the existing local-first service/repository boundary, without external integrations.
+
 ## 2026-06-22: Phase 7D monthly trend analytics and Dashboard polish implemented
 
 ### Completed
@@ -2756,6 +2757,7 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8D: plan and implement local CSV import/export through the existing local-first service/repository boundary, without external integrations.
+
 ## 2026-06-22: Phase 8D-A local CSV export implemented
 
 ### Completed
@@ -2957,6 +2959,7 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 8D-B2: decide whether recurring expense CSV import belongs in MVP follow-up scope. Keep receipt item, final receipt, and receipt draft CSV import deferred until a separate product decision.
+
 ## 2026-06-23: Phase 8D-B2 recurring CSV import preview/confirm implemented
 
 ### Completed
@@ -3364,6 +3367,7 @@ npm audit
 ```
 
 Result: succeeded. Found 0 vulnerabilities.
+
 ### Known limitations
 
 - In-app browser smoke did not automate native file selection for JSON restore or CSV imports. File parsing, preview, confirmation, and repository write safety are covered by component/domain/repository tests. A human should repeat native file-picker restore/import steps in a normal browser before a release or demo checkpoint.
@@ -3375,6 +3379,7 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 9A planning: define post-MVP integration scope and guardrails before any real external integration work. Do not start implementation until the Phase 8F checkpoint is committed and pushed.
+
 ## 2026-06-23: Phase 9A Gmail, Drive, and Docs integration planning completed
 
 ### Goal
@@ -3454,4 +3459,96 @@ Result: succeeded. Found 0 vulnerabilities.
 
 ### Next recommended phase
 
-Phase 9B: OAuth and security architecture spike. Re-check official Google documentation, decide frontend-only selected-file Drive/Docs import versus backend-backed provider auth, draft consent/privacy copy, define token storage/revocation/deletion/logging, and keep real Gmail/Drive/Docs data sync deferred until that plan is approved.
+Phase 9B: Mock Google source provider boundary. Add local-only Gmail, Google Drive, and Google Docs mock source providers behind the existing receipt ingestion contract, route selected source text through validation into receipt drafts only, and keep real Google/OAuth/backend work deferred.
+
+## 2026-06-24: Phase 9B mock Google source provider boundary completed
+
+### Goal
+
+Add a local-only mock provider boundary for future Gmail, Google Drive, and Google Docs receipt ingestion while preserving the existing receipt draft, review, confirmation, and Dashboard semantics.
+
+### Completed
+
+- Added local-only mock Gmail, Google Drive, and Google Docs receipt text source providers behind `ReceiptTextSourceProvider`.
+- Added static mock source records with provider kind, external source id, title/sender, received or modified timestamp, raw text, source provider name, and stable content hash metadata.
+- Added mock source listing and selected-candidate lookup helpers for service/UI use.
+- Routed selected mock source text through the existing local mock AI extraction provider and runtime extraction validation.
+- Saved valid mock source ingestion output as receipt drafts and receipt draft items only.
+- Preserved source metadata on created drafts, including source kind, source id, title, sender, received/modified timestamps, source provider name, extraction provider metadata, and content hash.
+- Added duplicate detection against existing receipt drafts and final receipts using provider kind plus source id and/or content hash before extraction or IndexedDB mutation.
+- Added a small `ReceiptsPage` entry point for `Mock Google sources` that opens the saved draft in the existing review UI.
+- Extended extraction validation and local backup metadata validation to allow the new source metadata fields.
+- Added tests for mock provider listing, metadata preservation, selected source ingestion, duplicate rejection, invalid extraction rejection, unchanged Dashboard data before confirmation, and Receipts UI ingestion.
+- Updated `PLAN.md`, `GOOGLE_INTEGRATION_PLAN.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `PRODUCT_SPEC.md`, and `QA_CHECKLIST.md` for Phase 9B.
+- Did not add real Gmail, Google Drive, Google Docs, OAuth, Google packages, backend code, scheduled sync, OCR, real AI calls, live FX, bank APIs, crypto/brokerage, bank matching, or payment execution.
+- Kept receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics unchanged.
+
+### Changed files
+
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PRODUCT_SPEC.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/domain/models.ts`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.ts`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/receipt-ingestion/mockGoogleSourceProvider.ts`
+- `src/receipt-ingestion/mockGoogleSourceProvider.test.ts`
+- `src/receipt-ingestion/receiptExtractionValidation.ts`
+- `src/services/financeDataService.ts`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 19 test files passed, 135 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known limitations
+
+- Phase 9B is mock/local-only. No real Google OAuth, Gmail, Drive, Docs, backend, scheduled sync, or provider read exists yet.
+- Duplicate detection is local to stored receipt draft/final receipt source metadata and stable mock content hashes.
+- The manual AI extraction simulator remains local/mock-only and heuristic; it is not a real AI provider.
+- Manual browser QA for the new `Mock Google sources` entry point is documented in `QA_CHECKLIST.md` and should be repeated in a normal browser before a release/demo checkpoint.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9C: OAuth and security architecture spike. Re-check official Google documentation, decide frontend-only manual Drive/Docs import versus backend-backed provider auth, draft consent/privacy copy, define token storage, revocation, deletion, logging, and threat model, and keep production Gmail/Drive/Docs sync deferred until that plan is approved.

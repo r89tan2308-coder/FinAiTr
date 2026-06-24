@@ -45,10 +45,13 @@ export interface ReceiptDraftSourceMetadata {
   sender?: string;
   url?: string;
   receivedAt?: ISODateTimeString;
+  modifiedAt?: ISODateTimeString;
   fetchedAt?: ISODateTimeString;
+  sourceProviderName?: string;
   providerName?: string;
   modelName?: string;
   extractedAt?: ISODateTimeString;
+  contentHash?: string;
 }
 
 export type ReceiptDraftLineKind =

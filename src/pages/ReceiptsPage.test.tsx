@@ -15,6 +15,7 @@ import { groceryReceiptText, mismatchReceiptText } from "../receipt-parser/fixtu
 import { type ParsedReceiptDraft } from "../receipt-parser/types";
 import {
   type ManualAiExtractionInput,
+  type MockGoogleReceiptSourceSummary,
   type ReceiptDraftActionResult,
   type ReceiptDraftConfirmationInput,
   type ReceiptDraftUpdateInput,
@@ -91,6 +92,54 @@ const aiDraftItem: ReceiptDraftItem = {
   unitPrice: 1.5,
 };
 
+const mockGoogleSourceCandidate: MockGoogleReceiptSourceSummary = {
+  contentHash: "fnv1a-test0001",
+  id: "google_drive:drive-file-city-pharmacy-20260606",
+  kind: "google_drive",
+  modifiedAt: "2026-06-06T15:45:00.000Z",
+  sender: "drive-owner@example.com",
+  sourceId: "drive-file-city-pharmacy-20260606",
+  title: "City Pharmacy receipt",
+};
+
+const mockGoogleDraft: ReceiptDraft = {
+  ...savedDraft,
+  confidence: 0.81,
+  currency: "USD",
+  date: "2026-06-06",
+  id: "receipt-draft-google-test",
+  merchant: "City Pharmacy",
+  rawText:
+    "City Pharmacy\n2026-06-06\nPain relief 8.50\nVitamins 12.00\nTOTAL USD 20.50",
+  source: "ai_extraction_mock",
+  sourceMetadata: {
+    contentHash: mockGoogleSourceCandidate.contentHash,
+    kind: "google_drive",
+    modifiedAt: mockGoogleSourceCandidate.modifiedAt,
+    providerName: "local-mock-ai-extractor",
+    sender: mockGoogleSourceCandidate.sender,
+    sourceId: mockGoogleSourceCandidate.sourceId,
+    sourceProviderName: "mock-google-source-provider",
+    title: mockGoogleSourceCandidate.title,
+  },
+  total: 20.5,
+  warnings: ["Mock Google Drive source. No real Google API was called."],
+};
+
+const mockGoogleDraftItem: ReceiptDraftItem = {
+  ...savedDraftItem,
+  categoryId: "medicine",
+  confidence: 0.76,
+  draftId: mockGoogleDraft.id,
+  id: "receipt-draft-item-google-test",
+  normalizedName: "pain relief",
+  rawLine: "Pain relief 8.50",
+  rawName: "Pain relief",
+  tags: ["medicine", "health"],
+  totalPrice: 8.5,
+  unitPrice: undefined,
+};
+
 const reviewedDraft: ReceiptDraft = {
   ...savedDraft,
   status: "reviewed",
@@ -116,10 +165,14 @@ const linkedTransaction = {
 };
 
 interface RenderReceiptsPageOptions {
+  mockGoogleSourceCandidates?: MockGoogleReceiptSourceSummary[];
   onDeleteDraft?: (draftId: string) => Promise<ReceiptDraftActionResult>;
   onConfirmDraft?: (
     draftId: string,
     input: ReceiptDraftConfirmationInput,
+  ) => Promise<ReceiptDraftActionResult>;
+  onIngestMockGoogleSource?: (
+    candidateId: string,
   ) => Promise<ReceiptDraftActionResult>;
   onSaveDraft?: (draft: ParsedReceiptDraft) => Promise<ReceiptDraftActionResult>;
   onSimulateAiExtraction?: (
@@ -139,8 +192,12 @@ function renderReceiptsPage(options: RenderReceiptsPageOptions = {}) {
       accounts={seedAccounts}
       categories={seedCategories}
       currencySettings={defaultCurrencySettings}
+      mockGoogleSourceCandidates={options.mockGoogleSourceCandidates ?? []}
       onConfirmDraft={options.onConfirmDraft ?? (async () => ({ ok: true }))}
       onDeleteDraft={options.onDeleteDraft ?? (async () => ({ ok: true }))}
+      onIngestMockGoogleSource={
+        options.onIngestMockGoogleSource ?? (async () => ({ ok: true }))
+      }
       onSaveDraft={options.onSaveDraft ?? (async () => ({ ok: true }))}
       onSimulateAiExtraction={
         options.onSimulateAiExtraction ?? (async () => ({ ok: true }))
@@ -338,6 +395,38 @@ describe("ReceiptsPage parser preview", () => {
     expect(screen.getAllByLabelText("Raw receipt text")[1]).toHaveValue(
       mockEmailReceiptText,
     );
+  });
+
+  it("ingests a selected mock Google source and opens review", async () => {
+    const user = userEvent.setup();
+    const onIngestMockGoogleSource = vi.fn(
+      async (): Promise<ReceiptDraftActionResult> => ({
+        draft: {
+          draft: mockGoogleDraft,
+          items: [mockGoogleDraftItem],
+        },
+        ok: true,
+      }),
+    );
+    renderReceiptsPage({
+      mockGoogleSourceCandidates: [mockGoogleSourceCandidate],
+      onIngestMockGoogleSource,
+    });
+
+    expect(screen.getByText("City Pharmacy receipt")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Ingest mock source" }));
+
+    expect(onIngestMockGoogleSource).toHaveBeenCalledWith(
+      mockGoogleSourceCandidate.id,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Mock Google source saved as draft for review.",
+    );
+    expect(screen.getByRole("heading", { name: "City Pharmacy" })).toBeVisible();
+    expect(
+      screen.getByText(/Google Drive · City Pharmacy receipt · From drive-owner/),
+    ).toBeInTheDocument();
   });
 
   it("surfaces mismatch parser warnings for review", async () => {

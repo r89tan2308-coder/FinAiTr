@@ -51,18 +51,20 @@ Monthly trend analytics are deterministic Dashboard views. Trend spend is derive
 
 ## Future Google source integrations
 
-Phase 9A plans future Gmail, Google Drive, and Google Docs receipt sources without implementing them. The detailed architecture, OAuth scope choices, backend decision, discovery rules, duplicate detection, privacy rules, deletion expectations, and rollout phases live in `GOOGLE_INTEGRATION_PLAN.md`.
+Phase 9A plans future Gmail, Google Drive, and Google Docs receipt sources. Phase 9B adds local-only mock Gmail, Google Drive, and Google Docs source records so the provider boundary can be tested without real Google access. The detailed architecture, OAuth scope choices, backend decision, discovery rules, duplicate detection, privacy rules, deletion expectations, and rollout phases live in `GOOGLE_INTEGRATION_PLAN.md`.
 
-Future Google integrations are source intake features only. They should help the user find receipt-like source text, then create a schema-validated editable receipt draft. They must not create transactions, confirm receipts, update Dashboard totals, create recurring expenses, change FX settings, or skip the existing review flow.
+Mock and future Google integrations are source intake features only. They should help the user find receipt-like source text, then create a schema-validated editable receipt draft. They must not create transactions, confirm receipts, update Dashboard totals, create recurring expenses, change FX settings, or skip the existing review flow.
 
 User-visible expectations:
 
 - The user explicitly starts each Google import flow.
+- Current Phase 9B mock Google sources are local samples and do not connect to Google.
 - The app explains which Google data is requested and why before requesting OAuth consent.
 - Manual Drive/Docs selected-file import should be the first implementation path, using the narrowest practical selected-file scope.
 - Gmail body import and scheduled sync are deferred until backend token handling, restricted-scope verification, privacy, logging, and deletion behavior are designed.
 - Duplicate imported messages, files, documents, or extracted receipt content produce warnings and require a user choice.
 - Disconnecting a future provider must revoke grants when possible and delete provider tokens, cursors, cached candidate metadata, and diagnostics while preserving user-created local finance records by default.
+
 ## Non-goals
 
 The first MVP must not include:
@@ -110,9 +112,10 @@ The user pastes raw receipt text, such as text copied from an OCR app. The app p
 
 The user pastes raw email-like or document-like receipt text, optionally adds source metadata, and runs the local simulator. The app validates the simulated extraction JSON before saving. Invalid extraction data is rejected without creating draft rows. Valid extraction creates a receipt draft only, with mismatch, unknown item, and low-confidence signals kept as review warnings or flags. The user must still review and confirm the draft before a transaction is created or Dashboard analytics change.
 
-### Future Google receipt source import (planned)
+### Mock and future Google receipt source import
 
-The user will explicitly select or search receipt-like Google source content, review candidate messages/files/documents, and choose what to import. The app will extract source text, validate the extraction shape, and save an editable receipt draft only. Dashboard analytics will change only after the user reviews and confirms the draft into a final receipt and linked transaction.
+The user can select a local mock Google source in Phase 9B. In future real integrations, the user will explicitly select or search receipt-like Google source content, review candidate messages/files/documents, and choose what to import. The app will extract source text, validate the extraction shape, and save an editable receipt draft only. Dashboard analytics will change only after the user reviews and confirms the draft into a final receipt and linked transaction.
+
 ### Receipt review
 
 The user edits the parsed receipt, adjusts item names, categories, tags, and prices, sees a mismatch warning if item totals do not match receipt total, then confirms the receipt. The confirmed receipt contributes to analytics and creates or links a transaction.

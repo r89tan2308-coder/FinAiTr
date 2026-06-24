@@ -30,6 +30,26 @@ Future Google integration QA gates:
 - Drive/Docs selected-file import must verify consent copy, selected-file access only, unsupported file handling, duplicate warnings, draft-only writes, and disconnect cleanup.
 - Gmail import must verify restricted-scope consent, backend token handling, candidate listing, selected-message body fetch only, duplicate warnings, draft-only writes, rate-limit behavior, revocation, and deletion cleanup.
 - Scheduled sync must verify backend-only cursors, refresh-token rotation/revocation, backoff, visible sync status, no silent broad scans, and user-controlled disable/delete behavior.
+
+## Phase 9B Mock Google Source QA
+
+Phase 9B is a mock/local provider checkpoint. It adds no real OAuth flow, Google API client, backend, scheduled sync, or real provider read.
+
+Automated checks:
+
+- [x] Mock Gmail, Google Drive, and Google Docs providers list local source candidates.
+- [x] Selected mock sources preserve source kind, external id, title/sender, received or modified timestamp, source provider name, and content hash.
+- [x] Selected mock source text goes through the existing extraction validation path.
+- [x] Valid mock source ingestion creates receipt drafts and draft items only.
+- [x] Duplicate mock sources are rejected safely before mutation.
+- [x] Invalid extraction output is rejected without partial draft writes.
+- [x] Dashboard, Transactions, final Receipts, and receipt items remain unchanged before confirmation.
+- [x] Receipts UI can start mock source ingestion and opens the saved draft in the existing review flow.
+
+Manual browser check:
+
+- [ ] Open Receipts, use `Mock Google sources`, ingest one mock source, verify the draft opens for review, then verify Dashboard changes only after marking reviewed and confirming the receipt.
+
 ## Browser Smoke Results
 
 - Dashboard: Passed. Verified Dashboard, monthly trend, spend by category, item analytics, item search/category controls, confirmed receipt item drilldown, recent transactions, and display-currency formatted amounts render in the in-app browser.

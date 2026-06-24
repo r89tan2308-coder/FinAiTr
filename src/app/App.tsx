@@ -19,6 +19,8 @@ import {
   exportLocalCsvForDownload,
   exportLocalJsonBackupForDownload,
   loadFinanceData,
+  getMockGoogleReceiptSourceSummaries,
+  ingestMockGoogleReceiptSourceAndReload,
   previewTransactionCsvImportFromText,
   previewLocalJsonBackupRestoreFromText,
   previewRecurringCsvImportFromText,
@@ -48,6 +50,10 @@ export function App() {
   const activeRoute = useMemo(
     () => appRoutes.find((route) => route.id === currentRouteId) ?? appRoutes[0],
     [currentRouteId],
+  );
+  const mockGoogleSourceCandidates = useMemo(
+    () => getMockGoogleReceiptSourceSummaries(),
+    [],
   );
 
   useEffect(() => {
@@ -186,6 +192,12 @@ export function App() {
           onSaveDraft={async (draft) =>
             applyReceiptDraftActionResult(
               await saveParsedReceiptDraftAndReload(draft),
+            )
+          }
+          mockGoogleSourceCandidates={mockGoogleSourceCandidates}
+          onIngestMockGoogleSource={async (candidateId) =>
+            applyReceiptDraftActionResult(
+              await ingestMockGoogleReceiptSourceAndReload(candidateId),
             )
           }
           onSimulateAiExtraction={async (input) =>

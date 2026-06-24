@@ -1205,6 +1205,7 @@ function assertValidTransactionCsvImportInput(
     throw new Error("Category is required for CSV transaction import.");
   }
 }
+
 function createRecordId(prefix: string): string {
   const randomId = globalThis.crypto?.randomUUID?.();
 
@@ -1244,13 +1245,16 @@ function normalizeReceiptSourceMetadata(
 
   return {
     kind: metadata.kind,
+    contentHash: normalizeOptionalText(metadata.contentHash),
     extractedAt: normalizeOptionalText(metadata.extractedAt),
     fetchedAt: normalizeOptionalText(metadata.fetchedAt),
     modelName: normalizeOptionalText(metadata.modelName),
+    modifiedAt: normalizeOptionalText(metadata.modifiedAt),
     providerName: normalizeOptionalText(metadata.providerName),
     receivedAt: normalizeOptionalText(metadata.receivedAt),
     sender: normalizeOptionalText(metadata.sender),
     sourceId: normalizeOptionalText(metadata.sourceId),
+    sourceProviderName: normalizeOptionalText(metadata.sourceProviderName),
     title: normalizeOptionalText(metadata.title),
     url: normalizeOptionalText(metadata.url),
   };
@@ -1595,12 +1599,15 @@ function requireOptionalSourceMetadata(
 
   requireRecord(metadata, label);
   requireString(metadata.kind, `${label}.kind`);
+  requireOptionalString(metadata.contentHash, `${label}.contentHash`);
   requireOptionalString(metadata.sourceId, `${label}.sourceId`);
   requireOptionalString(metadata.title, `${label}.title`);
   requireOptionalString(metadata.sender, `${label}.sender`);
   requireOptionalString(metadata.url, `${label}.url`);
   requireOptionalString(metadata.receivedAt, `${label}.receivedAt`);
+  requireOptionalString(metadata.modifiedAt, `${label}.modifiedAt`);
   requireOptionalString(metadata.fetchedAt, `${label}.fetchedAt`);
+  requireOptionalString(metadata.sourceProviderName, `${label}.sourceProviderName`);
   requireOptionalString(metadata.providerName, `${label}.providerName`);
   requireOptionalString(metadata.modelName, `${label}.modelName`);
   requireOptionalString(metadata.extractedAt, `${label}.extractedAt`);

@@ -573,6 +573,7 @@ Consequences:
 - Transaction page create/edit/delete callback behavior now has focused UI regression coverage.
 - Existing transaction, receipt, recurring, FX, JSON backup/restore, CSV import/export, and Dashboard semantics remain unchanged.
 - After the Phase 8F checkpoint is committed and pushed, the next recommended phase is Phase 9A planning for post-MVP integration scope and guardrails; real integrations should still wait for that planning update.
+
 ## 2026-06-23: Phase 9A plans Google source integrations before implementation
 
 Decision:
@@ -594,3 +595,23 @@ Consequences:
 - OAuth client secrets, access tokens, and refresh tokens must not be stored in IndexedDB, JSON backups, CSV exports, receipt source metadata, committed config, or local logs.
 - Duplicate source documents/messages and duplicate extracted receipt content must warn the user and require a choice instead of silently overwriting records.
 - Phase 9A changes documentation only and does not change product runtime behavior.
+
+## 2026-06-23: Phase 9B uses mock Google sources to prove the provider boundary
+
+Decision:
+
+Add local-only mock Gmail, Google Drive, and Google Docs source providers behind `ReceiptTextSourceProvider`. Selected mock sources flow through the existing mock AI extraction provider, runtime extraction validation, and receipt draft persistence path.
+
+Rationale:
+
+The product needs confidence that Google source intake fits the existing draft/review/confirm accounting boundary before any OAuth, restricted scopes, backend token storage, or real Google data access is introduced. Mock providers allow tests and UI smoke coverage for source metadata, duplicate detection, and draft-only behavior without external data movement.
+
+Consequences:
+
+- Mock Google sources can list and fetch local receipt text candidates only.
+- Mock source records preserve source type, external id, title/sender, received or modified date, source provider name, content hash, and raw text evidence.
+- Duplicate detection rejects already-ingested mock sources by provider kind plus external id and/or content hash before mutation.
+- Selected mock sources can create only receipt drafts and draft items after extraction validation passes.
+- Dashboard impact still requires human review and explicit receipt confirmation.
+- No real Gmail, Google Drive, Google Docs, OAuth, Google packages, backend, scheduled sync, OCR, real AI API calls, live FX, bank APIs, crypto/brokerage, bank matching, or payment execution is added.
+- Receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.

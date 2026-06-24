@@ -44,6 +44,7 @@ import {
 import { parsePastedReceiptText } from "../services/receiptParserService";
 import {
   type ManualAiExtractionInput,
+  type MockGoogleReceiptSourceSummary,
   type ReceiptDraftConfirmationInput,
   type ReceiptDraftConfirmationRecord,
   type ReceiptDraftActionResult,
@@ -54,11 +55,15 @@ interface ReceiptsPageProps {
   accounts: Account[];
   categories: Category[];
   currencySettings: CurrencySettings;
+  mockGoogleSourceCandidates: MockGoogleReceiptSourceSummary[];
   onConfirmDraft: (
     draftId: string,
     input: ReceiptDraftConfirmationInput,
   ) => Promise<ReceiptDraftActionResult>;
   onDeleteDraft: (draftId: string) => Promise<ReceiptDraftActionResult>;
+  onIngestMockGoogleSource: (
+    candidateId: string,
+  ) => Promise<ReceiptDraftActionResult>;
   onSaveDraft: (draft: ParsedReceiptDraft) => Promise<ReceiptDraftActionResult>;
   onSimulateAiExtraction: (
     input: ManualAiExtractionInput,
@@ -102,8 +107,10 @@ export function ReceiptsPage({
   accounts,
   categories,
   currencySettings,
+  mockGoogleSourceCandidates,
   onConfirmDraft,
   onDeleteDraft,
+  onIngestMockGoogleSource,
   onSaveDraft,
   onSimulateAiExtraction,
   onUpdateDraft,
@@ -501,6 +508,27 @@ export function ReceiptsPage({
     setDraftActionError(result.errorMessage ?? "Receipt draft could not be saved.");
   }
 
+  async function handleIngestMockGoogleSource(candidateId: string): Promise<void> {
+    setDraftActionStatus("extracting");
+    setDraftActionError(undefined);
+    setDraftActionMessage(undefined);
+    setReviewFormError(undefined);
+
+    const result = await onIngestMockGoogleSource(candidateId);
+
+    setDraftActionStatus("idle");
+
+    if (result.ok && result.draft) {
+      openDraftRecordReview(result.draft);
+      setDraftActionMessage("Mock Google source saved as draft for review.");
+      return;
+    }
+
+    setDraftActionError(
+      result.errorMessage ?? "Mock Google source could not be ingested.",
+    );
+  }
+
   async function handleSimulateAiExtraction(): Promise<void> {
     if (!aiRawText.trim()) {
       setDraftActionError(
@@ -687,6 +715,36 @@ export function ReceiptsPage({
         </div>
       </PageSection>
 
+      <PageSection title="Mock Google sources">
+        {mockGoogleSourceCandidates.length > 0 ? (
+          <div className="item-list">
+            {mockGoogleSourceCandidates.map((candidate) => (
+              <article className="list-row receipt-draft-row" key={candidate.id}>
+                <div>
+                  <strong>{candidate.title}</strong>
+                  <span>
+                    {formatTitle(candidate.kind)} · {candidate.sourceId}
+                  </span>
+                  <small>{formatMockGoogleSourceSummary(candidate)}</small>
+                </div>
+                <div className="row-actions">
+                  <button
+                    className="secondary-button"
+                    disabled={draftActionStatus !== "idle"}
+                    onClick={() => void handleIngestMockGoogleSource(candidate.id)}
+                    type="button"
+                  >
+                    <Sparkles aria-hidden="true" size={16} />
+                    Ingest mock source
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No mock Google sources.</div>
+        )}
+      </PageSection>
       <PageSection title="Parser preview">
         {draftActionMessage && (
           <div className="success-banner" role="status">
@@ -1602,9 +1660,39 @@ function formatSourceMetadata(metadata: ReceiptDraftSourceMetadata): string {
     parts.push(`Received ${metadata.receivedAt}`);
   }
 
+  if (metadata.modifiedAt) {
+    parts.push(`Modified ${metadata.modifiedAt}`);
+  }
+
+  if (metadata.sourceProviderName) {
+    parts.push(metadata.sourceProviderName);
+  }
+
   if (metadata.providerName) {
     parts.push(metadata.providerName);
   }
+
+  return parts.join(" · ");
+}
+
+function formatMockGoogleSourceSummary(
+  candidate: MockGoogleReceiptSourceSummary,
+): string {
+  const parts: string[] = [];
+
+  if (candidate.sender) {
+    parts.push(`From ${candidate.sender}`);
+  }
+
+  if (candidate.receivedAt) {
+    parts.push(`Received ${candidate.receivedAt}`);
+  }
+
+  if (candidate.modifiedAt) {
+    parts.push(`Modified ${candidate.modifiedAt}`);
+  }
+
+  parts.push(candidate.contentHash);
 
   return parts.join(" · ");
 }

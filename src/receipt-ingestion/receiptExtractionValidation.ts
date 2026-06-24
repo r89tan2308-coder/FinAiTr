@@ -220,14 +220,17 @@ function validateReceiptTextSourceReference(
 ): void {
   const source = requireObject(input, "AI receipt source metadata");
   assertAllowedKeys(source, "AI receipt source metadata", [
+    "contentHash",
     "extractedAt",
     "fetchedAt",
     "kind",
     "modelName",
+    "modifiedAt",
     "providerName",
     "receivedAt",
     "sender",
     "sourceId",
+    "sourceProviderName",
     "title",
     "url",
   ]);
@@ -239,14 +242,20 @@ function validateReceiptTextSourceReference(
   }
 
   optionalNonEmptyString(source.sourceId, "AI receipt source id");
+  optionalNonEmptyString(source.contentHash, "AI receipt source content hash");
   optionalNonEmptyString(source.title, "AI receipt source title");
   optionalNonEmptyString(source.sender, "AI receipt source sender");
   optionalNonEmptyString(source.url, "AI receipt source URL");
+  optionalNonEmptyString(source.sourceProviderName, "AI receipt text source provider");
   optionalNonEmptyString(source.providerName, "AI receipt source provider");
   optionalNonEmptyString(source.modelName, "AI receipt source model");
 
   if (source.receivedAt !== undefined) {
     requireIsoDateTime(source.receivedAt, "AI receipt source received time");
+  }
+
+  if (source.modifiedAt !== undefined) {
+    requireIsoDateTime(source.modifiedAt, "AI receipt source modified time");
   }
 
   if (source.fetchedAt !== undefined) {

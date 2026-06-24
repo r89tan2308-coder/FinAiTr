@@ -15,7 +15,9 @@ import {
   confirmTransactionCsvImportAndReload,
   createRecurringExpenseAndReload,
   deleteReceiptDraftAndReload,
+  getMockGoogleReceiptSourceSummaries,
   getReceiptDraftById,
+  ingestMockGoogleReceiptSourceAndReload,
   listReceiptDrafts,
   previewLocalJsonBackupRestoreFromText,
   previewRecurringCsvImportFromText,
@@ -1366,6 +1368,135 @@ describe("finance repository transaction CRUD", () => {
     expect(result.data?.snapshot.receipts).toEqual(beforeSnapshot.receipts);
     expect(result.data?.snapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
     expect(result.data?.overview).toEqual(beforeOverview);
+  });
+  it("saves selected mock Google source as a validated draft without dashboard impact", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const source = getMockGoogleReceiptSourceSummaries().find(
+      (summary) => summary.kind === "google_drive",
+    );
+
+    if (!source) {
+      throw new Error("Expected mock Google Drive source.");
+    }
+
+    const result = await ingestMockGoogleReceiptSourceAndReload(source.id);
+
+    expect(result.ok).toBe(true);
+    expect(result.candidate?.source).toMatchObject({
+      contentHash: source.contentHash,
+      kind: "google_drive",
+      modifiedAt: "2026-06-06T15:45:00.000Z",
+      sourceId: "drive-file-city-pharmacy-20260606",
+      sourceProviderName: "mock-google-source-provider",
+      title: "City Pharmacy receipt",
+    });
+    expect(result.extraction).toMatchObject({
+      providerName: "local-mock-ai-extractor",
+      modelName: "local-heuristic-simulator",
+    });
+    expect(result.draft?.draft).toMatchObject({
+      merchant: "City Pharmacy",
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        contentHash: source.contentHash,
+        kind: "google_drive",
+        modifiedAt: "2026-06-06T15:45:00.000Z",
+        providerName: "local-mock-ai-extractor",
+        sourceId: "drive-file-city-pharmacy-20260606",
+        sourceProviderName: "mock-google-source-provider",
+        title: "City Pharmacy receipt",
+      },
+      status: "draft",
+      total: 20.5,
+    });
+    expect(result.draft?.items.length).toBeGreaterThan(0);
+    expect(result.data?.snapshot.receiptDrafts).toHaveLength(
+      beforeSnapshot.receiptDrafts.length + 1,
+    );
+    expect(result.data?.snapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(result.data?.snapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(result.data?.snapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+    expect(result.data?.overview).toEqual(beforeOverview);
+  });
+
+  it("rejects duplicate mock Google sources without mutating local data", async () => {
+    const source = getMockGoogleReceiptSourceSummaries().find(
+      (summary) => summary.kind === "gmail",
+    );
+
+    if (!source) {
+      throw new Error("Expected mock Gmail source.");
+    }
+
+    const firstResult = await ingestMockGoogleReceiptSourceAndReload(source.id);
+    const beforeDuplicateSnapshot = (await getFinanceSnapshot()).snapshot;
+    const duplicateResult = await ingestMockGoogleReceiptSourceAndReload(source.id);
+    const afterDuplicateSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(firstResult.ok).toBe(true);
+    expect(duplicateResult.ok).toBe(false);
+    expect(duplicateResult.errorMessage).toContain(
+      "already been saved as receipt draft",
+    );
+    expect(afterDuplicateSnapshot).toEqual(beforeDuplicateSnapshot);
+  });
+
+  it("rejects invalid mock Google extraction output without creating partial drafts", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const source = getMockGoogleReceiptSourceSummaries().find(
+      (summary) => summary.kind === "google_docs",
+    );
+    const invalidProvider: ReceiptExtractionProvider = {
+      providerName: "invalid-mock-google-provider",
+      async extractReceiptDraft() {
+        return {
+          draft: {
+            confidence: 0.8,
+            currency: "usd",
+            items: [
+              {
+                categoryId: "software",
+                confidence: 0.8,
+                flags: [],
+                kind: "item",
+                normalizedName: "pro plan",
+                rawName: "Pro plan",
+                tags: ["software"],
+                totalPrice: 12,
+              },
+            ],
+            totalAmount: 12,
+            warnings: [],
+          },
+          extractedAt: "2026-06-05T09:31:00.000Z",
+          providerName: "invalid-mock-google-provider",
+        };
+      },
+    };
+
+    if (!source) {
+      throw new Error("Expected mock Docs source.");
+    }
+
+    const result = await ingestMockGoogleReceiptSourceAndReload(source.id, {
+      extractionProvider: invalidProvider,
+    });
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toBe(
+      "AI extraction currency must be a three-letter uppercase currency code.",
+    );
+    expect(afterSnapshot.receiptDrafts).toEqual(beforeSnapshot.receiptDrafts);
+    expect(afterSnapshot.receiptDraftItems).toEqual(
+      beforeSnapshot.receiptDraftItems,
+    );
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterSnapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(afterSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
   });
 
   it("returns validation errors for mock AI extraction without changing data", async () => {

@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 9A planning checkpoint on top of the Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation only for future Gmail, Google Drive, and Google Docs source integrations.
+The repository now has a Phase 9B mock Google source-provider boundary on top of the Phase 9A planning checkpoint and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only; it still adds no real Google API, OAuth, backend, scheduled sync, or real AI calls.
 
 Existing files:
 
@@ -35,6 +35,7 @@ Existing files:
 - Phase 8E AI receipt extraction prompt QA and runtime schema validation before draft creation.
 - Phase 8F MVP stabilization QA checklist, browser smoke notes, known limitations, and transaction UI regression coverage.
 - Phase 9A planning docs for future Gmail, Google Drive, and Google Docs source integrations, including OAuth scopes, backend requirements, discovery rules, duplicate detection, privacy, deletion, failure modes, and rollout phases.
+- Phase 9B mock Google source provider boundary with local Gmail, Google Drive, and Google Docs source records, stable content hashes, duplicate-safe draft ingestion, and a Receipts screen mock source entry point.
 
 Still missing by design until later phases:
 
@@ -132,7 +133,9 @@ src/
   receipt-ingestion/
     fixtures.ts
     manualAiExtractionSimulator.test.ts
+    mockGoogleSourceProvider.test.ts
     manualAiExtractionSimulator.ts
+    mockGoogleSourceProvider.ts
     receiptExtractionContract.ts
     receiptExtractionValidation.test.ts
     receiptExtractionValidation.ts
@@ -362,6 +365,7 @@ Likely duplicates are warnings, not errors. The duplicate key uses date, rounded
 Confirmed imports create new local transactions with source `csv_import` and new `tx-csv-*` ids. CSV `transaction_id`, source, receipt id, display amount, display currency, and timestamps are ignored for writes. The import path does not create receipts, receipt items, receipt drafts, recurring expenses, or external provider records.
 
 Preview calls do not mutate IndexedDB. Confirm calls reject previews with file errors or row errors before calling the repository. Repository writes re-check IndexedDB availability, required transaction validity, active account ids, and category ids before `bulkAdd`.
+
 ## Local CSV recurring import
 
 Phase 8D-B2 adds recurring-expense-only CSV import to Settings. Import is browser-local, has no backend, and writes nothing until the user confirms a valid preview.
@@ -766,6 +770,47 @@ Source metadata can be preserved on receipt drafts and final receipts only as us
 Duplicate detection should combine a source identity key with a content fingerprint based on normalized merchant, receipt date, rounded total, currency, and normalized text hash. Duplicate matches warn the user and require a choice; they must not silently overwrite drafts, confirmed receipts, or linked transactions.
 
 Google source providers are discovery and text-read adapters only. They must not parse accounting meaning, create transactions, confirm receipts, mutate recurring expenses, change FX settings, or update Dashboard totals directly.
+
+## Phase 9B mock Google source provider boundary
+
+Phase 9B implements local-only mock Gmail, Google Drive, and Google Docs source providers. It does not implement OAuth, Google API clients, backend token handling, scheduled sync, real Google data reads, OCR, or real AI API calls.
+
+Mock source flow:
+
+```text
+ReceiptsPage mock Google source list
+  -> financeDataService ingestMockGoogleReceiptSourceAndReload(candidateId)
+  -> mock ReceiptTextSourceProvider getCandidateText
+  -> duplicate check against local receipt drafts and final receipts
+  -> mockAiReceiptExtractionProvider
+  -> receiptExtractionValidation
+  -> financeRepository saveReceiptDraft
+  -> loadFinanceData
+  -> existing draft review UI
+```
+
+Implemented mock provider files:
+
+- `src/receipt-ingestion/mockGoogleSourceProvider.ts`
+- `src/receipt-ingestion/mockGoogleSourceProvider.test.ts`
+
+Mock candidates preserve user-facing source metadata:
+
+- source kind: `gmail`, `google_drive`, or `google_docs`;
+- provider candidate id;
+- external source id stored as `sourceId`;
+- title;
+- sender or owner;
+- received and/or modified timestamp;
+- mock source URL;
+- `sourceProviderName`;
+- stable local `contentHash`;
+- raw text evidence.
+
+Duplicate detection checks existing receipt drafts and final receipts before draft writes. It rejects a mock source when the same provider kind plus `sourceId` or provider kind plus `contentHash` is already present locally. Rejection happens before extraction and before IndexedDB mutation.
+
+Saved output remains draft-only. Phase 9B writes only `receiptDrafts` and `receiptDraftItems` through the existing repository path. It does not create transactions, final receipts, final receipt items, recurring expenses, FX updates, JSON backup/restore changes, CSV changes, or Dashboard updates before the existing human review and explicit confirmation flow.
+
 ## AI receipt extraction contract and simulator
 
 `ReceiptExtractionProvider` is the future boundary between raw receipt text and structured draft data:
@@ -1017,6 +1062,7 @@ Implemented provider boundaries:
 - Phase 7C `receiptExtractionPromptTemplate`: reusable extraction prompt text.
 - Phase 7C `receiptExtractionJsonSchema`: expected AI extraction JSON schema.
 - Phase 8A `mockAiReceiptExtractionProvider`: local-only simulator implementation of the extraction provider contract.
+- Phase 9B `mockGoogleSourceProvider`: local-only Gmail, Google Drive, and Google Docs source provider implementations for selected mock candidates.
 
 Still future boundaries:
 

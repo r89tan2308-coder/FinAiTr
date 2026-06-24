@@ -305,6 +305,7 @@ Add readable monthly Dashboard trend analytics without changing accounting seman
 - Tests cover aggregation, display-currency conversion, empty states, and no double-counting from receipt items or recurring expenses.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` is updated.
+
 ## Phase 8: Mock AI intake and core MVP polish
 
 ### Phase 8A: Manual AI extraction simulator
@@ -658,6 +659,46 @@ Define the future Google source integration architecture and guardrails before a
 - Docs state that Gmail body import and scheduled sync require backend/security planning before implementation.
 - Product runtime behavior is unchanged.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+
+## Phase 9B: Mock Google source provider boundary
+
+### Goal
+
+Add a local-only mock source-provider boundary for future Gmail, Google Drive, and Google Docs receipt ingestion while preserving the existing receipt draft, review, and confirmation semantics.
+
+### Scope
+
+- Add mock/local Gmail, Google Drive, and Google Docs receipt text source providers.
+- Keep providers behind `ReceiptTextSourceProvider` and service/repository boundaries.
+- Add mock source records with source type, external id, title or sender, received or modified date, raw text, and stable content hash metadata.
+- Route selected mock source text through the existing local AI extraction simulator and runtime extraction validation.
+- Save validated output as receipt drafts and receipt draft items only.
+- Preserve source metadata on created drafts and confirmed receipts.
+- Add duplicate detection for already-ingested mock source records using provider kind plus external id and/or content hash.
+- Add a small Receipts screen entry point for selecting mock Google sources when consistent with the existing UI.
+- Add tests for provider listing, source metadata, duplicate detection, draft creation, invalid extraction rejection, and unchanged Dashboard data before confirmation.
+- Update product, architecture, decisions, QA, and progress docs.
+
+### Non-goals
+
+- No real Gmail, Google Drive, or Google Docs API calls.
+- No OAuth implementation.
+- No Google packages.
+- No backend code, scheduled sync, polling, or push notifications.
+- No real AI API calls.
+- No OCR, live FX, bank APIs, crypto/brokerage, bank matching, or payment execution.
+- No changes to receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, or Dashboard semantics.
+
+### Acceptance
+
+- Mock Gmail, Drive, and Docs providers can list local receipt-like source candidates.
+- A selected mock source can be ingested into a validated receipt draft through the existing AI extraction path.
+- Created drafts preserve source kind, external id, title/sender, received or modified date, source provider name, extraction provider metadata, and content hash.
+- Duplicate mock sources are rejected safely before mutation.
+- Invalid extraction output is rejected before draft writes.
+- Dashboard, Transactions, final Receipts, receipt items, recurring expenses, FX settings, JSON backup/restore, and CSV behavior remain unchanged before receipt confirmation.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+
 ## Deferred until after first MVP
 
 - Real OCR provider.

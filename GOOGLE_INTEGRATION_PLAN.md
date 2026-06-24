@@ -271,21 +271,30 @@ Scheduled sync is a separate backend phase, not a PWA-only feature.
 
 ## Implementation Phases
 
-Phase 9B: OAuth and security architecture spike.
+Phase 9B: Mock Google source provider boundary.
 
+- Add local-only mock Gmail, Google Drive, and Google Docs receipt text providers behind `ReceiptTextSourceProvider`.
+- Preserve mock source type, external id, title/sender, received or modified date, raw text, source provider name, and content hash.
+- Route selected mock source text through existing extraction validation into receipt drafts only.
+- Add duplicate detection for provider kind plus external id and/or content hash.
+- No OAuth, Google package, backend, scheduled sync, real Google data, or real AI API call.
+
+Phase 9C: OAuth and security architecture spike.
+
+- Re-check official Google documentation before implementation.
 - Decide frontend-only manual Drive/Docs import versus backend-backed provider auth.
 - Draft consent-screen copy and privacy disclosures.
 - Define token storage, revocation, deletion, logging, and threat model.
 - No production Google data sync.
 
-Phase 9C: Manual Drive/Docs selected-file import prototype.
+Phase 9D: Manual Drive/Docs selected-file import prototype.
 
 - Use the narrowest selected-file flow, preferably `drive.file`.
 - Import selected document/file text into receipt candidates.
 - Save validated drafts only.
-- No broad Drive scan, scheduled sync, Gmail import, or backend unless Phase 9B requires it.
+- No broad Drive scan, scheduled sync, Gmail import, or backend unless Phase 9C requires it.
 
-Phase 9D: Gmail manual receipt import planning/prototype.
+Phase 9E: Gmail manual receipt import planning/prototype.
 
 - Require backend design before restricted Gmail scopes.
 - Prepare restricted-scope verification and security-assessment implications.
@@ -293,13 +302,13 @@ Phase 9D: Gmail manual receipt import planning/prototype.
 - Fetch body text only for selected candidates.
 - Save validated drafts only.
 
-Phase 9E: Optional scheduled sync.
+Phase 9F: Optional scheduled sync.
 
 - Backend-only.
 - Add token refresh, revocation, rate limits, per-user cursors, and visible sync status.
 - No silent broad scans.
 
-Phase 9F: Production hardening.
+Phase 9G: Production hardening.
 
 - Complete verification requirements, security review, deletion flows, privacy copy, logging controls, QA matrix, and release gate.
 
