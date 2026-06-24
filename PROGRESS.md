@@ -3552,3 +3552,95 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 9C: OAuth and security architecture spike. Re-check official Google documentation, decide frontend-only manual Drive/Docs import versus backend-backed provider auth, draft consent/privacy copy, define token storage, revocation, deletion, logging, and threat model, and keep production Gmail/Drive/Docs sync deferred until that plan is approved.
+
+## 2026-06-24: Phase 9C Google OAuth/backend readiness skeleton completed
+
+### Goal
+
+Prepare a disabled-by-default readiness boundary for future real Google OAuth and Gmail, Google Drive, and Google Docs source providers without implementing OAuth, calling Google APIs, adding a backend, or storing tokens.
+
+### Completed
+
+- Added `.env.example` with placeholder-only Google integration variables and disabled feature flags.
+- Added `src/google-integration/googleIntegrationReadiness.ts` with a Google integration config/status model and disabled real-provider placeholders for Gmail, Google Drive, and Google Docs.
+- Kept `realProviderCallsAllowed` false in Phase 9C and made disabled providers return no candidates or throw a disabled-provider error without network calls.
+- Added Settings read-only status: `Google integration planned / not connected`.
+- Passed only placeholder presence booleans/status text to UI state; configured env values are not exposed by the status model.
+- Added tests proving default disabled behavior, configured values are not exposed by status config, disabled provider placeholders make no network calls, and Settings has no Google connect action.
+- Updated `GOOGLE_INTEGRATION_PLAN.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `PLAN.md`, `PRODUCT_SPEC.md`, and `QA_CHECKLIST.md` for Phase 9C.
+- Re-checked official Google documentation for OAuth redirect URI/client id behavior, scope minimization, Drive `drive.file`, Gmail restricted scopes, and Google API Services User Data Policy.
+- Did not add OAuth flow, Google packages, Google API clients, backend code, token storage, scheduled sync, OCR, real AI calls, live FX, bank APIs, crypto/brokerage, bank matching, or payment execution.
+- Kept Phase 9B mock source ingestion, receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics unchanged.
+
+### Changed files
+
+- `.env.example`
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PRODUCT_SPEC.md`
+- `PROGRESS.md`
+- `QA_CHECKLIST.md`
+- `src/app/App.tsx`
+- `src/google-integration/googleIntegrationReadiness.ts`
+- `src/google-integration/googleIntegrationReadiness.test.ts`
+- `src/pages/SettingsPage.tsx`
+- `src/pages/SettingsPage.test.tsx`
+- `src/vite-env.d.ts`
+
+### Validation commands and results
+
+```powershell
+npm run test -- src\google-integration\googleIntegrationReadiness.test.ts src\pages\SettingsPage.test.tsx --run
+```
+
+Result: succeeded. 2 test files passed, 12 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 20 test files passed, 140 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known limitations
+
+- Phase 9C is readiness-only. No OAuth redirect handling, Google Identity Services integration, backend auth endpoint, real Gmail/Drive/Docs provider, token storage, scheduled sync, or production Google data access exists yet.
+- `.env.example` contains placeholders only; real local `.env` files remain ignored by Git.
+- The Settings Google integration panel is read-only and has no connect/import/sync action.
+- Disabled placeholder providers are not wired into receipt ingestion; Phase 9B mock providers remain the only Google-like source behavior.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9D: OAuth and security architecture spike. Re-check official Google documentation again before implementation, decide frontend-only selected-file Drive/Docs import versus backend-backed provider auth, draft consent/privacy copy, define token storage, revocation, deletion, logging, threat model, and keep production Google data sync deferred until that plan is approved.

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
+import { getGoogleIntegrationStatus } from "../google-integration/googleIntegrationReadiness";
 import { CategoriesPage } from "../pages/CategoriesPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { ReceiptsPage } from "../pages/ReceiptsPage";
@@ -55,6 +56,7 @@ export function App() {
     () => getMockGoogleReceiptSourceSummaries(),
     [],
   );
+  const googleIntegrationStatus = useMemo(() => getGoogleIntegrationStatus(), []);
 
   useEffect(() => {
     let isMounted = true;
@@ -281,6 +283,7 @@ export function App() {
             )
           }
           snapshot={financeData.snapshot}
+          googleIntegrationStatus={googleIntegrationStatus}
           status={financeData.status}
           storageMode={financeData.storageMode}
         />

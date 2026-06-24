@@ -1,7 +1,7 @@
 # Google Integration Plan
 
-Date: 2026-06-23
-Status: Phase 9A planning only. No Google OAuth, API calls, backend, scheduled sync, or runtime product behavior is implemented in this phase.
+Date: 2026-06-24
+Status: Phase 9C readiness skeleton. No Google OAuth flow, API calls, backend, scheduled sync, token storage, or production Google data sync is implemented.
 
 ## Purpose
 
@@ -19,8 +19,9 @@ This document defines the future Gmail, Google Drive, and Google Docs receipt-so
 
 ## Non-goals
 
-- Do not implement OAuth in Phase 9A.
-- Do not add Google packages, API clients, backend services, environment variables, or secrets.
+- Do not implement OAuth in Phase 9C.
+- Do not add Google packages, API clients, backend services, or secrets.
+- Environment variables are placeholders only and must not contain committed secrets.
 - Do not add real Gmail, Drive, or Docs import.
 - Do not add scheduled sync, push notifications, Pub/Sub, or background jobs.
 - Do not add real OCR or AI API calls.
@@ -109,6 +110,38 @@ Backend may not be required for:
 | Gmail labels only | `https://www.googleapis.com/auth/gmail.labels` | Non-sensitive | Not needed for receipt import. Consider only if a future feature manages labels. |
 
 The app should request scopes incrementally and only at the moment the user starts a matching import flow. The OAuth consent screen must clearly explain what data is read, why it is needed, and that imported text becomes an editable receipt draft rather than a confirmed transaction.
+
+## Phase 9C Readiness Skeleton
+
+Phase 9C adds a disabled-by-default readiness boundary only. It defines the names of future runtime placeholders, a local status model, disabled source-provider placeholders, and a Settings read-only status. It still does not build an OAuth flow, redirect route, backend, token store, Google API client, or real Google source adapter.
+
+Environment placeholders:
+
+| Name | Purpose | Phase 9C default |
+| --- | --- | --- |
+| `VITE_GOOGLE_INTEGRATION_ENABLED` | Global future Google integration feature flag | `false` |
+| `VITE_GOOGLE_DRIVE_FILE_IMPORT_ENABLED` | Future selected-file Drive/Docs import flag | `false` |
+| `VITE_GOOGLE_GMAIL_IMPORT_ENABLED` | Future Gmail import flag | `false` |
+| `VITE_GOOGLE_CLIENT_ID` | Future OAuth client id placeholder | empty |
+| `VITE_GOOGLE_REDIRECT_URI` | Future OAuth redirect URI placeholder | empty |
+| `VITE_GOOGLE_BACKEND_BASE_URL` | Future backend boundary placeholder if backend auth is chosen | empty |
+
+Implementation files:
+
+- `src/google-integration/googleIntegrationReadiness.ts`
+- `src/google-integration/googleIntegrationReadiness.test.ts`
+- `.env.example`
+
+Readiness rules:
+
+- The runtime status is `Google integration planned / not connected`.
+- `realProviderCallsAllowed` is always `false` in Phase 9C.
+- Disabled Gmail, Google Drive, and Google Docs placeholder providers return no candidates and throw a disabled-provider error for candidate text requests.
+- Placeholder providers do not call `fetch`, Google OAuth endpoints, Gmail APIs, Drive APIs, Docs APIs, or a backend.
+- Config/status objects expose only whether placeholders are configured, not the configured values.
+- The Settings UI shows status only and has no connect, disconnect, import, sync, or OAuth action.
+
+The official Google docs reviewed for this phase reinforce that apps should request only needed permissions, request access in context where possible, use exact configured redirect URIs, prefer narrow Drive scopes such as `drive.file` for selected-file access, and treat Gmail read scopes and broad Drive scopes as restricted/security-review work. Phase 9C records these constraints but leaves implementation to later phases.
 
 ## Receipt Discovery Rules
 
@@ -279,22 +312,27 @@ Phase 9B: Mock Google source provider boundary.
 - Add duplicate detection for provider kind plus external id and/or content hash.
 - No OAuth, Google package, backend, scheduled sync, real Google data, or real AI API call.
 
-Phase 9C: OAuth and security architecture spike.
+Phase 9C: Google OAuth/backend readiness skeleton.
 
-- Re-check official Google documentation before implementation.
+- Add disabled-by-default feature flags, env placeholder names, status model, Settings placeholder, and disabled provider classes.
+- Re-check official Google documentation before implementation and keep scope minimization documented.
+- Do not implement OAuth, backend, token storage, Google API calls, or production Google data sync.
+
+Phase 9D: OAuth and security architecture spike.
+
 - Decide frontend-only manual Drive/Docs import versus backend-backed provider auth.
 - Draft consent-screen copy and privacy disclosures.
 - Define token storage, revocation, deletion, logging, and threat model.
 - No production Google data sync.
 
-Phase 9D: Manual Drive/Docs selected-file import prototype.
+Phase 9E: Manual Drive/Docs selected-file import prototype.
 
 - Use the narrowest selected-file flow, preferably `drive.file`.
 - Import selected document/file text into receipt candidates.
 - Save validated drafts only.
-- No broad Drive scan, scheduled sync, Gmail import, or backend unless Phase 9C requires it.
+- No broad Drive scan, scheduled sync, Gmail import, or backend unless Phase 9D requires it.
 
-Phase 9E: Gmail manual receipt import planning/prototype.
+Phase 9F: Gmail manual receipt import planning/prototype.
 
 - Require backend design before restricted Gmail scopes.
 - Prepare restricted-scope verification and security-assessment implications.
@@ -302,13 +340,13 @@ Phase 9E: Gmail manual receipt import planning/prototype.
 - Fetch body text only for selected candidates.
 - Save validated drafts only.
 
-Phase 9F: Optional scheduled sync.
+Phase 9G: Optional scheduled sync.
 
 - Backend-only.
 - Add token refresh, revocation, rate limits, per-user cursors, and visible sync status.
 - No silent broad scans.
 
-Phase 9G: Production hardening.
+Phase 9H: Production hardening.
 
 - Complete verification requirements, security review, deletion flows, privacy copy, logging controls, QA matrix, and release gate.
 

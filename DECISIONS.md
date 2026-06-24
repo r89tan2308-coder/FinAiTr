@@ -615,3 +615,24 @@ Consequences:
 - Dashboard impact still requires human review and explicit receipt confirmation.
 - No real Gmail, Google Drive, Google Docs, OAuth, Google packages, backend, scheduled sync, OCR, real AI API calls, live FX, bank APIs, crypto/brokerage, bank matching, or payment execution is added.
 - Receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.
+
+## 2026-06-24: Phase 9C keeps real Google integration disabled behind a readiness skeleton
+
+Decision:
+
+Add a disabled-by-default Google OAuth/backend readiness skeleton with placeholder environment names, a local integration status model, disabled Gmail/Drive/Docs provider placeholders, and a read-only Settings status. Do not add OAuth, Google API clients, backend code, token storage, or real provider reads.
+
+Rationale:
+
+The next implementation step needs a stable boundary for future OAuth decisions without accidentally enabling sensitive Google data access. Official Google guidance emphasizes exact redirect URI configuration, scope minimization, contextual permission requests, narrow Drive `drive.file` access where possible, and restricted-scope review for Gmail read or broad Drive access. A disabled skeleton lets the app document and test those guardrails before building any auth flow.
+
+Consequences:
+
+- `.env.example` documents only empty placeholders and disabled feature flags.
+- Runtime config/status exposes booleans and status text, not configured placeholder values.
+- Settings shows `Google integration planned / not connected` with no connect action.
+- Disabled Gmail, Google Drive, and Google Docs placeholders implement the source-provider interface but return no candidates and do not call network APIs.
+- No OAuth tokens, refresh tokens, client secrets, grants, cursors, provider sessions, backend URLs with secrets, or Google data are stored.
+- Package dependencies remain unchanged.
+- Phase 9B mock source ingestion remains the only Google-like receipt source behavior in the product runtime.
+- Existing receipt confirmation, analytics, backup/restore, CSV, recurring, FX, and Dashboard semantics remain unchanged.

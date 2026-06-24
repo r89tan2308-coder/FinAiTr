@@ -51,7 +51,7 @@ Monthly trend analytics are deterministic Dashboard views. Trend spend is derive
 
 ## Future Google source integrations
 
-Phase 9A plans future Gmail, Google Drive, and Google Docs receipt sources. Phase 9B adds local-only mock Gmail, Google Drive, and Google Docs source records so the provider boundary can be tested without real Google access. The detailed architecture, OAuth scope choices, backend decision, discovery rules, duplicate detection, privacy rules, deletion expectations, and rollout phases live in `GOOGLE_INTEGRATION_PLAN.md`.
+Phase 9A plans future Gmail, Google Drive, and Google Docs receipt sources. Phase 9B adds local-only mock Gmail, Google Drive, and Google Docs source records so the provider boundary can be tested without real Google access. Phase 9C adds a disabled-by-default Google OAuth/backend readiness skeleton and Settings planned/not connected status without real OAuth or Google data access. The detailed architecture, OAuth scope choices, backend decision, discovery rules, duplicate detection, privacy rules, deletion expectations, and rollout phases live in `GOOGLE_INTEGRATION_PLAN.md`.
 
 Mock and future Google integrations are source intake features only. They should help the user find receipt-like source text, then create a schema-validated editable receipt draft. They must not create transactions, confirm receipts, update Dashboard totals, create recurring expenses, change FX settings, or skip the existing review flow.
 
@@ -59,6 +59,7 @@ User-visible expectations:
 
 - The user explicitly starts each Google import flow.
 - Current Phase 9B mock Google sources are local samples and do not connect to Google.
+- Current Phase 9C Google readiness status is planned/not connected and has no connect action.
 - The app explains which Google data is requested and why before requesting OAuth consent.
 - Manual Drive/Docs selected-file import should be the first implementation path, using the narrowest practical selected-file scope.
 - Gmail body import and scheduled sync are deferred until backend token handling, restricted-scope verification, privacy, logging, and deletion behavior are designed.
@@ -84,7 +85,7 @@ The first MVP must not include:
 
 Future integrations may be planned, but not implemented, until the local-first MVP is stable.
 
-Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. Phase 8A may use those contracts through a local manual simulator. Phase 9A may document future Gmail, Google Drive, and Google Docs source integration guardrails. None of these phases may add real Gmail, Google Drive, Google Docs, OAuth, backend jobs, scheduled sync, OCR APIs, or AI API calls.
+Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. Phase 8A may use those contracts through a local manual simulator. Phase 9A may document future Gmail, Google Drive, and Google Docs source integration guardrails. Phase 9C may add disabled readiness skeletons and placeholder environment names only. None of these phases may add real Gmail, Google Drive, Google Docs, OAuth, backend jobs, scheduled sync, OCR APIs, or AI API calls.
 
 ## Primary user
 

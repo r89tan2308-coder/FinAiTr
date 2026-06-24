@@ -11,6 +11,7 @@ import {
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { PageSection } from "../components/PageSection";
 import { defaultCurrencySettings } from "../domain/currencySettings";
+import { type GoogleIntegrationStatus } from "../google-integration/googleIntegrationReadiness";
 import {
   type CurrencySettings,
   type FinanceSnapshot,
@@ -39,6 +40,7 @@ import {
 interface SettingsPageProps {
   currencySettings: CurrencySettings;
   errorMessage?: string;
+  googleIntegrationStatus: GoogleIntegrationStatus;
   onExportLocalBackup: () => Promise<LocalBackupExportActionResult>;
   onExportLocalCsv: (
     kind: LocalCsvExportKind,
@@ -90,6 +92,7 @@ const csvExportLabels: Record<LocalCsvExportKind, string> = {
 export function SettingsPage({
   currencySettings,
   errorMessage,
+  googleIntegrationStatus,
   onExportLocalBackup,
   onExportLocalCsv,
   onPreviewLocalBackupRestore,
@@ -151,7 +154,7 @@ export function SettingsPage({
         value: storageMode === "indexeddb" ? "IndexedDB" : "Seed fallback",
       },
       { icon: Smartphone, label: "PWA", value: "Ready" },
-      { icon: ShieldCheck, label: "Integrations", value: "Mock only" },
+      { icon: ShieldCheck, label: "Integrations", value: googleIntegrationStatus.label },
       {
         icon: Database,
         label: "Records",
@@ -176,6 +179,7 @@ export function SettingsPage({
       snapshot.receipts.length,
       snapshot.recurringExpenses.length,
       snapshot.transactions.length,
+      googleIntegrationStatus.label,
       storageMode,
     ],
   );
@@ -674,6 +678,34 @@ export function SettingsPage({
         </div>
       </PageSection>
 
+      <PageSection title="Integrations">
+        <div className="form-panel local-data-panel">
+          <div className="settings-action-block">
+            <div className="settings-warning-title">
+              <ShieldCheck aria-hidden="true" size={20} />
+              <strong>Google integration</strong>
+            </div>
+            <p className="settings-note">{googleIntegrationStatus.label}.</p>
+            <div className="settings-preview-grid">
+              <span>Status {formatGoogleIntegrationState(googleIntegrationStatus.state)}</span>
+              <span>
+                Connect action {googleIntegrationStatus.canConnect ? "available" : "disabled"}
+              </span>
+              <span>
+                Provider calls{" "}
+                {googleIntegrationStatus.realProviderCallsAllowed ? "enabled" : "blocked"}
+              </span>
+              <span>Connected {googleIntegrationStatus.isConnected ? "yes" : "no"}</span>
+            </div>
+            <ul className="settings-note">
+              {googleIntegrationStatus.detailLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </PageSection>
+
       <PageSection title="Local data">
         <div className="form-panel local-data-panel">
           {localDataMessage && (
@@ -1127,6 +1159,15 @@ function importPreviewRowClassName(row: {
   }
 
   return "settings-import-row";
+}
+
+function formatGoogleIntegrationState(
+  state: GoogleIntegrationStatus["state"],
+): string {
+  return state
+    .split("_")
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function currencySettingsToFormValues(

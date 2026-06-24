@@ -699,6 +699,44 @@ Add a local-only mock source-provider boundary for future Gmail, Google Drive, a
 - Dashboard, Transactions, final Receipts, receipt items, recurring expenses, FX settings, JSON backup/restore, and CSV behavior remain unchanged before receipt confirmation.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 
+## Phase 9C: Google OAuth/backend readiness skeleton
+
+### Goal
+
+Add a disabled-by-default readiness boundary for future real Google OAuth and Gmail, Google Drive, and Google Docs source providers without implementing OAuth, calling Google APIs, adding a backend, or storing tokens.
+
+### Scope
+
+- Add `.env.example` placeholders for future Google client id, redirect URI, backend base URL, and feature flags.
+- Add a small Google integration config/status model that reads only Vite environment placeholders and does not expose configured values in UI state.
+- Add disabled placeholder providers for future real Gmail, Google Drive, and Google Docs source providers.
+- Keep placeholder providers from calling network APIs and return no candidates while disabled.
+- Add a Settings placeholder that shows `Google integration planned / not connected` with no connect action.
+- Keep real Google integration feature flags off by default.
+- Add tests for disabled defaults, non-exposure of env values, disabled providers, and no network calls.
+- Update product, architecture, decisions, Google integration plan, and progress docs.
+
+### Non-goals
+
+- No OAuth flow or redirect handling.
+- No real Gmail, Google Drive, or Google Docs API calls.
+- No Google packages or new dependencies.
+- No backend implementation.
+- No token, refresh token, client secret, grant, cursor, or provider session storage.
+- No changes to mock Google source ingestion from Phase 9B.
+- No changes to receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, or Dashboard semantics.
+
+### Acceptance
+
+- Future Google environment variable names are documented in `.env.example` and docs with placeholder values only.
+- Google integration defaults to disabled and not connected.
+- Settings shows a read-only planned/not connected placeholder and no connect action.
+- Disabled real-provider placeholders cannot fetch candidates from Google and do not call network APIs.
+- Tests prove disabled defaults and no provider network calls.
+- Package dependencies remain unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
+
 ## Deferred until after first MVP
 
 - Real OCR provider.

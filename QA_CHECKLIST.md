@@ -50,6 +50,22 @@ Manual browser check:
 
 - [ ] Open Receipts, use `Mock Google sources`, ingest one mock source, verify the draft opens for review, then verify Dashboard changes only after marking reviewed and confirming the receipt.
 
+## Phase 9C Google Readiness QA
+
+Phase 9C is a disabled readiness checkpoint. It adds no OAuth flow, Google API client, backend, scheduled sync, token storage, or real provider read.
+
+Automated checks:
+
+- [x] Google integration defaults to disabled and not connected.
+- [x] Config/status exposes placeholder presence only, not configured values.
+- [x] Disabled Gmail, Google Drive, and Google Docs placeholders make no network calls.
+- [x] Settings shows planned/not connected status with no connect action.
+- [x] Package dependencies remain unchanged.
+
+Manual browser check:
+
+- [ ] Open Settings and verify Google integration is shown as planned/not connected, provider calls are blocked, and there is no Google connect/import/sync action.
+
 ## Browser Smoke Results
 
 - Dashboard: Passed. Verified Dashboard, monthly trend, spend by category, item analytics, item search/category controls, confirmed receipt item drilldown, recent transactions, and display-currency formatted amounts render in the in-app browser.

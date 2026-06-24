@@ -3,6 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSeedFinanceSnapshot } from "../data/seedData";
 import { buildFinanceOverview } from "../domain/financeViews";
+import {
+  buildGoogleIntegrationConfig,
+  getGoogleIntegrationStatus,
+  type GoogleIntegrationStatus,
+} from "../google-integration/googleIntegrationReadiness";
 import { SettingsPage } from "./SettingsPage";
 import {
   type LocalBackupExportActionResult,
@@ -412,6 +417,17 @@ describe("SettingsPage local data tools", () => {
     );
   });
 
+  it("shows Google integration readiness as planned and not connected", () => {
+    renderSettingsPage();
+
+    expect(
+      screen.getAllByText(/Google integration planned \/ not connected/).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText("Feature flag is off by default.")).toBeInTheDocument();
+    expect(screen.getByText("Provider calls blocked")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /connect google/i })).not.toBeInTheDocument();
+  });
+
   it("does not allow reset in seed fallback mode", async () => {
     renderSettingsPage({ storageMode: "seed_fallback" });
 
@@ -424,6 +440,7 @@ describe("SettingsPage local data tools", () => {
 });
 
 interface RenderSettingsOptions {
+  googleIntegrationStatus?: GoogleIntegrationStatus;
   onExportLocalBackup?: () => Promise<LocalBackupExportActionResult>;
   onExportLocalCsv?: (
     kind: LocalCsvExportKind,
@@ -454,6 +471,10 @@ function renderSettingsPage(options: RenderSettingsOptions = {}) {
   return render(
     <SettingsPage
       currencySettings={seedSnapshot.currencySettings}
+      googleIntegrationStatus={
+        options.googleIntegrationStatus ??
+        getGoogleIntegrationStatus(buildGoogleIntegrationConfig({}))
+      }
       onExportLocalBackup={
         options.onExportLocalBackup ??
         (async () => ({

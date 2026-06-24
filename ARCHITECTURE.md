@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 9B mock Google source-provider boundary on top of the Phase 9A planning checkpoint and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only; it still adds no real Google API, OAuth, backend, scheduled sync, or real AI calls.
+The repository now has a Phase 9C disabled Google OAuth/backend readiness skeleton on top of the Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status; it still adds no real Google API, OAuth flow, backend, scheduled sync, token storage, or real AI calls.
 
 Existing files:
 
@@ -36,6 +36,7 @@ Existing files:
 - Phase 8F MVP stabilization QA checklist, browser smoke notes, known limitations, and transaction UI regression coverage.
 - Phase 9A planning docs for future Gmail, Google Drive, and Google Docs source integrations, including OAuth scopes, backend requirements, discovery rules, duplicate detection, privacy, deletion, failure modes, and rollout phases.
 - Phase 9B mock Google source provider boundary with local Gmail, Google Drive, and Google Docs source records, stable content hashes, duplicate-safe draft ingestion, and a Receipts screen mock source entry point.
+- Phase 9C Google readiness skeleton with `.env.example` placeholders, disabled-by-default feature flags, a status model, disabled real-provider placeholders, and a Settings planned/not connected status.
 
 Still missing by design until later phases:
 
@@ -130,6 +131,9 @@ src/
     parser.ts
     parser.test.ts
     types.ts
+  google-integration/
+    googleIntegrationReadiness.test.ts
+    googleIntegrationReadiness.ts
   receipt-ingestion/
     fixtures.ts
     manualAiExtractionSimulator.test.ts
@@ -811,6 +815,41 @@ Duplicate detection checks existing receipt drafts and final receipts before dra
 
 Saved output remains draft-only. Phase 9B writes only `receiptDrafts` and `receiptDraftItems` through the existing repository path. It does not create transactions, final receipts, final receipt items, recurring expenses, FX updates, JSON backup/restore changes, CSV changes, or Dashboard updates before the existing human review and explicit confirmation flow.
 
+## Phase 9C Google OAuth/backend readiness skeleton
+
+Phase 9C adds only a disabled readiness boundary for future real Google integration.
+
+Implemented readiness files:
+
+- `.env.example`
+- `src/google-integration/googleIntegrationReadiness.ts`
+- `src/google-integration/googleIntegrationReadiness.test.ts`
+
+Readiness flow:
+
+```text
+Vite env placeholders
+  -> buildGoogleIntegrationConfig
+  -> getGoogleIntegrationStatus
+  -> App passes read-only status
+  -> Settings shows Google integration planned / not connected
+```
+
+Environment placeholders are named for future work only:
+
+- `VITE_GOOGLE_INTEGRATION_ENABLED`
+- `VITE_GOOGLE_DRIVE_FILE_IMPORT_ENABLED`
+- `VITE_GOOGLE_GMAIL_IMPORT_ENABLED`
+- `VITE_GOOGLE_CLIENT_ID`
+- `VITE_GOOGLE_REDIRECT_URI`
+- `VITE_GOOGLE_BACKEND_BASE_URL`
+
+The default flags are `false` and placeholder values are empty. The config/status model exposes only whether placeholders are configured; it does not expose configured values to UI state. `realProviderCallsAllowed` is always `false` in Phase 9C.
+
+Disabled real-provider placeholders implement the existing `ReceiptTextSourceProvider` interface for future Gmail, Google Drive, and Google Docs adapters. They return no candidates, throw a disabled-provider error for candidate text requests, and do not call Google OAuth endpoints, Gmail APIs, Drive APIs, Docs APIs, `fetch`, a backend, or any external package.
+
+Settings renders a read-only integration status only. It has no connect, disconnect, import, sync, OAuth redirect, token storage, backend call, or provider action.
+
 ## AI receipt extraction contract and simulator
 
 `ReceiptExtractionProvider` is the future boundary between raw receipt text and structured draft data:
@@ -1063,6 +1102,7 @@ Implemented provider boundaries:
 - Phase 7C `receiptExtractionJsonSchema`: expected AI extraction JSON schema.
 - Phase 8A `mockAiReceiptExtractionProvider`: local-only simulator implementation of the extraction provider contract.
 - Phase 9B `mockGoogleSourceProvider`: local-only Gmail, Google Drive, and Google Docs source provider implementations for selected mock candidates.
+- Phase 9C `googleIntegrationReadiness`: disabled-by-default Google integration config/status model and disabled real-provider placeholders.
 
 Still future boundaries:
 
@@ -1080,4 +1120,4 @@ Provider implementation rules:
 - no receipt item independently changes Dashboard spend totals;
 - no live FX provider updates local manual FX settings unless a later phase explicitly changes the currency architecture.
 
-The first MVP uses deterministic local logic and mock or contract-only providers only. Phase 9A keeps future Google integration at the planning layer until a later phase explicitly implements OAuth, provider adapters, and any required backend.
+The first MVP uses deterministic local logic and mock or contract-only providers only. Phase 9C keeps future Google integration disabled by default and readiness-only until a later phase explicitly implements OAuth, provider adapters, and any required backend.
