@@ -1,7 +1,7 @@
 # Google Integration Plan
 
 Date: 2026-06-24
-Status: Phase 9D OAuth/backend decision and disabled backend skeleton. No Google OAuth flow, API calls, backend server, scheduled sync, token storage, or production Google data sync is implemented.
+Status: Phase 9E privacy, consent, and disclosure planning. No Google OAuth flow, API calls, backend server, scheduled sync, token storage, real AI provider call, or production Google data sync is implemented.
 
 ## Purpose
 
@@ -19,7 +19,7 @@ This document defines the future Gmail, Google Drive, and Google Docs receipt-so
 
 ## Non-goals
 
-- Do not implement OAuth in Phase 9D.
+- Do not implement OAuth in Phase 9E.
 - Do not add Google packages, API clients, backend services, or secrets.
 - Environment variables are placeholders only and must not contain committed secrets.
 - Do not add real Gmail, Drive, or Docs import.
@@ -187,6 +187,82 @@ Runtime rules:
 
 The official Google docs reviewed for Phase 9D reinforce that web-server OAuth is designed for applications that can securely store confidential information and maintain state, redirect URIs must exactly match configured authorized URIs, apps should request only needed scopes in context, `drive.file` is the preferred narrow selected-file Drive/Docs scope, Gmail read scopes are restricted, broad Drive scopes are restricted, and restricted-scope data stored or transmitted on servers can require security assessment.
 
+
+## Phase 9E Privacy, Consent, and User-Facing Disclosures
+
+Phase 9E is documentation and copy planning only. It does not add a Google connection action, OAuth route, backend server, Google API client, token storage, scheduled sync, provider revocation call, or real AI extraction provider.
+
+Privacy principles for future Google integrations:
+
+- Explain who is requesting access, what Google data is requested, why it is requested, where it is processed, what is stored, what is not stored, how to disconnect, and how deletion works before asking for consent.
+- Request the minimum scope for the current user action and request it in context. Prefer selected-file `drive.file` before broader Drive or Docs scopes.
+- Keep Gmail body import, Gmail metadata discovery, broad Drive/Docs discovery, scheduled sync, and long-lived provider access backend-gated until Phase 9D backend requirements are implemented.
+- Use Google data only for the visible receipt import feature. Do not sell Google data, use it for ads, use it for creditworthiness/lending, or allow human review without explicit user agreement or a narrow security/legal need.
+- Keep Google source ingestion draft-only. Imported source text can create receipt drafts and draft items only after extraction validation. Dashboard, Transactions, final Receipts, receipt items, recurring expenses, and FX settings change only after the user reviews and explicitly confirms a draft.
+
+Future data access disclosure:
+
+| Source | Future data that may be accessed | First allowed path | Disclosure requirement |
+| --- | --- | --- | --- |
+| Gmail | Selected message metadata, sender, subject, received date, message body text, and receipt-like attachment text when explicitly selected or matched by user-provided filters | Deferred backend-gated path using restricted Gmail scopes | Explain that Gmail read scopes can expose email content/settings; fetch body text only for selected candidates; no mailbox-wide silent scan. |
+| Google Drive | User-selected file id, file name/title, owner where available, modified time, MIME type, safe source URL, and text extracted from the selected file | Preferred first real path with `drive.file` | Explain that only files the user selects or shares with the app are accessed in the first implementation. |
+| Google Docs | User-selected document id/title, owner where available, modified time, safe source URL, and document text | Prefer selected Drive file access with `drive.file`; Docs readonly only if selected-file flow cannot work without it | Explain whether Docs text is read through selected-file Drive access or a Docs-specific scope. |
+
+Draft Settings Google connection copy:
+
+| UI state | Draft copy |
+| --- | --- |
+| Disabled/readiness-only | Google receipt import is planned but not connected. No Google data is read, no OAuth flow is active, and provider calls are blocked. |
+| Before connect | Connect Google only when you want to import receipt-like messages or files. FinAiTr will ask only for the access needed for the import path you choose. Imported Google text becomes an editable receipt draft, not a confirmed transaction. |
+| Selected Drive/Docs import | Choose the specific Drive file or Docs document to import. FinAiTr will use the selected content to prepare a receipt draft for review. It will not scan all Drive files in this mode. |
+| Gmail import | Choose Gmail search filters or selected messages before import. FinAiTr will fetch receipt-like message text only for selected candidates. Gmail import requires backend security and restricted-scope review before release. |
+| AI extraction disclosure | If a future AI extraction provider is enabled, selected receipt text may be sent to that provider to structure a receipt draft. This must be disclosed before use and must stay disabled unless the user explicitly enables that future provider. |
+| Draft review reminder | Review every imported draft before confirming. Dashboard totals change only after you confirm a reviewed receipt into one local transaction. |
+| Connected status | Google is connected for the listed import paths only. You can disconnect to revoke provider access and delete provider credential state and cached provider diagnostics. |
+| Disconnect | Disconnect Google? This will revoke provider access where possible and delete provider credential state, cached candidates, sync cursors, and diagnostics. Local receipt drafts, confirmed receipts, transactions, and analytics remain unless you delete them separately. |
+| Error or revoked grant | Google access is unavailable or was revoked. No new Google data will be imported until you reconnect and consent again. Existing local finance records remain unchanged. |
+
+Data minimization requirements:
+
+- Do not request Gmail, Drive, Docs, or AI extraction access until the user starts the matching import flow.
+- Do not request broad Drive or Gmail scopes for selected-file import.
+- Do not fetch message bodies or document/file text until the user selects candidates or provides explicit filters for that import.
+- Do not store raw Google source text outside receipt draft/final receipt evidence fields needed for user review.
+- Do not include tokens, provider sessions, sync cursors, or credentials in JSON backups, CSV exports, source metadata, logs, tests, or committed config.
+- Keep duplicate detection local and warning-based; do not silently overwrite existing drafts, confirmed receipts, linked transactions, or analytics.
+
+Token, backend, and revocation expectations:
+
+- The PWA must not store OAuth client secrets, access tokens, refresh tokens, provider sessions, grants, provider cookies, or sync cursors.
+- Production Gmail import, broad Drive/Docs access, scheduled sync, authorization response exchange, long-lived provider access, revocation, and provider-data deletion require the future backend described in Phase 9D.
+- A future backend must encrypt provider credential state at rest, restrict operational access, rotate/revoke provider access when needed, and delete provider credential state, cached candidates, sync cursors, and diagnostics on disconnect or account deletion.
+- Provider disconnect must not delete user-created local finance records by default. A separate destructive local-data deletion flow must be required for imported drafts, confirmed receipts, transactions, and analytics.
+
+Logging restrictions:
+
+- Do not log raw Gmail bodies, Drive or Docs text, attachments, receipt text, AI prompts or provider responses containing receipt text, OAuth credentials, authorization responses, client secrets, source URLs containing secrets, or full provider ids.
+- Future diagnostics may store only provider kind, action, status, counts, timestamp, hashed source ids, and error class.
+- Diagnostics must be deletable with provider disconnect and local data reset.
+
+Future AI provider disclosure:
+
+- Real AI extraction remains disabled until a later explicit phase.
+- If enabled later, the UI must disclose the provider name, what receipt/source text is sent, why it is sent, whether it may leave the device, what is stored locally, and whether the provider retains data.
+- AI extraction output must remain draft-only and pass runtime validation before saving a receipt draft.
+- AI extraction must not create transactions, final receipts, Dashboard totals, recurring expenses, FX changes, or provider sync state.
+
+Future OAuth consent checklist:
+
+- [ ] OAuth consent screen names the app, support contact, privacy policy, and intended receipt-import purpose accurately.
+- [ ] Consent copy lists each requested scope and maps it to a visible user action.
+- [ ] The selected implementation uses the narrowest viable scope; broad or restricted scopes have documented justification and approval.
+- [ ] Gmail and broad Drive/Docs paths have backend credential handling, restricted-scope verification readiness, and security assessment review where required.
+- [ ] Pre-connect Settings copy explains accessed data, draft-only behavior, AI extraction disclosure, disconnect, revocation, and deletion.
+- [ ] Import UI requires user selection or explicit filters before fetching message/file/document text.
+- [ ] Logs and diagnostics exclude raw Google content, receipt text, tokens, credentials, prompts, provider responses, and full provider ids.
+- [ ] Disconnect revokes provider access where possible and deletes provider credential state, cached candidates, sync cursors, and diagnostics.
+- [ ] Local data deletion behavior is documented separately from provider disconnect.
+- [ ] Product QA proves Google source ingestion creates drafts only and Dashboard impact still requires human review and explicit confirmation.
 ## Receipt Discovery Rules
 
 Discovery must be explicit and user-controlled.
@@ -369,14 +445,20 @@ Phase 9D: OAuth/backend decision record and disabled backend skeleton.
 - Document token storage, revocation, deletion, logging, first scopes, and frontend-only selected-file exception.
 - No production Google data sync, OAuth flow, backend server, token storage, or network call.
 
-Phase 9E: Manual Drive/Docs selected-file import prototype.
+Phase 9E: Privacy, consent, and user-facing disclosure planning.
+
+- Draft Settings and consent copy before real provider access.
+- Document Google data access, draft-only ingestion, data minimization, AI extraction disclosure, logging limits, token handling, disconnect/revocation, deletion, and OAuth consent checklist.
+- No OAuth, Google API calls, backend server, token storage, scheduled sync, real AI provider, or runtime behavior change.
+
+Phase 9F: Manual Drive/Docs selected-file import prototype.
 
 - Use the narrowest selected-file flow, preferably `drive.file`.
 - Import selected document/file text into receipt candidates.
 - Save validated drafts only.
-- No broad Drive scan, scheduled sync, Gmail import, or backend unless Phase 9D requires it.
+- No broad Drive scan, scheduled sync, Gmail import, backend credential persistence, or provider data sync unless the Phase 9D backend and Phase 9E consent gates require and validate those pieces.
 
-Phase 9F: Gmail manual receipt import planning/prototype.
+Phase 9G: Gmail manual receipt import planning/prototype.
 
 - Require backend design before restricted Gmail scopes.
 - Prepare restricted-scope verification and security-assessment implications.
@@ -384,13 +466,13 @@ Phase 9F: Gmail manual receipt import planning/prototype.
 - Fetch body text only for selected candidates.
 - Save validated drafts only.
 
-Phase 9G: Optional scheduled sync.
+Phase 9H: Optional scheduled sync.
 
 - Backend-only.
 - Add token refresh, revocation, rate limits, per-user cursors, and visible sync status.
 - No silent broad scans.
 
-Phase 9H: Production hardening.
+Phase 9I: Production hardening.
 
 - Complete verification requirements, security review, deletion flows, privacy copy, logging controls, QA matrix, and release gate.
 

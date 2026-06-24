@@ -3736,4 +3736,88 @@ Result: succeeded. Found 0 vulnerabilities.
 
 ### Next recommended phase
 
-Phase 9E: Manual Drive/Docs selected-file import prototype. Keep it user-initiated, selected-file only, narrow-scope-first, draft-only, and no broad Drive scan, Gmail import, scheduled sync, backend credential persistence, or provider data sync unless a separate implementation phase explicitly adds and validates the required backend pieces.
+Phase 9E: privacy, consent, and user-facing disclosure planning before any real Google provider access. Keep Google integration disabled/no-op and do not start a Drive/Docs prototype until privacy/consent gates are documented.
+## 2026-06-24: Phase 9E privacy, consent, and user-facing disclosure planning completed
+
+### Goal
+
+Document future Google privacy, consent, and user-facing disclosure requirements before any real Google OAuth, Gmail, Drive, Docs, backend token handling, scheduled sync, provider revocation call, or real AI extraction provider is implemented.
+
+### Completed
+
+- Re-checked official Google documentation for OAuth consent screen requirements, minimum necessary scopes, Google API Services User Data Policy, Drive `drive.file`, and Gmail restricted scopes.
+- Added Phase 9E to `PLAN.md` as a documentation/copy-only checkpoint.
+- Updated `GOOGLE_INTEGRATION_PLAN.md` with:
+  - future privacy principles for Google integrations;
+  - Gmail, Drive, and Docs data access disclosures;
+  - draft Settings Google connection copy for disabled, pre-connect, selected Drive/Docs import, Gmail import, AI extraction disclosure, draft review, connected, disconnect, and revoked/error states;
+  - data minimization requirements;
+  - token/backend/revocation expectations;
+  - logging restrictions;
+  - future AI extraction provider disclosure;
+  - future OAuth consent checklist;
+  - updated future phase order: Phase 9F selected-file Drive/Docs prototype, Phase 9G Gmail planning/prototype, Phase 9H optional scheduled sync, Phase 9I production hardening.
+- Updated `PRODUCT_SPEC.md` with future Google privacy and consent expectations.
+- Updated `ARCHITECTURE.md` to state Phase 9E is planning-only and does not add runtime UI, OAuth routes, Google API clients, backend services, token storage, scheduled sync, provider revocation calls, or AI provider calls.
+- Updated `DECISIONS.md` with a Phase 9E decision that real Google access cannot ship until privacy/consent gates are satisfied.
+- Updated `QA_CHECKLIST.md` with Phase 9E documentation checks and future implementation QA gates.
+- Kept runtime behavior unchanged. No `src`, package, `.env.example`, OAuth, Google API, backend, token storage, scheduled sync, provider revocation, or real AI provider changes were added.
+
+### Changed files
+
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 21 test files passed, 146 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known limitations
+
+- Phase 9E is documentation and draft copy only. No actual Google connection UI copy was changed in runtime screens.
+- No real OAuth consent screen, Google Cloud project configuration, backend server, Google API client, token storage, provider revocation call, scheduled sync, or AI extraction provider exists yet.
+- Future implementation phases must re-check official Google documentation before enabling provider access because consent, verification, and scope requirements can change.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9F: Manual Drive/Docs selected-file import prototype. Keep it selected-file only, narrow-scope-first with `drive.file` where possible, draft-only, and blocked from broad Drive scan, Gmail import, scheduled sync, backend credential persistence, or provider data sync unless the Phase 9D backend and Phase 9E consent gates are implemented and validated.

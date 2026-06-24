@@ -51,7 +51,7 @@ Monthly trend analytics are deterministic Dashboard views. Trend spend is derive
 
 ## Future Google source integrations
 
-Phase 9A plans future Gmail, Google Drive, and Google Docs receipt sources. Phase 9B adds local-only mock Gmail, Google Drive, and Google Docs source records so the provider boundary can be tested without real Google access. Phase 9C adds a disabled-by-default Google OAuth/backend readiness skeleton and Settings planned/not connected status without real OAuth or Google data access. Phase 9D records that production Gmail import, broad Drive/Docs access, scheduled sync, long-lived provider access, revocation, and provider-data deletion require a backend, and adds only a disabled no-op backend skeleton. The detailed architecture, OAuth scope choices, backend decision, discovery rules, duplicate detection, privacy rules, deletion expectations, and rollout phases live in `GOOGLE_INTEGRATION_PLAN.md`.
+Phase 9A plans future Gmail, Google Drive, and Google Docs receipt sources. Phase 9B adds local-only mock Gmail, Google Drive, and Google Docs source records so the provider boundary can be tested without real Google access. Phase 9C adds a disabled-by-default Google OAuth/backend readiness skeleton and Settings planned/not connected status without real OAuth or Google data access. Phase 9D records that production Gmail import, broad Drive/Docs access, scheduled sync, long-lived provider access, revocation, and provider-data deletion require a backend, and adds only a disabled no-op backend skeleton. Phase 9E documents future Google privacy, consent, and user-facing disclosure requirements without changing runtime behavior. The detailed architecture, OAuth scope choices, backend decision, discovery rules, duplicate detection, privacy rules, deletion expectations, and rollout phases live in `GOOGLE_INTEGRATION_PLAN.md`.
 
 Mock and future Google integrations are source intake features only. They should help the user find receipt-like source text, then create a schema-validated editable receipt draft. They must not create transactions, confirm receipts, update Dashboard totals, create recurring expenses, change FX settings, or skip the existing review flow.
 
@@ -60,11 +60,21 @@ User-visible expectations:
 - The user explicitly starts each Google import flow.
 - Current Phase 9B mock Google sources are local samples and do not connect to Google.
 - Current Phase 9C Google readiness status is planned/not connected and has no connect action.
-- The app explains which Google data is requested and why before requesting OAuth consent.
+- The app explains which Google data is requested, why it is requested, how it is used, what is stored, what is not stored, how AI extraction may be used in a future explicit phase, and how disconnect/deletion works before requesting OAuth consent.
 - Manual Drive/Docs selected-file import should be the first implementation path, using the narrowest practical selected-file scope.
 - Gmail body import, broad Drive/Docs access, long-lived provider access, provider revocation/deletion, and scheduled sync are deferred until backend token handling, restricted-scope verification, privacy, logging, deletion behavior, and release gates are implemented.
 - Duplicate imported messages, files, documents, or extracted receipt content produce warnings and require a user choice.
 - Disconnecting a future provider must revoke grants when possible and delete provider tokens, cursors, cached candidate metadata, and diagnostics while preserving user-created local finance records by default.
+
+
+Future Google privacy and consent expectations:
+
+- Google source access must be requested only in context of a user-started import flow.
+- Settings and OAuth copy must state that imported Google text becomes an editable receipt draft and never updates Dashboard totals until human review and explicit confirmation.
+- Future Gmail import may access selected message metadata, sender, subject, received date, message body text, and receipt-like attachment text only after user selection or explicit filters.
+- Future Drive/Docs import should first access only user-selected files or documents, preferably through `drive.file`.
+- Receipt text may be sent to a future AI extraction provider only if that provider is explicitly enabled in a later phase and disclosed before use.
+- Disconnect must revoke provider access where possible and delete provider credential state, cached candidates, sync cursors, and diagnostics while preserving local finance records by default.
 
 ## Non-goals
 
@@ -85,7 +95,7 @@ The first MVP must not include:
 
 Future integrations may be planned, but not implemented, until the local-first MVP is stable.
 
-Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. Phase 8A may use those contracts through a local manual simulator. Phase 9A may document future Gmail, Google Drive, and Google Docs source integration guardrails. Phase 9C may add disabled readiness skeletons and placeholder environment names only. Phase 9D may add disabled backend endpoint definitions and a no-op backend client only. None of these phases may add real Gmail, Google Drive, Google Docs, OAuth, backend runtime calls, scheduled sync, token storage, OCR APIs, or AI API calls.
+Phase 7C planning may define provider contracts, JSON schema, and prompt templates for future AI receipt extraction. Phase 8A may use those contracts through a local manual simulator. Phase 9A may document future Gmail, Google Drive, and Google Docs source integration guardrails. Phase 9C may add disabled readiness skeletons and placeholder environment names only. Phase 9D may add disabled backend endpoint definitions and a no-op backend client only. Phase 9E may add privacy, consent, and disclosure documentation only. None of these phases may add real Gmail, Google Drive, Google Docs, OAuth, backend runtime calls, scheduled sync, token storage, OCR APIs, or AI API calls.
 
 ## Primary user
 

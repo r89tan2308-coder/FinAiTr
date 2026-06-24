@@ -771,6 +771,42 @@ Decide the safest future Google OAuth/backend architecture and add a disabled no
 - Tests prove disabled defaults, no placeholder value exposure, no network calls, and no credential persistence behavior.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
+
+## Phase 9E: Google privacy, consent, and user-facing disclosure planning
+
+### Goal
+
+Plan the privacy, consent, and user-facing disclosures required before any future real Google integration asks for OAuth consent, reads Gmail/Drive/Docs data, sends receipt text to an extraction provider, or stores provider lifecycle state.
+
+### Scope
+
+- Add future Google privacy and consent documentation.
+- Draft user-facing Settings Google connection copy for disabled, pre-connect, connected, import, disconnect, and error states.
+- Explain what data future Gmail, Google Drive, and Google Docs integrations may access.
+- Explain that Google source ingestion creates receipt drafts only and still requires human review and explicit confirmation before Dashboard impact.
+- Document data minimization, logging restrictions, token handling expectations, disconnect/revocation, diagnostics deletion, and user data deletion expectations.
+- Document that receipt text may be sent to a future AI extraction provider only when that provider is explicitly enabled in a later phase and disclosed before use.
+- Add a future OAuth consent checklist and release gate.
+- Update Google integration, product, architecture, decision, QA, and progress docs.
+
+### Non-goals
+
+- No OAuth implementation.
+- No Google Identity Services, Google API packages, or API clients.
+- No backend server implementation.
+- No token storage, provider session storage, refresh handling, scheduled sync, provider revocation call, or provider data deletion runtime.
+- No real AI API calls or AI provider integration.
+- No product runtime behavior changes.
+
+### Acceptance
+
+- `GOOGLE_INTEGRATION_PLAN.md` includes future privacy/consent requirements, user-facing copy, Gmail/Drive/Docs data disclosure, draft-only accounting disclosure, AI extraction disclosure, and OAuth consent checklist.
+- `DECISIONS.md` records that no real Google integration can ship until the privacy/consent checklist is satisfied.
+- Product and architecture docs state that future Google source data creates receipt drafts only until human confirmation.
+- Docs preserve the Phase 9D backend requirement and the narrow manual selected-file `drive.file` exception.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
+
 ## Deferred until after first MVP
 
 - Real OCR provider.

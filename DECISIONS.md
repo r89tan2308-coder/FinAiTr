@@ -654,3 +654,20 @@ Consequences:
 - OAuth client secrets, authorization responses, access tokens, refresh tokens, provider sessions, sync cursors, provider cookies, raw Google source text, and provider credentials must not be stored in IndexedDB, localStorage, JSON backups, CSV exports, source metadata, logs, tests, or committed config.
 - Future provider disconnect must revoke provider grants where possible and delete provider credential state, cached candidates, sync cursors, and diagnostics while preserving user-created local finance records by default.
 - Existing Phase 9B mock Google sources, receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.
+## 2026-06-24: Phase 9E requires privacy and consent gates before real Google access
+
+Decision:
+
+Before any real Google OAuth, Gmail, Drive, Docs, backend token handling, scheduled sync, or real AI extraction provider is implemented, the product must have clear user-facing privacy and consent disclosures for the exact import path being enabled. Phase 9E is documentation and copy planning only.
+
+Rationale:
+
+Google policy requires clear and accurate disclosure of who is requesting data, what data is requested, why it is requested, and how it is used. Google Workspace consent guidance also recommends minimum necessary scopes and additional review for sensitive or restricted scopes. The product must preserve the local-first accounting boundary: Google source text can create receipt drafts only, while Dashboard impact requires human review and explicit confirmation.
+
+Consequences:
+
+- Settings and OAuth copy must explain accessed Gmail/Drive/Docs data, draft-only import behavior, AI extraction disclosure, disconnect/revocation, deletion, and support/privacy policy expectations before consent.
+- Receipt text may be sent to a future AI extraction provider only when that provider is explicitly enabled in a later phase and disclosed before use.
+- Google user data must be used only for visible receipt import features; it must not be sold, used for ads, used for creditworthiness/lending, or exposed to human review without explicit user agreement or a narrow security/legal need.
+- Future implementation phases must satisfy the OAuth consent checklist in `GOOGLE_INTEGRATION_PLAN.md` before adding real provider access.
+- No runtime behavior, OAuth flow, Google API call, backend server, token storage, scheduled sync, or AI provider call is added in Phase 9E.

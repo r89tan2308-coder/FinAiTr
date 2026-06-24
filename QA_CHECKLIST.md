@@ -84,6 +84,27 @@ Manual browser check:
 
 - [ ] Open Settings and verify the Google integration panel still shows planned/not connected, has no connect/import/sync/disconnect action, and provider calls are blocked.
 
+
+## Phase 9E Privacy/Consent Planning QA
+
+Phase 9E is a documentation and copy-planning checkpoint. It adds no OAuth flow, Google API client, backend server, token storage, scheduled sync, provider revocation call, or real AI provider read.
+
+Documentation checks:
+
+- [x] Future Settings Google connection copy is drafted for disabled, pre-connect, selected Drive/Docs import, Gmail import, AI extraction disclosure, draft review, connected, disconnect, and revoked/error states.
+- [x] Gmail, Drive, and Docs future data access is documented separately.
+- [x] Google source ingestion is documented as receipt-draft-only before human review and explicit confirmation.
+- [x] Data minimization, logging restrictions, token handling, disconnect/revocation, diagnostics deletion, and user data deletion expectations are documented.
+- [x] Future AI extraction provider disclosure is documented and remains disabled until a later explicit phase.
+- [x] Future OAuth consent checklist is documented.
+
+Future implementation QA gates:
+
+- [ ] Verify actual Settings copy matches the Phase 9E draft before enabling any Google connect action.
+- [ ] Verify OAuth consent screen scopes and privacy policy match the import path being released.
+- [ ] Verify selected-file Drive/Docs import does not broad-scan Drive.
+- [ ] Verify Gmail import fetches body text only after user selection or explicit filters.
+- [ ] Verify disconnect revokes provider access where possible and deletes provider credential state, cached candidates, sync cursors, and diagnostics.
 ## Browser Smoke Results
 
 - Dashboard: Passed. Verified Dashboard, monthly trend, spend by category, item analytics, item search/category controls, confirmed receipt item drilldown, recent transactions, and display-currency formatted amounts render in the in-app browser.
