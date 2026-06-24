@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 9C disabled Google OAuth/backend readiness skeleton on top of the Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status; it still adds no real Google API, OAuth flow, backend, scheduled sync, token storage, or real AI calls.
+The repository now has a Phase 9D OAuth/backend decision record and disabled backend skeleton on top of the Phase 9C disabled Google readiness skeleton, Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status. Phase 9D records the backend-required OAuth/security decision, adds disabled backend endpoint definitions and a no-op backend client, and still adds no real Google API, OAuth flow, backend server, scheduled sync, token storage, or real AI calls.
 
 Existing files:
 
@@ -37,13 +37,14 @@ Existing files:
 - Phase 9A planning docs for future Gmail, Google Drive, and Google Docs source integrations, including OAuth scopes, backend requirements, discovery rules, duplicate detection, privacy, deletion, failure modes, and rollout phases.
 - Phase 9B mock Google source provider boundary with local Gmail, Google Drive, and Google Docs source records, stable content hashes, duplicate-safe draft ingestion, and a Receipts screen mock source entry point.
 - Phase 9C Google readiness skeleton with `.env.example` placeholders, disabled-by-default feature flags, a status model, disabled real-provider placeholders, and a Settings planned/not connected status.
+- Phase 9D Google OAuth/backend decision and disabled backend skeleton with no-op endpoint definitions, backend env flags, and tests proving no network or credential persistence behavior.
 
 Still missing by design until later phases:
 
 - bank matching or reconciliation for receipt-linked transactions;
 - receipt item, final receipt, or receipt draft CSV import;
 - real Gmail, Google Drive, or Google Docs source adapters;
-- OAuth, provider token storage, backend sync, scheduled sync, and restricted-scope Google verification work;
+- real OAuth, provider token storage, backend server/runtime sync, scheduled sync, and restricted-scope Google verification work;
 
 ## Target stack
 
@@ -132,6 +133,8 @@ src/
     parser.test.ts
     types.ts
   google-integration/
+    googleBackendReadiness.test.ts
+    googleBackendReadiness.ts
     googleIntegrationReadiness.test.ts
     googleIntegrationReadiness.ts
   receipt-ingestion/
@@ -842,13 +845,51 @@ Environment placeholders are named for future work only:
 - `VITE_GOOGLE_GMAIL_IMPORT_ENABLED`
 - `VITE_GOOGLE_CLIENT_ID`
 - `VITE_GOOGLE_REDIRECT_URI`
+- `VITE_GOOGLE_BACKEND_AUTH_ENABLED`
+- `VITE_GOOGLE_BACKEND_SYNC_ENABLED`
+- `VITE_GOOGLE_BACKEND_REVOCATION_ENABLED`
 - `VITE_GOOGLE_BACKEND_BASE_URL`
 
-The default flags are `false` and placeholder values are empty. The config/status model exposes only whether placeholders are configured; it does not expose configured values to UI state. `realProviderCallsAllowed` is always `false` in Phase 9C.
+The default flags are `false` and placeholder values are empty. The config/status model exposes only whether placeholders are configured; it does not expose configured values to UI state. `realProviderCallsAllowed` remains `false`; Phase 9D backend flags also leave endpoint calls, network calls, and credential persistence disabled.
 
 Disabled real-provider placeholders implement the existing `ReceiptTextSourceProvider` interface for future Gmail, Google Drive, and Google Docs adapters. They return no candidates, throw a disabled-provider error for candidate text requests, and do not call Google OAuth endpoints, Gmail APIs, Drive APIs, Docs APIs, `fetch`, a backend, or any external package.
 
 Settings renders a read-only integration status only. It has no connect, disconnect, import, sync, OAuth redirect, token storage, backend call, or provider action.
+
+
+## Phase 9D Google OAuth/backend decision and disabled skeleton
+
+Phase 9D decides that production Google provider auth requires a backend before real OAuth callback handling, authorization response exchange, long-lived provider access, scheduled sync, revocation, or provider-data deletion is enabled.
+
+Frontend-only is allowed only as a future narrow exception for manual, user-initiated Drive/Docs selected-file import using a scope such as `drive.file`, with no stored long-lived credential, no scheduled sync, no broad Drive scan, and draft-only local writes.
+
+Implemented backend readiness files:
+
+- `src/google-integration/googleBackendReadiness.ts`
+- `src/google-integration/googleBackendReadiness.test.ts`
+
+Disabled backend boundary:
+
+```text
+Vite env placeholders
+  -> buildGoogleBackendReadiness
+  -> googleBackendEndpointDefinitions
+  -> DisabledGoogleOAuthBackendClient
+  -> disabled status, empty source lists, or disabled errors only
+```
+
+Future endpoint names are documented as disabled definitions only: `oauthStart`, `oauthCallback`, `providerStatus`, `disconnect`, `listSourceCandidates`, `getSourceCandidateText`, and `scheduledSyncStatus`.
+
+Phase 9D invariants:
+
+- `endpointCallsAllowed` is always `false`.
+- `networkCallsAllowed` is always `false`.
+- `credentialPersistenceAllowed` is always `false`.
+- The disabled backend client does not call `fetch`.
+- Placeholder config exposes booleans and missing env names, not configured client id, redirect URI, or backend URL values.
+- No authorization responses, access tokens, refresh tokens, provider sessions, client secrets, sync cursors, provider cookies, or Google source data are stored in IndexedDB, JSON backups, CSV exports, source metadata, tests, logs, or committed config.
+
+Existing product behavior remains unchanged. Phase 9B mock Google sources remain the only Google-like receipt source behavior in the runtime, and they still create receipt drafts only.
 
 ## AI receipt extraction contract and simulator
 
@@ -1103,13 +1144,14 @@ Implemented provider boundaries:
 - Phase 8A `mockAiReceiptExtractionProvider`: local-only simulator implementation of the extraction provider contract.
 - Phase 9B `mockGoogleSourceProvider`: local-only Gmail, Google Drive, and Google Docs source provider implementations for selected mock candidates.
 - Phase 9C `googleIntegrationReadiness`: disabled-by-default Google integration config/status model and disabled real-provider placeholders.
+- Phase 9D `googleBackendReadiness`: disabled backend endpoint definitions, backend architecture decision metadata, and a no-op OAuth backend client for future Google provider auth.
 
 Still future boundaries:
 
 - `OcrProvider`: image or file to text.
 - `CategoryClassifier`: item text to category/tags if category hints outgrow the current parser heuristics.
 - source adapters for future Gmail, Google Drive, Google Docs, bank, CSV, crypto, and brokerage data.
-- backend OAuth/token storage boundary for future restricted-scope Google integrations and scheduled sync.
+- real backend OAuth/token storage implementation for future restricted-scope Google integrations and scheduled sync.
 
 Provider implementation rules:
 
@@ -1120,4 +1162,4 @@ Provider implementation rules:
 - no receipt item independently changes Dashboard spend totals;
 - no live FX provider updates local manual FX settings unless a later phase explicitly changes the currency architecture.
 
-The first MVP uses deterministic local logic and mock or contract-only providers only. Phase 9C keeps future Google integration disabled by default and readiness-only until a later phase explicitly implements OAuth, provider adapters, and any required backend.
+The first MVP uses deterministic local logic and mock or contract-only providers only. Phase 9D keeps future Google integration and backend auth disabled by default and readiness-only until a later phase explicitly implements OAuth, provider adapters, and any required backend server.

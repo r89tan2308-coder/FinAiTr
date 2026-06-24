@@ -636,3 +636,21 @@ Consequences:
 - Package dependencies remain unchanged.
 - Phase 9B mock source ingestion remains the only Google-like receipt source behavior in the product runtime.
 - Existing receipt confirmation, analytics, backup/restore, CSV, recurring, FX, and Dashboard semantics remain unchanged.
+## 2026-06-24: Phase 9D requires backend for production Google OAuth and provider lifecycle
+
+Decision:
+
+Future production Google integration requires a backend before real OAuth callback handling, authorization response exchange, long-lived provider access, Gmail body import, broad Drive/Docs access, scheduled sync, provider revocation, or provider-data deletion is enabled. Phase 9D adds only disabled backend endpoint definitions, backend readiness config, and a no-op backend client.
+
+Rationale:
+
+Official Google guidance describes web-server OAuth as a flow for applications that can securely store confidential information and maintain state, requires exact redirect URI configuration, recommends incremental and narrow scopes, identifies Gmail read scopes and broad Drive scopes as restricted, and requires security assessment when restricted-scope data is stored or transmitted on servers. The PWA must not store provider credentials or restricted provider data outside the existing local receipt-draft evidence boundary.
+
+Consequences:
+
+- `src/google-integration/googleBackendReadiness.ts` documents future backend endpoint names and keeps them disabled.
+- Backend readiness can record requested placeholder flags but cannot enable endpoint calls, network calls, credential persistence, scheduled sync, or provider reads.
+- The only possible future frontend-only exception is manual user-selected Drive/Docs import using a narrow selected-file scope such as `drive.file`, with no stored long-lived credential, no scheduled sync, no broad Drive scan, and draft-only local writes.
+- OAuth client secrets, authorization responses, access tokens, refresh tokens, provider sessions, sync cursors, provider cookies, raw Google source text, and provider credentials must not be stored in IndexedDB, localStorage, JSON backups, CSV exports, source metadata, logs, tests, or committed config.
+- Future provider disconnect must revoke provider grants where possible and delete provider credential state, cached candidates, sync cursors, and diagnostics while preserving user-created local finance records by default.
+- Existing Phase 9B mock Google sources, receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.

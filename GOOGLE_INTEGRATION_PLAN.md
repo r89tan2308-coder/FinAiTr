@@ -1,7 +1,7 @@
 # Google Integration Plan
 
 Date: 2026-06-24
-Status: Phase 9C readiness skeleton. No Google OAuth flow, API calls, backend, scheduled sync, token storage, or production Google data sync is implemented.
+Status: Phase 9D OAuth/backend decision and disabled backend skeleton. No Google OAuth flow, API calls, backend server, scheduled sync, token storage, or production Google data sync is implemented.
 
 ## Purpose
 
@@ -19,7 +19,7 @@ This document defines the future Gmail, Google Drive, and Google Docs receipt-so
 
 ## Non-goals
 
-- Do not implement OAuth in Phase 9C.
+- Do not implement OAuth in Phase 9D.
 - Do not add Google packages, API clients, backend services, or secrets.
 - Environment variables are placeholders only and must not contain committed secrets.
 - Do not add real Gmail, Drive, or Docs import.
@@ -75,29 +75,46 @@ Tokens, client secrets, refresh tokens, and OAuth grants must never be stored in
 
 ## OAuth and Backend Decision
 
-Start with manual, user-initiated Drive/Docs file selection before Gmail.
-
-Drive/Docs manual import can be attempted as a frontend-only user action if it uses Google Picker or an equivalent file picker with `drive.file` and short-lived access tokens. This supports explicit user selection and avoids broad Drive access. It does not support long-term background sync.
-
-Gmail body import and any scheduled sync require backend planning before implementation. Gmail body read access uses restricted scopes such as `gmail.readonly`. If restricted-scope data is stored or transmitted on servers, Google requires restricted-scope verification and may require security assessment. A backend is also required for safe refresh-token storage, scheduled jobs, webhook or Pub/Sub handling, and revocation/deletion workflows.
-
-Do not store OAuth client secrets or refresh tokens in the PWA, localStorage, IndexedDB, JSON backup, CSV files, or committed config. Google OAuth guidance requires client secrets to be stored securely, and refresh tokens are long-lived credentials.
+Phase 9D decision: production Google integration requires a backend before any real OAuth callback handling, authorization response exchange, long-lived provider access, scheduled sync, revocation, or provider-data deletion is enabled.
 
 Backend is required for:
 
-- Gmail body read or mailbox search beyond a one-off add-on context;
-- scheduled Gmail or Drive sync;
-- long-lived refresh-token storage;
-- Pub/Sub or push notification handling;
-- centralized revocation, deletion, audit, and rate-limit management;
-- restricted-scope verification or security-assessment readiness.
+- OAuth callback handling that preserves state outside the PWA UI page.
+- Authorization response exchange for any production Google provider connection.
+- Long-lived provider access and secure refresh-token handling.
+- Gmail body import, Gmail metadata discovery, and any restricted Gmail scope.
+- Broad Drive or Docs discovery using restricted Drive scopes.
+- Scheduled sync, provider cursors, rate-limit backoff, retries, and visible sync status.
+- Provider disconnect, grant revocation, server-side credential deletion, cached candidate deletion, diagnostics deletion, and user data deletion workflows.
 
-Backend may not be required for:
+Frontend-only exception:
 
-- manual Drive/Docs file picker import using `drive.file`;
-- one-time selected-file text extraction where no refresh token is persisted;
-- local-only draft creation after the selected text is returned.
+- A future manual Drive/Docs selected-file import may remain frontend-only only if it is user-initiated, uses the narrowest selected-file scope such as `drive.file`, does not store a long-lived credential, does not schedule background sync, does not broad-scan Drive, and writes only validated local receipt drafts.
 
+Future backend endpoint names are defined but disabled in Phase 9D:
+
+| Endpoint name | Future path | Purpose | Phase 9D behavior |
+| --- | --- | --- | --- |
+| `oauthStart` | `/google/oauth/start` | Start provider consent | Disabled/no-op |
+| `oauthCallback` | `/google/oauth/callback` | Handle callback and exchange authorization response | Disabled/no-op |
+| `providerStatus` | `/google/oauth/status` | Report provider connection state | Disabled/no-op |
+| `disconnect` | `/google/oauth/disconnect` | Revoke grant and delete provider state | Disabled/no-op |
+| `listSourceCandidates` | `/google/sources/:sourceKind/candidates` | List Gmail/Drive/Docs receipt-like candidates | Disabled/no-op |
+| `getSourceCandidateText` | `/google/sources/:sourceKind/candidates/:candidateId/text` | Fetch selected candidate text | Disabled/no-op |
+| `scheduledSyncStatus` | `/google/sync/status` | Report background sync state | Disabled/no-op |
+
+Token and credential rules:
+
+- Do not store OAuth client secrets, authorization responses, access tokens, refresh tokens, provider sessions, sync cursors, or provider cookies in the PWA, localStorage, IndexedDB, JSON backups, CSV files, source metadata, tests, logs, or committed config.
+- `.env.example` may contain placeholder names only. Real local `.env` files must remain ignored by Git.
+- A future backend must encrypt provider credential state at rest, restrict access to the minimum server components, and delete credential state on disconnect or account deletion.
+- Imported receipt drafts, confirmed receipts, receipt items, and linked transactions are user finance records and should remain local by default unless a separate destructive deletion flow is added.
+
+Logging restrictions:
+
+- Do not log raw Gmail bodies, Drive or Docs text, attachment content, receipt text, OAuth credentials, authorization responses, client secrets, source URLs containing secrets, or full provider ids.
+- Future diagnostics may store only provider kind, action, status, counts, timestamp, hashed source ids, and error class.
+- Future provider diagnostics must be deletable with provider disconnect and local data reset.
 ## Minimal Scopes
 
 | Future capability | Candidate scope | Sensitivity | Phase 9A decision |
@@ -117,13 +134,16 @@ Phase 9C adds a disabled-by-default readiness boundary only. It defines the name
 
 Environment placeholders:
 
-| Name | Purpose | Phase 9C default |
+| Name | Purpose | Phase 9D default |
 | --- | --- | --- |
 | `VITE_GOOGLE_INTEGRATION_ENABLED` | Global future Google integration feature flag | `false` |
 | `VITE_GOOGLE_DRIVE_FILE_IMPORT_ENABLED` | Future selected-file Drive/Docs import flag | `false` |
 | `VITE_GOOGLE_GMAIL_IMPORT_ENABLED` | Future Gmail import flag | `false` |
 | `VITE_GOOGLE_CLIENT_ID` | Future OAuth client id placeholder | empty |
 | `VITE_GOOGLE_REDIRECT_URI` | Future OAuth redirect URI placeholder | empty |
+| `VITE_GOOGLE_BACKEND_AUTH_ENABLED` | Future backend OAuth/auth boundary flag | `false` |
+| `VITE_GOOGLE_BACKEND_SYNC_ENABLED` | Future scheduled sync boundary flag | `false` |
+| `VITE_GOOGLE_BACKEND_REVOCATION_ENABLED` | Future disconnect/revocation boundary flag | `false` |
 | `VITE_GOOGLE_BACKEND_BASE_URL` | Future backend boundary placeholder if backend auth is chosen | empty |
 
 Implementation files:
@@ -142,6 +162,30 @@ Readiness rules:
 - The Settings UI shows status only and has no connect, disconnect, import, sync, or OAuth action.
 
 The official Google docs reviewed for this phase reinforce that apps should request only needed permissions, request access in context where possible, use exact configured redirect URIs, prefer narrow Drive scopes such as `drive.file` for selected-file access, and treat Gmail read scopes and broad Drive scopes as restricted/security-review work. Phase 9C records these constraints but leaves implementation to later phases.
+
+
+## Phase 9D Disabled Backend Skeleton
+
+Phase 9D adds only a disabled TypeScript backend boundary. It does not add a backend server, OAuth redirect route, Google client package, token store, or provider network call.
+
+Implementation files:
+
+- `src/google-integration/googleBackendReadiness.ts`
+- `src/google-integration/googleBackendReadiness.test.ts`
+- updated `.env.example`
+- updated `src/google-integration/googleIntegrationReadiness.ts`
+- updated `src/vite-env.d.ts`
+
+Runtime rules:
+
+- `endpointCallsAllowed` is always `false`.
+- `networkCallsAllowed` is always `false`.
+- `credentialPersistenceAllowed` is always `false`.
+- Disabled client methods either return disabled status/empty lists or throw a disabled-backend error before any network call.
+- Backend feature flags can be recognized as requested readiness placeholders, but they do not enable OAuth, backend calls, provider reads, scheduled sync, revocation calls, or credential persistence.
+- Config and readiness objects expose placeholder presence booleans only; they do not expose configured client id, redirect URI, or backend URL values.
+
+The official Google docs reviewed for Phase 9D reinforce that web-server OAuth is designed for applications that can securely store confidential information and maintain state, redirect URIs must exactly match configured authorized URIs, apps should request only needed scopes in context, `drive.file` is the preferred narrow selected-file Drive/Docs scope, Gmail read scopes are restricted, broad Drive scopes are restricted, and restricted-scope data stored or transmitted on servers can require security assessment.
 
 ## Receipt Discovery Rules
 
@@ -318,12 +362,12 @@ Phase 9C: Google OAuth/backend readiness skeleton.
 - Re-check official Google documentation before implementation and keep scope minimization documented.
 - Do not implement OAuth, backend, token storage, Google API calls, or production Google data sync.
 
-Phase 9D: OAuth and security architecture spike.
+Phase 9D: OAuth/backend decision record and disabled backend skeleton.
 
-- Decide frontend-only manual Drive/Docs import versus backend-backed provider auth.
-- Draft consent-screen copy and privacy disclosures.
-- Define token storage, revocation, deletion, logging, and threat model.
-- No production Google data sync.
+- Decide backend requirements for OAuth callback handling, authorization response exchange, long-lived provider access, scheduled sync, revocation, and deletion.
+- Add disabled backend environment flags, endpoint definitions, readiness model, and no-op client.
+- Document token storage, revocation, deletion, logging, first scopes, and frontend-only selected-file exception.
+- No production Google data sync, OAuth flow, backend server, token storage, or network call.
 
 Phase 9E: Manual Drive/Docs selected-file import prototype.
 

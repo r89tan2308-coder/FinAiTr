@@ -66,6 +66,24 @@ Manual browser check:
 
 - [ ] Open Settings and verify Google integration is shown as planned/not connected, provider calls are blocked, and there is no Google connect/import/sync action.
 
+
+## Phase 9D OAuth/Backend Decision QA
+
+Phase 9D is a disabled backend architecture checkpoint. It adds no OAuth flow, backend server, Google API client, scheduled sync, token storage, or real provider read.
+
+Automated checks:
+
+- [x] Backend readiness defaults to disabled/no-op.
+- [x] Backend auth, sync, and revocation flags can be recognized as requested placeholders without enabling endpoint calls or network calls.
+- [x] Config/readiness objects do not expose configured client id, redirect URI, or backend URL values.
+- [x] Future backend endpoint definitions are present but disabled.
+- [x] The disabled backend client returns disconnected/no-op status, rejects OAuth start and authorization response exchange, returns empty source lists, and does not call `fetch`.
+- [x] Backend architecture decision marks Gmail body import and scheduled sync as backend-required and restricted-scope work.
+
+Manual browser check:
+
+- [ ] Open Settings and verify the Google integration panel still shows planned/not connected, has no connect/import/sync/disconnect action, and provider calls are blocked.
+
 ## Browser Smoke Results
 
 - Dashboard: Passed. Verified Dashboard, monthly trend, spend by category, item analytics, item search/category controls, confirmed receipt item drilldown, recent transactions, and display-currency formatted amounts render in the in-app browser.

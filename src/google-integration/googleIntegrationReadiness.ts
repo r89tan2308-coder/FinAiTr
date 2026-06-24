@@ -10,7 +10,10 @@ export type GoogleReceiptSourceKind = Extract<
 >;
 
 export interface GoogleIntegrationRuntimeEnv {
+  readonly VITE_GOOGLE_BACKEND_AUTH_ENABLED?: string | boolean;
   readonly VITE_GOOGLE_BACKEND_BASE_URL?: string | boolean;
+  readonly VITE_GOOGLE_BACKEND_REVOCATION_ENABLED?: string | boolean;
+  readonly VITE_GOOGLE_BACKEND_SYNC_ENABLED?: string | boolean;
   readonly VITE_GOOGLE_CLIENT_ID?: string | boolean;
   readonly VITE_GOOGLE_DRIVE_FILE_IMPORT_ENABLED?: string | boolean;
   readonly VITE_GOOGLE_GMAIL_IMPORT_ENABLED?: string | boolean;
@@ -19,7 +22,10 @@ export interface GoogleIntegrationRuntimeEnv {
 }
 
 export interface GoogleIntegrationConfig {
+  readonly backendAuthEnabled: boolean;
   readonly backendBaseUrlConfigured: boolean;
+  readonly backendRevocationEnabled: boolean;
+  readonly backendSyncEnabled: boolean;
   readonly clientIdConfigured: boolean;
   readonly driveFileImportEnabled: boolean;
   readonly envNames: typeof googleIntegrationEnvNames;
@@ -40,7 +46,10 @@ export interface GoogleIntegrationStatus {
 }
 
 export const googleIntegrationEnvNames = {
+  backendAuthEnabled: "VITE_GOOGLE_BACKEND_AUTH_ENABLED",
   backendBaseUrl: "VITE_GOOGLE_BACKEND_BASE_URL",
+  backendRevocationEnabled: "VITE_GOOGLE_BACKEND_REVOCATION_ENABLED",
+  backendSyncEnabled: "VITE_GOOGLE_BACKEND_SYNC_ENABLED",
   clientId: "VITE_GOOGLE_CLIENT_ID",
   driveFileImportEnabled: "VITE_GOOGLE_DRIVE_FILE_IMPORT_ENABLED",
   gmailImportEnabled: "VITE_GOOGLE_GMAIL_IMPORT_ENABLED",
@@ -67,6 +76,12 @@ export function buildGoogleIntegrationConfig(
   const backendBaseUrlConfigured = hasPlaceholderValue(
     env.VITE_GOOGLE_BACKEND_BASE_URL,
   );
+  const backendAuthEnabled =
+    featureEnabled && readBooleanEnv(env.VITE_GOOGLE_BACKEND_AUTH_ENABLED);
+  const backendSyncEnabled =
+    featureEnabled && readBooleanEnv(env.VITE_GOOGLE_BACKEND_SYNC_ENABLED);
+  const backendRevocationEnabled =
+    featureEnabled && readBooleanEnv(env.VITE_GOOGLE_BACKEND_REVOCATION_ENABLED);
   const missingRequiredEnv: string[] = [];
 
   if (featureEnabled && !clientIdConfigured) {
@@ -77,8 +92,18 @@ export function buildGoogleIntegrationConfig(
     missingRequiredEnv.push(googleIntegrationEnvNames.redirectUri);
   }
 
+  if (
+    (backendAuthEnabled || backendSyncEnabled || backendRevocationEnabled) &&
+    !backendBaseUrlConfigured
+  ) {
+    missingRequiredEnv.push(googleIntegrationEnvNames.backendBaseUrl);
+  }
+
   return {
+    backendAuthEnabled,
     backendBaseUrlConfigured,
+    backendRevocationEnabled,
+    backendSyncEnabled,
     clientIdConfigured,
     driveFileImportEnabled:
       featureEnabled && readBooleanEnv(env.VITE_GOOGLE_DRIVE_FILE_IMPORT_ENABLED),
@@ -99,7 +124,7 @@ export function getGoogleIntegrationStatus(
     canConnect: false,
     detailLines: [
       config.featureEnabled
-        ? "Feature flag is set, but Phase 9C is readiness-only."
+        ? "Feature flag is set, but Phase 9D is backend-readiness-only."
         : "Feature flag is off by default.",
       config.clientIdConfigured
         ? "Client ID placeholder is configured."
@@ -110,6 +135,15 @@ export function getGoogleIntegrationStatus(
       config.backendBaseUrlConfigured
         ? "Backend base URL placeholder is configured."
         : "Backend base URL placeholder is empty.",
+      config.backendAuthEnabled
+        ? "Backend auth flag is set, but Phase 9D keeps backend calls disabled."
+        : "Backend auth flag is off by default.",
+      config.backendSyncEnabled
+        ? "Backend sync flag is set, but scheduled sync is disabled."
+        : "Backend sync flag is off by default.",
+      config.backendRevocationEnabled
+        ? "Backend revocation flag is set, but disconnect calls are disabled."
+        : "Backend revocation flag is off by default.",
       "No OAuth flow, token storage, backend sync, or Google API calls are active.",
     ],
     isConnected: false,
@@ -141,7 +175,7 @@ export class DisabledGoogleReceiptSourceProvider
     void _candidateId;
 
     throw new Error(
-      `${formatSourceKind(this.kind)} provider is disabled. Phase 9C does not call Google APIs.`,
+      `${formatSourceKind(this.kind)} provider is disabled. Phase 9D does not call Google APIs or backend endpoints.`,
     );
   }
 }

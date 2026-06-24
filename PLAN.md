@@ -737,6 +737,40 @@ Add a disabled-by-default readiness boundary for future real Google OAuth and Gm
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
 
+## Phase 9D: OAuth/backend decision record and disabled backend skeleton
+
+### Goal
+
+Decide the safest future Google OAuth/backend architecture and add a disabled no-op backend boundary without implementing OAuth, token storage, Google API calls, scheduled sync, or backend runtime behavior.
+
+### Scope
+
+- Record the backend decision for future Google OAuth, callback handling, authorization response exchange, long-lived provider access, scheduled sync, revocation, and deletion.
+- Add disabled backend environment placeholders for future auth, sync, and revocation feature flags.
+- Add a minimal TypeScript backend readiness contract, endpoint definitions, and disabled client that cannot call network APIs.
+- Define future endpoint names for OAuth start, OAuth callback, provider status, disconnect, source candidate listing/text fetch, and scheduled sync status.
+- Document token storage expectations, revocation/disconnect, logging restrictions, user data deletion, and first future Gmail/Drive/Docs scopes.
+- Add tests proving the backend/OAuth boundary is disabled by default, does not expose configured placeholder values, does not persist credentials, and does not call `fetch`.
+- Update Google integration, architecture, decision, product, QA, and progress docs.
+
+### Non-goals
+
+- No real OAuth flow or redirect handler.
+- No Google Identity Services, Google API packages, or API clients.
+- No backend server implementation.
+- No authorization code exchange, token storage, refresh-token handling, provider sessions, cookies, or secrets.
+- No Gmail, Google Drive, Google Docs, backend, or scheduled-sync network calls.
+- No changes to mock Google source ingestion, receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, or Dashboard semantics.
+
+### Acceptance
+
+- `DECISIONS.md` states that production Gmail import, broad Drive/Docs access, scheduled sync, refresh-token handling, revocation, and provider-data deletion require a backend.
+- `GOOGLE_INTEGRATION_PLAN.md` documents the frontend-only exception for future manual selected-file Drive/Docs import using the narrowest practical selected-file scope.
+- `.env.example` includes disabled backend auth, sync, and revocation flags plus placeholder-only client id, redirect URI, and backend URL.
+- Backend endpoint definitions and client are disabled/no-op and make no network calls.
+- Tests prove disabled defaults, no placeholder value exposure, no network calls, and no credential persistence behavior.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
 ## Deferred until after first MVP
 
 - Real OCR provider.
