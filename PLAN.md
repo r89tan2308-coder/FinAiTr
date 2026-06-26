@@ -12,7 +12,7 @@ The first MVP is limited to:
 - manual local currency conversion settings for USD, RUB, EUR, and GBP;
 - local JSON backup/restore/reset, local CSV export, local transaction CSV import preview/confirm, and local recurring expense CSV import preview/confirm.
 
-Real bank APIs, Gmail, Google Drive, Google Docs, OCR APIs, crypto, brokerage, payment execution, live exchange-rate fetching, and credentials are out of scope.
+Real bank APIs, real Gmail/Google Drive/Google Docs APIs, OCR APIs, crypto, brokerage, payment execution, live exchange-rate fetching, and credentials are out of scope. Local-only Gmail-like, Drive-like, and Docs-like prototypes are allowed only when an explicit phase keeps them browser/local, draft-only, and free of OAuth, backend calls, tokens, and real provider APIs.
 
 ## Validation baseline
 
@@ -842,6 +842,47 @@ Add a local-only selected-file import path that models a future Google Drive/Doc
 - Unsupported file types, empty files, duplicate selected files, and invalid extraction output are rejected before partial draft writes.
 - Dashboard, Transactions, final Receipts, receipt items, recurring expenses, FX settings, JSON backup/restore, and CSV behavior remain unchanged until the user reviews and confirms a draft.
 - Tests cover valid selected-file import, unsupported type, invalid extraction rejection, duplicate detection, metadata preservation, and Dashboard unchanged before confirmation.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
+## Phase 9G: Gmail manual receipt import prototype
+
+### Goal
+
+Add a local-only Gmail-like manual receipt import prototype that models selected-message receipt intake without connecting to Gmail, requesting OAuth consent, adding backend code, or changing the receipt review/confirm accounting boundary.
+
+### Scope
+
+- Add a Receipts screen local Gmail section for pasted email-like receipt text.
+- Allow optional sender/from, subject, and received date metadata.
+- Support user-selected local `.eml` and `.txt` email-like files through the browser file input.
+- Parse or preserve Gmail-like source metadata: source kind `gmail`, pseudo message id, content hash, sender, subject/title, received time when valid, fetched/imported time, source provider name, raw text evidence, extraction provider, model, and extraction timestamp.
+- Route the email body/raw text through the existing local mock AI extraction provider and runtime extraction validation.
+- Save receipt drafts and draft items only through the existing service/repository path.
+- Preserve Gmail-like source metadata on created drafts.
+- Reject duplicates by Gmail source id or content hash before extraction or mutation.
+- Reject invalid metadata, empty content, duplicate content, and invalid extraction output before partial draft writes.
+- Show paste/file preview, status, and errors before draft creation where practical.
+- Add source, service, and Receipts page tests for success, missing metadata, invalid metadata, duplicate detection, metadata preservation, invalid extraction rejection, file input, and unchanged Dashboard before confirmation.
+- Update Google integration, product, architecture, decision, QA, and progress docs.
+
+### Non-goals
+
+- No real Gmail API calls.
+- No OAuth or Google Identity Services.
+- No backend/server code.
+- No token storage, refresh handling, scheduled sync, provider revocation call, or provider-data deletion runtime.
+- No OCR.
+- No real AI API calls.
+- No changes to receipt confirmation, analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, or Dashboard semantics.
+- No broad mailbox scan, provider sync, or long-lived provider access.
+
+### Acceptance
+
+- A user can paste email-like receipt text or select a local `.eml`/`.txt` file on the Receipts screen and import it as a Gmail-like source into a validated editable receipt draft.
+- Gmail-like metadata includes source kind, pseudo message id, content hash, sender, subject/title, received time when valid, fetched/imported time, extraction provider metadata, and raw text evidence.
+- Missing optional metadata is allowed with review warnings; invalid user-provided received dates, empty content, duplicate content, and invalid extraction output are rejected before partial draft writes.
+- Dashboard, Transactions, final Receipts, receipt items, recurring expenses, FX settings, JSON backup/restore, and CSV behavior remain unchanged until the user reviews and confirms a draft.
+- Tests cover valid Gmail-like import, missing metadata, invalid metadata, duplicate detection, metadata preservation, invalid extraction rejection, `.eml` file input, and Dashboard unchanged before confirmation.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
 ## Deferred until after first MVP

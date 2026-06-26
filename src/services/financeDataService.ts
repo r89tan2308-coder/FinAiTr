@@ -34,6 +34,10 @@ import {
   type LocalDriveDocsSelectedFileSourceKind,
 } from "../receipt-ingestion/localDriveDocsSelectedFileSource";
 import {
+  buildLocalGmailManualReceiptCandidate,
+  type LocalGmailManualReceiptInput,
+} from "../receipt-ingestion/localGmailManualReceiptSource";
+import {
   getMockGoogleReceiptSourceCandidate,
   listMockGoogleReceiptSourceSummaries,
   type MockGoogleReceiptSourceSummary,
@@ -100,6 +104,7 @@ export type {
   TransactionCsvImportPreview,
   TransactionCsvImportRowInput,
   ManualAiExtractionInput,
+  LocalGmailManualReceiptInput,
   LocalDriveDocsSelectedFileInput,
   LocalDriveDocsSelectedFileSourceKind,
   MockGoogleReceiptSourceSummary,
@@ -247,6 +252,10 @@ interface MockGoogleReceiptSourceIngestionOptions {
 }
 
 interface LocalDriveDocsSelectedFileIngestionOptions {
+  extractionProvider?: ReceiptExtractionProvider;
+}
+
+interface LocalGmailManualReceiptIngestionOptions {
   extractionProvider?: ReceiptExtractionProvider;
 }
 
@@ -410,6 +419,57 @@ export async function importLocalDriveDocsSelectedFileAndReload(
         error instanceof Error
           ? error.message
           : "Selected Drive/Docs file could not be imported.",
+      ok: false,
+    };
+  }
+}
+
+export async function importLocalGmailManualReceiptAndReload(
+  input: LocalGmailManualReceiptInput,
+  options: LocalGmailManualReceiptIngestionOptions = {},
+): Promise<ReceiptDraftActionResult> {
+  try {
+    const candidate = buildLocalGmailManualReceiptCandidate(input);
+    const { snapshot } = await getFinanceSnapshot();
+    const duplicateMessage = findDuplicateReceiptSource(
+      candidate,
+      snapshot,
+      "Local Gmail message",
+    );
+
+    if (duplicateMessage) {
+      throw new Error(duplicateMessage);
+    }
+
+    const categoryHints = categoriesToExtractionHints(snapshot.categories);
+    const extractionProvider =
+      options.extractionProvider ?? mockAiReceiptExtractionProvider;
+    const extraction = validateReceiptExtractionResult(
+      await extractionProvider.extractReceiptDraft(
+        buildReceiptExtractionRequest(candidate, categoryHints),
+      ),
+      {
+        categoryIds: snapshot.categories.map((category) => category.id),
+        source: candidate.source,
+      },
+    );
+    const draft = await saveReceiptDraft(
+      aiExtractionResultToReceiptDraftInput(candidate, extraction),
+    );
+
+    return {
+      candidate,
+      data: await loadFinanceData(),
+      draft,
+      extraction,
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Local Gmail receipt could not be imported.",
       ok: false,
     };
   }

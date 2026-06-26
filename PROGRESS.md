@@ -3939,3 +3939,127 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 9G: Gmail manual receipt import planning/prototype. Keep Gmail behind backend/security/restricted-scope planning, require explicit user query or selected messages, fetch receipt-like body text only for selected candidates, keep draft-only writes, and do not add scheduled sync or long-lived provider access until the Phase 9D backend and Phase 9E consent gates are implemented and validated.
+
+## 2026-06-26: Phase 9G Gmail manual receipt import prototype completed
+
+### Goal
+
+Add a local-only Gmail-like manual receipt import prototype without adding real Gmail API calls, OAuth, backend/server code, token storage, OCR, scheduled sync, or real AI provider calls.
+
+### Completed
+
+- Added `src/receipt-ingestion/localGmailManualReceiptSource.ts`:
+  - accepts pasted email-like receipt text;
+  - supports browser-read `.eml` and `.txt` text through the Receipts file input;
+  - reads `From`, `Subject`, `Date`, `Received`, and `Message-ID`-like headers when present;
+  - lets user-provided sender, subject, and received date override detected headers;
+  - computes a stable local content hash;
+  - creates a pseudo `local-gmail-message-*` source id;
+  - preserves Gmail-like source kind, sender, subject/title, received time when valid, fetched/imported time, source provider name, content hash, and raw text evidence.
+- Added `importLocalGmailManualReceiptAndReload` to `financeDataService`:
+  - builds a local Gmail candidate;
+  - rejects duplicates by Gmail source id or content hash before extraction or mutation;
+  - routes raw email/body text through the existing local mock AI extraction provider;
+  - validates extraction output with `validateReceiptExtractionResult` before saving;
+  - writes only receipt drafts and draft items through the existing repository path;
+  - reloads finance data through the existing service boundary.
+- Added a Receipts screen `Local Gmail receipt` section:
+  - optional From, Subject, and Received date fields;
+  - local `.eml`/`.txt` file input;
+  - pasted/file text area;
+  - preview/status/error state before import;
+  - import action that opens the saved draft in the existing review flow.
+- Added tests for:
+  - valid Gmail-like candidate creation and metadata parsing;
+  - missing optional metadata warnings;
+  - invalid user-provided received date rejection;
+  - supported `.eml`/`.txt` file names;
+  - valid local Gmail import into a validated draft;
+  - source metadata preservation;
+  - duplicate Gmail-like import rejection by content hash/source id;
+  - invalid extraction output rejection without partial draft writes;
+  - unchanged Dashboard/Transactions/final Receipts/receipt items before confirmation;
+  - Receipts UI `.eml` file preview and review opening after successful import.
+- Updated `PLAN.md`, `GOOGLE_INTEGRATION_PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` for Phase 9G.
+- Kept the hard non-goals out of scope:
+  - no real Gmail API calls;
+  - no OAuth or Google Identity Services;
+  - no backend/server code;
+  - no token storage, refresh handling, scheduled sync, provider revocation call, or provider-data deletion runtime;
+  - no OCR;
+  - no real AI API calls;
+  - no receipt confirmation, analytics, JSON backup/restore, CSV import/export, recurring, FX, or Dashboard semantic changes.
+
+### Changed files
+
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+- `src/app/App.tsx`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/receipt-ingestion/localGmailManualReceiptSource.ts`
+- `src/receipt-ingestion/localGmailManualReceiptSource.test.ts`
+- `src/services/financeDataService.ts`
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run src\receipt-ingestion\localGmailManualReceiptSource.test.ts src\pages\ReceiptsPage.test.tsx src\persistence\repositories\financeRepository.test.ts
+```
+
+Result: succeeded. 3 test files passed, 64 tests passed. npm printed warnings about normal command-line argument parsing and the existing `--run` warning, but Vitest completed successfully.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 23 test files passed, 165 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+### Known limitations
+
+- Phase 9G is local-only. It reads pasted text or user-selected `.eml`/`.txt` files from the browser and does not connect to Gmail.
+- The `.eml` handling is text-based and does not fetch or parse Gmail attachments from a provider.
+- Missing optional Gmail metadata is allowed with review warnings so the user can still review and correct draft data manually.
+- Imported Gmail-like text still uses the local mock AI extraction provider. No real AI provider exists.
+- Real Gmail OAuth, restricted Gmail scopes, backend token handling, provider disconnect/revocation, provider-data deletion, scheduled sync, provider attachment fetch, and real provider data sync remain unimplemented.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9H: Google OAuth/backend release-gate planning. Re-check backend, consent, restricted-scope verification, security assessment, logging, revocation, deletion, and support/privacy-policy readiness before any real Gmail, broad Drive, or broad Docs access. Keep production provider access disabled until the Phase 9D backend requirements and Phase 9E consent gates are implemented and validated.

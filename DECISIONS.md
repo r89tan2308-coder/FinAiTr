@@ -691,3 +691,23 @@ Consequences:
 - Selected-file ingestion writes only receipt drafts and draft items after extraction validation passes.
 - Dashboard impact still requires human review and explicit receipt confirmation.
 - Receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.
+## 2026-06-26: Phase 9G Gmail manual import stays local-only
+
+Decision:
+
+Add a manual Gmail-like receipt import prototype that accepts pasted email-like receipt text or local `.eml`/`.txt` file text in the browser, maps it to Gmail source metadata, validates local mock extraction output, and saves receipt drafts only.
+
+Rationale:
+
+The app needs to prove selected Gmail-message intake semantics before any real Gmail OAuth, restricted Gmail scopes, backend token handling, provider lifecycle, or scheduled sync is implemented. A local manual prototype exercises sender, subject, received date, pseudo message id, content hash duplicate detection, extraction validation, and the existing review/confirm accounting boundary without moving data to Google or a backend.
+
+Consequences:
+
+- The browser reads selected `.eml` and `.txt` files locally; no Gmail API, OAuth, Google Identity Services, backend, token storage, scheduled sync, OCR, or real AI provider call is added.
+- Pasted/file text is treated as a `gmail` receipt text candidate with pseudo message id, content hash, sender, subject/title, received time when valid, fetched/imported timestamp, source provider name, extraction provider metadata, and raw text evidence.
+- Missing optional sender, subject, or received date metadata is allowed with review warnings; invalid user-provided received dates are rejected before extraction or persistence.
+- Duplicate Gmail-like content is rejected by source id or content hash before extraction or IndexedDB mutation.
+- Gmail-like ingestion writes only receipt drafts and draft items after extraction validation passes.
+- Dashboard impact still requires human review and explicit receipt confirmation.
+- Receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.
+- Production Gmail import still requires the Phase 9D backend/token lifecycle decision and Phase 9E privacy/consent gates before any real provider access is enabled.

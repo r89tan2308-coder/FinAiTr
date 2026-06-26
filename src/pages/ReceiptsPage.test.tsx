@@ -19,6 +19,7 @@ import { type ParsedReceiptDraft } from "../receipt-parser/types";
 import {
   type ManualAiExtractionInput,
   type LocalDriveDocsSelectedFileInput,
+  type LocalGmailManualReceiptInput,
   type MockGoogleReceiptSourceSummary,
   type ReceiptDraftActionResult,
   type ReceiptDraftConfirmationInput,
@@ -220,6 +221,9 @@ interface RenderReceiptsPageOptions {
   onImportLocalDriveDocsSelectedFile?: (
     input: LocalDriveDocsSelectedFileInput,
   ) => Promise<ReceiptDraftActionResult>;
+  onImportLocalGmailManualReceipt?: (
+    input: LocalGmailManualReceiptInput,
+  ) => Promise<ReceiptDraftActionResult>;
   onSaveDraft?: (draft: ParsedReceiptDraft) => Promise<ReceiptDraftActionResult>;
   onSimulateAiExtraction?: (
     input: ManualAiExtractionInput,
@@ -246,6 +250,10 @@ function renderReceiptsPage(options: RenderReceiptsPageOptions = {}) {
       }
       onImportLocalDriveDocsSelectedFile={
         options.onImportLocalDriveDocsSelectedFile ??
+        (async () => ({ ok: true }))
+      }
+      onImportLocalGmailManualReceipt={
+        options.onImportLocalGmailManualReceipt ??
         (async () => ({ ok: true }))
       }
       onSaveDraft={options.onSaveDraft ?? (async () => ({ ok: true }))}
@@ -447,6 +455,47 @@ describe("ReceiptsPage parser preview", () => {
     );
   });
 
+  it("previews and imports a local Gmail .eml file", async () => {
+    const user = userEvent.setup();
+    const onImportLocalGmailManualReceipt = vi.fn(
+      async (): Promise<ReceiptDraftActionResult> => ({
+        draft: {
+          draft: aiDraft,
+          items: [aiDraftItem],
+        },
+        ok: true,
+      }),
+    );
+    const file = new File([mockEmailReceiptText], "fresh-receipt.eml", {
+      type: "message/rfc822",
+    });
+
+    renderReceiptsPage({ onImportLocalGmailManualReceipt });
+
+    await user.upload(screen.getByLabelText("Gmail .eml or text file"), file);
+
+    expect(await screen.findByText("fresh-receipt.eml")).toBeInTheDocument();
+    expect(screen.getByLabelText("Gmail receipt text")).toHaveValue(
+      mockEmailReceiptText,
+    );
+    expect(screen.getByText(/text characters ready/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Import Gmail receipt" }));
+
+    expect(onImportLocalGmailManualReceipt).toHaveBeenCalledWith({
+      rawText: mockEmailReceiptText,
+      sourceReceivedAt: "",
+      sourceSender: "",
+      sourceSubject: "",
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Gmail receipt saved as draft for review.",
+    );
+    expect(screen.getByRole("heading", { name: "Fresh Market" })).toBeVisible();
+    expect(
+      screen.getByText(/Gmail · Fresh Market receipt · From receipts@fresh.example/),
+    ).toBeInTheDocument();
+  });
   it("previews and imports a selected local Drive/Docs file", async () => {
     const user = userEvent.setup();
     const lastModified = Date.parse("2026-06-05T09:30:00.000Z");

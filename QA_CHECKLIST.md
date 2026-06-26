@@ -150,6 +150,28 @@ Future QA gates remain open:
 | 10. CSV recurring import preview/confirm | Passed with browser file-picker limitation | Browser smoke confirmed file input, confirmation field, and import button. `src/domain/csvRecurringImport.test.ts`, `src/pages/SettingsPage.test.tsx`, and `src/persistence/repositories/financeRepository.test.ts` cover preview, required-field errors, duplicate warnings, malformed CSV errors, strong confirmation, confirmed `rec-csv-*` writes, no partial mutation, and no transaction creation. |
 | 11. Settings display currency and FX rates | Passed | Browser smoke confirmed display currency and manual FX controls. `src/domain/currencySettings.test.ts`, `src/pages/SettingsPage.test.tsx`, `src/pages/DashboardPage.test.tsx`, and `src/persistence/repositories/financeRepository.test.ts` cover conversion, formatting, persisted settings, restored settings, and display-only original currency preservation. |
 
+## Phase 9G Local Gmail Manual Import QA
+
+Phase 9G is a local-only browser paste/file prototype. It adds no Gmail API client, OAuth flow, backend server, token storage, scheduled sync, provider revocation call, OCR, attachment fetch, or real AI provider read.
+
+Automated coverage:
+
+- [x] Local Gmail source builder parses email-like From, Subject, Date/Received, Message-ID-like metadata, content hash, pseudo message id, and imported timestamp.
+- [x] Missing optional sender, subject, and received date metadata is allowed with review warnings.
+- [x] Invalid user-provided received dates are rejected before extraction or mutation.
+- [x] Local `.eml`/`.txt` file selection reads text in the browser and can open a draft review after import.
+- [x] Duplicate Gmail-like messages are rejected by source id/content hash before draft writes.
+- [x] Invalid extraction output is rejected before partial draft/item writes.
+- [x] Valid Gmail-like import writes receipt drafts and draft items only.
+- [x] Dashboard, Transactions, final Receipts, receipt items, recurring expenses, FX settings, JSON backup/restore, and CSV behavior remain unchanged before explicit receipt confirmation.
+
+Manual browser smoke before release/demo:
+
+- [ ] Paste an email-like receipt in Receipts -> Local Gmail receipt and import it; verify the saved draft opens in review with Gmail source metadata.
+- [ ] Select a local `.eml` file and import it; verify the browser does not ask for Google consent and no network/provider connection appears.
+- [ ] Re-import the same Gmail-like content; verify the duplicate error appears and no extra draft is created.
+- [ ] Enter an invalid received date and verify import is rejected without creating a draft.
+- [ ] Confirm a reviewed Gmail-sourced draft and verify Dashboard changes only after confirmation.
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:

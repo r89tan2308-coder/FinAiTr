@@ -461,21 +461,30 @@ Phase 9F: Manual Drive/Docs selected-file import prototype.
 - Rejects duplicate selected files by source id or content hash before mutation.
 - No real Drive/Docs API calls, OAuth, broad Drive scan, scheduled sync, Gmail import, backend credential persistence, token storage, provider data sync, OCR, or real AI API calls.
 
-Phase 9G: Gmail manual receipt import planning/prototype.
+Phase 9G: Gmail manual receipt import prototype.
 
-- Require backend design before restricted Gmail scopes.
-- Prepare restricted-scope verification and security-assessment implications.
-- List candidates from explicit user query or filters.
-- Fetch body text only for selected candidates.
-- Save validated drafts only.
+- Implemented as a local-only browser paste/file prototype, not as real Gmail access.
+- Supports pasted email-like receipt text and selected `.eml`/`.txt` files that already contain receipt-like text.
+- Reads selected file text in the browser only and maps it to a Gmail-like receipt candidate with sender, subject/title, received time when valid, pseudo message id, content hash, fetched/imported time, source kind, source provider name, and raw text evidence.
+- Routes local Gmail-like text through the existing local mock AI extraction provider and runtime extraction validation.
+- Saves validated receipt drafts and draft items only, preserving source metadata on drafts.
+- Rejects duplicate Gmail-like messages by source id or content hash before mutation.
+- Allows missing optional metadata with review warnings and rejects invalid user-provided received dates before draft writes.
+- No real Gmail API calls, OAuth, scheduled sync, backend credential persistence, token storage, provider data sync, OCR, attachment fetch, or real AI API calls.
 
-Phase 9H: Optional scheduled sync.
+Phase 9H: Google OAuth/backend release-gate planning.
+
+- Re-check backend, consent, restricted-scope verification, security assessment, logging, revocation, deletion, and support/privacy-policy readiness before any real Gmail, broad Drive, or broad Docs access.
+- Define selected-message or explicit-filter Gmail UX before production provider implementation.
+- Keep production provider access disabled until Phase 9D backend requirements and Phase 9E consent gates are implemented and validated.
+
+Phase 9I: Optional scheduled sync.
 
 - Backend-only.
 - Add token refresh, revocation, rate limits, per-user cursors, and visible sync status.
 - No silent broad scans.
 
-Phase 9I: Production hardening.
+Phase 9J: Production hardening.
 
 - Complete verification requirements, security review, deletion flows, privacy copy, logging controls, QA matrix, and release gate.
 

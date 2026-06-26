@@ -22,6 +22,7 @@ import {
   getReceiptDraftById,
   ingestMockGoogleReceiptSourceAndReload,
   importLocalDriveDocsSelectedFileAndReload,
+  importLocalGmailManualReceiptAndReload,
   listReceiptDrafts,
   previewLocalJsonBackupRestoreFromText,
   previewRecurringCsvImportFromText,
@@ -1637,6 +1638,177 @@ describe("finance repository transaction CRUD", () => {
         fileName: "software-receipt.txt",
         rawText: mockDocumentReceiptText,
         sourceKind: "google_docs",
+      },
+      { extractionProvider: invalidProvider },
+    );
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toBe(
+      "AI extraction currency must be a three-letter uppercase currency code.",
+    );
+    expect(afterSnapshot.receiptDrafts).toEqual(beforeSnapshot.receiptDrafts);
+    expect(afterSnapshot.receiptDraftItems).toEqual(
+      beforeSnapshot.receiptDraftItems,
+    );
+    expect(afterSnapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(afterSnapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(afterSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+  });
+
+  it("imports local Gmail text as a validated draft without dashboard impact", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    const result = await importLocalGmailManualReceiptAndReload({
+      rawText: mockEmailReceiptText,
+      sourceReceivedAt: "2026-06-04T10:15:00.000Z",
+      sourceSender: "receipts@fresh.example",
+      sourceSubject: "Fresh Market receipt",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.candidate?.source).toMatchObject({
+      contentHash: expect.stringMatching(/^fnv1a-[0-9a-f]{8}$/),
+      fetchedAt: expect.any(String),
+      kind: "gmail",
+      receivedAt: "2026-06-04T10:15:00.000Z",
+      sender: "receipts@fresh.example",
+      sourceId: expect.stringMatching(/^local-gmail-message-fnv1a-[0-9a-f]{8}$/),
+      sourceProviderName: "local-gmail-manual-import-provider",
+      title: "Fresh Market receipt",
+    });
+    expect(result.extraction).toMatchObject({
+      modelName: "local-heuristic-simulator",
+      providerName: "local-mock-ai-extractor",
+    });
+    expect(result.draft?.draft).toMatchObject({
+      merchant: "Fresh Market",
+      rawText: mockEmailReceiptText,
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        contentHash: result.candidate?.source.contentHash,
+        fetchedAt: expect.any(String),
+        kind: "gmail",
+        modelName: "local-heuristic-simulator",
+        providerName: "local-mock-ai-extractor",
+        receivedAt: "2026-06-04T10:15:00.000Z",
+        sender: "receipts@fresh.example",
+        sourceId: result.candidate?.source.sourceId,
+        sourceProviderName: "local-gmail-manual-import-provider",
+        title: "Fresh Market receipt",
+      },
+      status: "draft",
+      total: 5,
+    });
+    expect(result.draft?.items.length).toBeGreaterThan(0);
+    expect(result.data?.snapshot.receiptDrafts).toHaveLength(
+      beforeSnapshot.receiptDrafts.length + 1,
+    );
+    expect(result.data?.snapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(result.data?.snapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(result.data?.snapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+    expect(result.data?.overview).toEqual(beforeOverview);
+  });
+
+  it("allows missing Gmail metadata while preserving draft-only behavior", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    const result = await importLocalGmailManualReceiptAndReload({
+      rawText: "Fresh Market\n2026-06-04\nBread 2.00\nTOTAL USD 2.00",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.candidate?.source).toMatchObject({
+      kind: "gmail",
+      sourceProviderName: "local-gmail-manual-import-provider",
+    });
+    expect(result.candidate?.source.receivedAt).toBeUndefined();
+    expect(result.candidate?.source.sender).toBeUndefined();
+    expect(result.candidate?.source.title).toBeUndefined();
+    expect(result.draft?.draft.warnings).toEqual(
+      expect.arrayContaining([
+        "Gmail sender metadata was not provided or detected.",
+        "Gmail subject metadata was not provided or detected.",
+        "Gmail received date metadata was not provided or detected.",
+      ]),
+    );
+    expect(result.data?.snapshot.transactions).toEqual(beforeSnapshot.transactions);
+    expect(result.data?.snapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(result.data?.snapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
+  });
+
+  it("rejects invalid Gmail metadata without mutating data", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    const result = await importLocalGmailManualReceiptAndReload({
+      rawText: mockEmailReceiptText,
+      sourceReceivedAt: "not-a-date",
+    });
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toBe(
+      "Gmail received date must be a valid date or ISO timestamp.",
+    );
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+  });
+
+  it("rejects duplicate local Gmail messages by content hash", async () => {
+    const first = await importLocalGmailManualReceiptAndReload({
+      rawText: mockEmailReceiptText,
+      sourceSubject: "Fresh Market receipt",
+    });
+    const beforeDuplicateSnapshot = (await getFinanceSnapshot()).snapshot;
+    const duplicate = await importLocalGmailManualReceiptAndReload({
+      rawText: mockEmailReceiptText,
+      sourceSubject: "Renamed forwarded receipt",
+    });
+    const afterDuplicateSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(first.ok).toBe(true);
+    expect(duplicate.ok).toBe(false);
+    expect(duplicate.errorMessage).toContain(
+      "Local Gmail message has already been saved as receipt draft",
+    );
+    expect(afterDuplicateSnapshot).toEqual(beforeDuplicateSnapshot);
+  });
+
+  it("rejects invalid Gmail extraction output without creating partial drafts", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const invalidProvider: ReceiptExtractionProvider = {
+      providerName: "invalid-gmail-provider",
+      async extractReceiptDraft() {
+        return {
+          draft: {
+            confidence: 0.8,
+            currency: "usd",
+            items: [
+              {
+                categoryId: "dairy",
+                confidence: 0.8,
+                flags: [],
+                kind: "item",
+                normalizedName: "milk",
+                rawName: "Milk",
+                tags: ["dairy"],
+                totalPrice: 3,
+              },
+            ],
+            totalAmount: 3,
+            warnings: [],
+          },
+          extractedAt: "2026-06-04T10:16:00.000Z",
+          providerName: "invalid-gmail-provider",
+        };
+      },
+    };
+
+    const result = await importLocalGmailManualReceiptAndReload(
+      {
+        rawText: mockEmailReceiptText,
       },
       { extractionProvider: invalidProvider },
     );

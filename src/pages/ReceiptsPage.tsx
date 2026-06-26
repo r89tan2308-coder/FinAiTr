@@ -6,6 +6,7 @@ import {
   Eraser,
   FileText,
   Link2,
+  Mail,
   RefreshCcw,
   Save,
   Sparkles,
@@ -39,6 +40,7 @@ import {
 } from "../domain/models";
 import { mockEmailReceiptText } from "../receipt-ingestion/fixtures";
 import { isSupportedLocalDriveDocsSelectedFileName } from "../receipt-ingestion/localDriveDocsSelectedFileSource";
+import { isSupportedLocalGmailEmailFileName } from "../receipt-ingestion/localGmailManualReceiptSource";
 import { groceryReceiptText } from "../receipt-parser/fixtures";
 import {
   type ParsedReceiptDraft,
@@ -49,6 +51,7 @@ import {
   type ManualAiExtractionInput,
   type LocalDriveDocsSelectedFileInput,
   type LocalDriveDocsSelectedFileSourceKind,
+  type LocalGmailManualReceiptInput,
   type MockGoogleReceiptSourceSummary,
   type ReceiptDraftConfirmationInput,
   type ReceiptDraftConfirmationRecord,
@@ -71,6 +74,9 @@ interface ReceiptsPageProps {
   ) => Promise<ReceiptDraftActionResult>;
   onImportLocalDriveDocsSelectedFile: (
     input: LocalDriveDocsSelectedFileInput,
+  ) => Promise<ReceiptDraftActionResult>;
+  onImportLocalGmailManualReceipt: (
+    input: LocalGmailManualReceiptInput,
   ) => Promise<ReceiptDraftActionResult>;
   onSaveDraft: (draft: ParsedReceiptDraft) => Promise<ReceiptDraftActionResult>;
   onSimulateAiExtraction: (
@@ -127,6 +133,7 @@ export function ReceiptsPage({
   onDeleteDraft,
   onIngestMockGoogleSource,
   onImportLocalDriveDocsSelectedFile,
+  onImportLocalGmailManualReceipt,
   onSaveDraft,
   onSimulateAiExtraction,
   onUpdateDraft,
@@ -138,6 +145,12 @@ export function ReceiptsPage({
 }: ReceiptsPageProps) {
   const [rawReceiptText, setRawReceiptText] = useState("");
   const [aiRawText, setAiRawText] = useState("");
+  const [gmailRawText, setGmailRawText] = useState("");
+  const [gmailSourceReceivedAt, setGmailSourceReceivedAt] = useState("");
+  const [gmailSourceSender, setGmailSourceSender] = useState("");
+  const [gmailSourceSubject, setGmailSourceSubject] = useState("");
+  const [gmailFilePreview, setGmailFilePreview] = useState<SelectedFilePreview>();
+  const [gmailSourceError, setGmailSourceError] = useState<string>();
   const [aiSourceKind, setAiSourceKind] =
     useState<ManualAiExtractionInput["sourceKind"]>("gmail");
   const [aiSourceReceivedAt, setAiSourceReceivedAt] = useState("");
@@ -280,6 +293,12 @@ export function ReceiptsPage({
   function handleClear() {
     setRawReceiptText("");
     setAiRawText("");
+    setGmailRawText("");
+    setGmailSourceReceivedAt("");
+    setGmailSourceSender("");
+    setGmailSourceSubject("");
+    setGmailFilePreview(undefined);
+    setGmailSourceError(undefined);
     setAiSourceKind("gmail");
     setAiSourceReceivedAt("");
     setAiSourceSender("");
@@ -300,6 +319,17 @@ export function ReceiptsPage({
     setOptimisticDraftRecord(undefined);
     setParseError(undefined);
     setParseStatus("idle");
+  }
+
+  function handleUseGmailSample() {
+    setGmailRawText(mockEmailReceiptText);
+    setGmailSourceSubject("Fresh Market receipt");
+    setGmailSourceSender("receipts@fresh.example");
+    setGmailSourceReceivedAt("2026-06-04T10:15:00.000Z");
+    setGmailFilePreview(undefined);
+    setGmailSourceError(undefined);
+    setDraftActionError(undefined);
+    setDraftActionMessage(undefined);
   }
 
   function handleUseAiSample() {
@@ -532,6 +562,84 @@ export function ReceiptsPage({
     setDraftActionError(result.errorMessage ?? "Receipt draft could not be saved.");
   }
 
+  async function handleSelectedGmailFileChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const file = event.currentTarget.files?.[0];
+
+    setGmailFilePreview(undefined);
+    setGmailSourceError(undefined);
+    setDraftActionError(undefined);
+    setDraftActionMessage(undefined);
+
+    if (!file) {
+      return;
+    }
+
+    if (!isSupportedLocalGmailEmailFileName(file.name)) {
+      setGmailSourceError("Gmail file type is not supported. Use .eml or .txt.");
+      return;
+    }
+
+    try {
+      const rawText = await readTextLikeFile(file);
+
+      if (!rawText.trim()) {
+        setGmailSourceError("Gmail file does not contain receipt-like text.");
+        return;
+      }
+
+      setGmailRawText(rawText);
+      setGmailFilePreview({
+        fileName: file.name,
+        lastModified: file.lastModified,
+        rawText,
+        size: file.size,
+      });
+    } catch (error) {
+      setGmailSourceError(
+        error instanceof Error ? error.message : "Gmail file could not be read.",
+      );
+    }
+  }
+
+  async function handleImportGmailReceipt(): Promise<void> {
+    if (!gmailRawText.trim()) {
+      setGmailSourceError(
+        "Paste Gmail receipt text or select an .eml file before import.",
+      );
+      setDraftActionMessage(undefined);
+      return;
+    }
+
+    setDraftActionStatus("extracting");
+    setDraftActionError(undefined);
+    setDraftActionMessage(undefined);
+    setReviewFormError(undefined);
+    setGmailSourceError(undefined);
+
+    const result = await onImportLocalGmailManualReceipt({
+      rawText: gmailRawText,
+      sourceReceivedAt: gmailSourceReceivedAt,
+      sourceSender: gmailSourceSender,
+      sourceSubject: gmailSourceSubject,
+    });
+
+    setDraftActionStatus("idle");
+
+    if (result.ok && result.draft) {
+      setGmailRawText("");
+      setGmailSourceReceivedAt("");
+      setGmailSourceSender("");
+      setGmailSourceSubject("");
+      setGmailFilePreview(undefined);
+      openDraftRecordReview(result.draft);
+      setDraftActionMessage("Gmail receipt saved as draft for review.");
+      return;
+    }
+
+    setDraftActionError(result.errorMessage ?? "Gmail receipt could not be imported.");
+  }
   async function handleSelectedDriveDocsFileChange(
     event: ChangeEvent<HTMLInputElement>,
   ): Promise<void> {
@@ -729,6 +837,120 @@ export function ReceiptsPage({
         </div>
       </PageSection>
 
+      <PageSection title="Local Gmail receipt">
+        <div className="form-panel receipt-input-panel">
+          <div className="form-grid">
+            <label className="field">
+              <span>From</span>
+              <input
+                onChange={(event) => setGmailSourceSender(event.target.value)}
+                placeholder="receipts@example.com"
+                value={gmailSourceSender}
+              />
+            </label>
+
+            <label className="field">
+              <span>Subject</span>
+              <input
+                onChange={(event) => setGmailSourceSubject(event.target.value)}
+                placeholder="Receipt subject"
+                value={gmailSourceSubject}
+              />
+            </label>
+
+            <label className="field">
+              <span>Received date</span>
+              <input
+                onChange={(event) => setGmailSourceReceivedAt(event.target.value)}
+                placeholder="2026-06-04T10:15:00.000Z"
+                value={gmailSourceReceivedAt}
+              />
+            </label>
+
+            <label className="field field-wide" htmlFor="local-gmail-file">
+              <span>Gmail .eml or text file</span>
+              <input
+                accept=".eml,.txt,message/rfc822,text/plain"
+                id="local-gmail-file"
+                onChange={(event) => void handleSelectedGmailFileChange(event)}
+                type="file"
+              />
+            </label>
+          </div>
+
+          <label className="field field-wide" htmlFor="gmail-receipt-text">
+            <span>Gmail receipt text</span>
+            <textarea
+              id="gmail-receipt-text"
+              name="gmailReceiptText"
+              onChange={(event) => {
+                setGmailRawText(event.target.value);
+                setGmailFilePreview(undefined);
+                setGmailSourceError(undefined);
+              }}
+              placeholder="From, Subject, Date, then receipt body..."
+              rows={8}
+              value={gmailRawText}
+            />
+          </label>
+
+          {(gmailRawText.trim() || gmailFilePreview) && (
+            <div className="receipt-source-panel">
+              <strong>{gmailFilePreview?.fileName ?? "Pasted Gmail text"}</strong>
+              <span>
+                Gmail · {gmailSourceSubject || "Subject from headers or missing"}
+              </span>
+              <span>{gmailSourceSender || "Sender from headers or missing"}</span>
+              <small>{gmailRawText.length} text characters ready.</small>
+            </div>
+          )}
+
+          {gmailSourceError && (
+            <div className="status-banner" role="alert">
+              {gmailSourceError}
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button
+              className="primary-button"
+              disabled={draftActionStatus === "extracting"}
+              onClick={() => void handleImportGmailReceipt()}
+              type="button"
+            >
+              <Mail aria-hidden="true" size={18} />
+              {draftActionStatus === "extracting"
+                ? "Importing"
+                : "Import Gmail receipt"}
+            </button>
+            <button
+              className="secondary-button"
+              disabled={draftActionStatus === "extracting"}
+              onClick={handleUseGmailSample}
+              type="button"
+            >
+              <RefreshCcw aria-hidden="true" size={18} />
+              Use Gmail sample
+            </button>
+            <button
+              className="secondary-button"
+              disabled={draftActionStatus === "extracting"}
+              onClick={() => {
+                setGmailRawText("");
+                setGmailSourceReceivedAt("");
+                setGmailSourceSender("");
+                setGmailSourceSubject("");
+                setGmailFilePreview(undefined);
+                setGmailSourceError(undefined);
+              }}
+              type="button"
+            >
+              <FileText aria-hidden="true" size={18} />
+              Clear Gmail input
+            </button>
+          </div>
+        </div>
+      </PageSection>
       <PageSection title="AI extraction simulator">
         <div className="form-panel receipt-input-panel">
           <div className="form-grid">
