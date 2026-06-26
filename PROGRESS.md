@@ -4265,3 +4265,105 @@ Result: no diff. Package dependencies remain unchanged.
 ### Next recommended phase
 
 Phase 9J: Narrow Drive/Docs picker-based selected-file provider planning behind disabled gates. Re-check official Google Drive Picker, OAuth, scope, token, privacy, and user data policy requirements before implementation; keep selected-file access explicit, draft-only, and disabled/no-op until backend and consent gates are satisfied.
+
+## 2026-06-26: Phase 9J receipt source-provider UX and metadata unification completed
+
+### Goal
+
+Unify the current local/mock receipt source import UX and source metadata display while keeping every receipt source path available, local/mock-only, and draft-only before explicit review and confirmation.
+
+### Completed
+
+- Added `src/receipt-ingestion/sourceProviderUx.ts` with shared source-provider labels, local/mock status text, metadata summary helpers, source kind labels, and duplicate status helpers for the current manual paste, AI simulator, local Gmail, local Drive/Docs, and mock Google source paths.
+- Updated the Receipts page to show a unified `Receipt sources` overview, source-specific headers, consistent Gmail and Drive/Docs source preview panels, mock source duplicate status, and global source import messages outside the parser preview section.
+- Saved drafts and draft review now consistently show source type, title or filename, sender/owner fallback where available, imported timestamp, provider/model/source id details where available, and duplicate tracking status where available. Manual paste drafts without explicit `sourceMetadata` fall back to manual paste, merchant/title, created time, and duplicate unavailable status.
+- Added `src/receipt-ingestion/sourceProviderUx.test.ts` for provider entries, metadata formatting, manual fallback metadata, and draft/confirmed duplicate status.
+- Extended `src/pages/ReceiptsPage.test.tsx` for unified source cards, fallback source metadata, mock duplicate status, and duplicate warnings returned by source import callbacks.
+- Extended `src/persistence/repositories/financeRepository.test.ts` to import through manual paste, manual AI simulator, local Drive/Docs selected file, local Gmail manual import, and mock Google source import before confirmation and verify all results remain `draft` while Dashboard-impacting records and overview stay unchanged.
+- Updated `PLAN.md`, `GOOGLE_INTEGRATION_PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` to record Phase 9J and shift future real provider work to Phase 9K and later.
+- Kept product runtime constraints unchanged:
+  - no real Gmail, Google Drive, or Google Docs API calls;
+  - no OAuth implementation;
+  - no backend/server runtime;
+  - no token storage;
+  - no provider revocation or provider-data deletion runtime;
+  - no source sync or scheduled sync;
+  - no OCR or real AI provider;
+  - no dependency changes;
+  - no changes to receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, Dashboard semantics, or service/repository boundaries.
+
+### Changed files
+
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+- `src/receipt-ingestion/sourceProviderUx.ts`
+- `src/receipt-ingestion/sourceProviderUx.test.ts`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `src/styles.css`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 25 test files passed, 178 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+rg -n "fetch\(|localStorage|sessionStorage|indexedDB|access_token|refresh_token|client_secret|googleapis|gmail\.googleapis" src\receipt-ingestion src\pages src\services .env.example
+```
+
+Result: no matches.
+
+```powershell
+git diff -- package.json package-lock.json
+```
+
+Result: no diff. Package dependencies remain unchanged.
+
+### Known limitations
+
+- Phase 9J is local/mock UX and metadata cleanup only. It does not add real provider access, OAuth, backend runtime, token storage, source sync, scheduled sync, revocation, deletion runtime, OCR, or real AI calls.
+- Duplicate status is surfaced from existing source id/content hash metadata; duplicate matching semantics remain in the existing service/repository boundary.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9K: Narrow Drive/Docs picker-based selected-file provider planning behind disabled gates. Re-check official Google Drive Picker, OAuth, scope, token, privacy, and user data policy requirements before implementation; keep selected-file access explicit, draft-only, and disabled/no-op until backend and consent gates are satisfied.

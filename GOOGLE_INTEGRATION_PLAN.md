@@ -522,17 +522,21 @@ Scheduled sync:
    - Completed as typed frontend-safe boundary contracts only.
    - Reuse existing disabled backend flags and keep endpoint, network, token, revocation, provider read, source sync, and scheduled sync behavior blocked.
    - Define future start, callback, status, disconnect, revoke, and source sync endpoint contracts without adding backend runtime.
-2. Phase 9J: Narrow Drive/Docs picker-based selected-file provider.
+2. Phase 9J: Receipt source-provider UX and metadata unification.
+   - Completed as local/mock UX cleanup only.
+   - Keep manual paste, manual AI simulator, local Gmail-like import, local Drive/Docs selected-file import, and mock Google samples visible and draft-only.
+   - Add shared source-provider UX/status metadata, consistent source evidence display, duplicate status, and draft-only/Dashboard-boundary tests.
+3. Phase 9K: Narrow Drive/Docs picker-based selected-file provider.
    - Prefer `drive.file` and explicit user selection.
    - Fetch only selected document/file text.
    - Keep draft-only writes and duplicate checks.
-3. Phase 9K: Gmail selected-message import behind backend and restricted-scope gates.
+4. Phase 9L: Gmail selected-message import behind backend and restricted-scope gates.
    - Use explicit selected messages or user-provided filters.
    - Fetch only receipt-like body/attachment text for selected candidates.
    - Keep raw provider data minimization, redacted logs, deletion, duplicate checks, extraction validation, and draft-only writes.
-4. Phase 9L: Optional scheduled sync.
+5. Phase 9M: Optional scheduled sync.
    - Backend-only with visible user controls, cursors, rate limits, revocation, deletion, and no auto-confirmation.
-5. Phase 9M: Production hardening.
+6. Phase 9N: Production hardening.
    - Complete OAuth verification, restricted-scope review or security assessment if required, privacy/support documentation, security test evidence, manual QA, and release sign-off.
 
 ## Implementation Phases
@@ -601,24 +605,33 @@ Phase 9I: Disabled backend OAuth architecture skeleton.
 - Adds tests for disabled defaults, requested flags blocked by release gates, no token storage behavior, no network adapter calls, and no token/secret/authorization URL exposure.
 - No backend runtime, OAuth redirect handling, authorization-code exchange, token refresh, provider credential storage, provider revocation call, provider data deletion runtime, source sync, scheduled sync, Google API call, dependency, or product behavior change.
 
-Phase 9J: Narrow Drive/Docs picker-based selected-file provider.
+Phase 9J: Receipt source-provider UX and metadata unification.
+
+- Implemented as local/mock UX and metadata consistency only.
+- Adds `src/receipt-ingestion/sourceProviderUx.ts` for current source-provider labels, status, metadata summary, and duplicate status helpers.
+- Keeps manual paste/parser, manual AI extraction simulator, local Gmail-like manual import, local Drive/Docs selected-file import, and mock Google source samples visible on the Receipts page.
+- Saved drafts and draft review show source type, title or filename, sender/owner where available, imported date, provider/model details where available, and duplicate tracking status where available.
+- Adds tests for source-provider UX metadata, duplicate warnings/status, and unchanged Dashboard-impacting records before receipt confirmation across all current source paths.
+- No real Gmail/Drive/Docs API, OAuth, backend runtime, token storage, provider revocation call, provider data deletion runtime, source sync, scheduled sync, dependency, real AI provider, or product accounting behavior change.
+
+Phase 9K: Narrow Drive/Docs picker-based selected-file provider.
 
 - Prefer `drive.file` and explicit user selection.
 - Fetch only selected document/file text.
 - Keep draft-only writes and duplicate checks.
 - No broad Drive scan, Gmail access, scheduled sync, or Dashboard impact before confirmation.
 
-Phase 9K: Gmail selected-message import behind backend and restricted-scope gates.
+Phase 9L: Gmail selected-message import behind backend and restricted-scope gates.
 
 - Use explicit selected messages or user-provided filters.
 - Fetch only receipt-like body/attachment text for selected candidates.
 - Keep raw provider data minimization, redacted logs, deletion, duplicate checks, extraction validation, and draft-only writes.
 
-Phase 9L: Optional scheduled sync.
+Phase 9M: Optional scheduled sync.
 
 - Backend-only with visible user controls, cursors, rate limits, revocation, deletion, and no auto-confirmation.
 
-Phase 9M: Production hardening.
+Phase 9N: Production hardening.
 
 - Complete verification requirements, security review, deletion flows, privacy copy, logging controls, QA matrix, and release gate.
 

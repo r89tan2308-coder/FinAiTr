@@ -1826,6 +1826,86 @@ describe("finance repository transaction CRUD", () => {
     expect(afterSnapshot.receipts).toEqual(beforeSnapshot.receipts);
     expect(afterSnapshot.receiptItems).toEqual(beforeSnapshot.receiptItems);
   });
+
+  it("keeps dashboard-impacting records unchanged across every receipt source import before confirmation", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const beforeDashboardRecords = {
+      currencySettings: beforeSnapshot.currencySettings,
+      receiptItems: beforeSnapshot.receiptItems,
+      receipts: beforeSnapshot.receipts,
+      recurringExpenses: beforeSnapshot.recurringExpenses,
+      transactions: beforeSnapshot.transactions,
+    };
+    const mockSource = getMockGoogleReceiptSourceSummaries().find(
+      (summary) => summary.kind === "google_drive",
+    );
+
+    if (!mockSource) {
+      throw new Error("Expected mock Google Drive source.");
+    }
+
+    const results = [
+      await saveParsedReceiptDraftAndReload(parsePastedReceiptText(groceryReceiptText)),
+      await simulateAiReceiptExtractionAndSaveDraftAndReload({
+        rawText: mockEmailReceiptText,
+        sourceKind: "gmail",
+        sourceReceivedAt: "2026-06-04T10:15:00.000Z",
+        sourceSender: "receipts@fresh.example",
+        sourceTitle: "Fresh Market receipt",
+      }),
+      await importLocalDriveDocsSelectedFileAndReload({
+        fileName: "phase-9j-software-receipt.md",
+        lastModified: Date.parse("2026-06-05T09:30:00.000Z"),
+        rawText: mockDocumentReceiptText,
+        sourceKind: "google_docs",
+      }),
+      await importLocalGmailManualReceiptAndReload({
+        rawText: `From: tea-receipts@example.com
+Subject: Tea receipt
+Date: 2026-06-07T08:00:00.000Z
+
+Tea Shop
+2026-06-07
+Tea 4.00
+TOTAL USD 4.00`,
+        sourceReceivedAt: "2026-06-07T08:00:00.000Z",
+        sourceSender: "tea-receipts@example.com",
+        sourceSubject: "Tea receipt",
+      }),
+      await ingestMockGoogleReceiptSourceAndReload(mockSource.id),
+    ];
+    const afterSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(results.every((result) => result.ok)).toBe(true);
+    expect(results.map((result) => result.draft?.draft.status)).toEqual([
+      "draft",
+      "draft",
+      "draft",
+      "draft",
+      "draft",
+    ]);
+    for (const result of results) {
+      expect(result.data?.overview).toEqual(beforeOverview);
+    }
+    expect(afterSnapshot.receiptDrafts).toHaveLength(
+      beforeSnapshot.receiptDrafts.length + results.length,
+    );
+    expect(afterSnapshot.transactions).toEqual(beforeDashboardRecords.transactions);
+    expect(afterSnapshot.receipts).toEqual(beforeDashboardRecords.receipts);
+    expect(afterSnapshot.receiptItems).toEqual(beforeDashboardRecords.receiptItems);
+    expect(afterSnapshot.recurringExpenses).toEqual(
+      beforeDashboardRecords.recurringExpenses,
+    );
+    expect(afterSnapshot.currencySettings).toEqual(
+      beforeDashboardRecords.currencySettings,
+    );
+    expect(
+      buildFinanceOverview(afterSnapshot, { monthKey: "2026-06" }),
+    ).toEqual(beforeOverview);
+  });
   it("returns validation errors for mock AI extraction without changing data", async () => {
     const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
 

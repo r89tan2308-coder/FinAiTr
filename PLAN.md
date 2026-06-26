@@ -961,6 +961,39 @@ Add a minimal typed backend OAuth architecture boundary for future Google provid
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
 
+## Phase 9J: Receipt source-provider UX and metadata unification
+
+### Goal
+
+Unify the existing receipt source import flows into a clearer mobile-first source-provider UX while keeping every current import path available and draft-only.
+
+### Scope
+
+- Keep manual paste/parser, manual AI extraction simulator, local Gmail-like manual import, local Drive/Docs selected-file import, and mock Google source samples available.
+- Add a shared source-provider UX/status model for current local/mock source paths.
+- Improve Receipts page grouping, labels, empty states, and mobile source-provider overview.
+- Display source metadata consistently on saved drafts and draft review: source type, title or filename, sender/owner where available, imported timestamp, and duplicate tracking status where available.
+- Surface duplicate status for mock source candidates and duplicate warnings from import actions.
+- Add tests that each import path still creates drafts only and leaves Dashboard-impacting records unchanged before explicit receipt confirmation.
+- Update Google integration, product, architecture, decision, QA, and progress docs.
+
+### Non-goals
+
+- No real Gmail, Google Drive, or Google Docs APIs.
+- No OAuth, Google Identity Services, backend server runtime, token storage, provider revocation call, provider data deletion runtime, source sync, scheduled sync, OCR, real AI provider, or dependency change.
+- No changes to receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, Dashboard semantics, or repository/service boundaries.
+- No removal of existing receipt import paths.
+
+### Acceptance
+
+- Receipts page shows a unified source-provider overview and keeps all existing import controls reachable.
+- Saved drafts and review panels consistently show source type, title/from/filename, imported date, and duplicate tracking status where available.
+- Existing manual paste, manual AI simulator, local Gmail-like import, local Drive/Docs selected-file import, and mock Google sample import still save editable receipt drafts only.
+- Tests cover source-provider UX metadata, duplicate warnings/status, and unchanged Dashboard-impacting records before receipt confirmation.
+- Package dependencies remain unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
+
 ## Deferred until after first MVP
 
 - Real OCR provider.

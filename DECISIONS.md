@@ -750,3 +750,22 @@ Consequences:
 - No backend server runtime, OAuth redirect handler, authorization-code exchange, Google API client, token store, provider revocation call, provider data deletion runtime, scheduled sync, dependency, or UI behavior is added.
 - Existing local-only Google-like prototypes, receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.
 - Future real backend work still requires explicit approval plus secure callback/state handling, encrypted credential storage, revocation, disconnect, deletion, redacted diagnostics, release-gate QA, and updated docs.
+
+## 2026-06-26: Phase 9J unifies receipt source-provider UX without changing accounting semantics
+
+Decision:
+
+Unify the Receipts page source-provider UX and source metadata display for current local/mock import paths while keeping every import path draft-only and preserving existing service/repository boundaries.
+
+Rationale:
+
+The app now has several local receipt source paths: manual paste, manual AI simulator, local Gmail-like paste/file import, local Drive/Docs selected-file import, and mock Google samples. They already share the draft/review/confirm accounting boundary, but the UI presented them as separate features with uneven source metadata display. A shared source-provider UX model makes the current boundary easier to understand and prepares future real providers without enabling any provider access.
+
+Consequences:
+
+- `src/receipt-ingestion/sourceProviderUx.ts` defines labels, statuses, source metadata summaries, and duplicate status helpers for current local/mock source paths.
+- Receipts page shows a source-provider overview and source-specific headers for manual paste, AI simulator, local Gmail, local Drive/Docs, and mock Google samples.
+- Saved drafts and draft review consistently show source type, source title or filename, sender/owner where available, imported date, provider/model details where available, source id where available, and duplicate tracking status where available.
+- Duplicate matching semantics remain in `financeDataService`; Phase 9J only surfaces duplicate status/warnings in the UI.
+- Tests cover source-provider metadata visibility, duplicate warnings/status, and unchanged Dashboard-impacting records before confirmation across every current receipt source path.
+- No real Gmail, Google Drive, Google Docs, OAuth, backend runtime, token storage, provider revocation, provider-data deletion runtime, source sync, scheduled sync, dependency, OCR, real AI provider, or accounting behavior change is added.

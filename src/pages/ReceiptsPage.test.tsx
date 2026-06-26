@@ -354,6 +354,60 @@ function createConfirmDraftMock() {
 }
 
 describe("ReceiptsPage parser preview", () => {
+  it("shows unified source provider cards and fallback source metadata for manual drafts", () => {
+    renderReceiptsPage({
+      receiptDraftItems: [savedDraftItem],
+      receiptDrafts: [savedDraft],
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Receipt sources" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Manual paste").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AI simulator").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Local Gmail").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Local Drive/Docs").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mock Google").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("Manual paste · GREEN MARKET · Source details not provided"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Imported 2026-06-03T12:00:00.000Z/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Duplicate check: unavailable/)).toBeInTheDocument();
+  });
+
+  it("shows duplicate status for mock source candidates already saved locally", () => {
+    renderReceiptsPage({
+      mockGoogleSourceCandidates: [mockGoogleSourceCandidate],
+      receiptDraftItems: [mockGoogleDraftItem],
+      receiptDrafts: [mockGoogleDraft],
+    });
+
+    expect(
+      screen.getByText(/Duplicate: saved draft City Pharmacy/),
+    ).toBeInTheDocument();
+  });
+
+  it("surfaces duplicate warnings returned by source import callbacks", async () => {
+    const user = userEvent.setup();
+    const onImportLocalGmailManualReceipt = vi.fn(
+      async (): Promise<ReceiptDraftActionResult> => ({
+        errorMessage:
+          'Local Gmail message has already been saved as receipt draft "Fresh Market".',
+        ok: false,
+      }),
+    );
+    renderReceiptsPage({ onImportLocalGmailManualReceipt });
+
+    await user.click(screen.getByRole("button", { name: "Use Gmail sample" }));
+    await user.click(screen.getByRole("button", { name: "Import Gmail receipt" }));
+
+    expect(onImportLocalGmailManualReceipt).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Local Gmail message has already been saved as receipt draft",
+    );
+  });
   it("shows a validation error before parsing empty receipt text", async () => {
     const user = userEvent.setup();
     renderReceiptsPage();

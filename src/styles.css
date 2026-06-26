@@ -922,6 +922,75 @@ button {
   padding: 12px 14px;
 }
 
+.receipt-source-provider-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+.receipt-source-provider-card {
+  background: #ffffff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.receipt-source-provider-card p,
+.receipt-source-provider-card small,
+.receipt-source-provider-header small {
+  color: #697386;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.receipt-source-provider-card small {
+  color: #0f766e;
+  font-size: 0.8rem;
+}
+
+.receipt-source-provider-heading {
+  align-items: center;
+  color: #0f766e;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+}
+
+.receipt-source-provider-heading div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.receipt-source-provider-heading strong,
+.receipt-source-provider-heading span {
+  overflow-wrap: anywhere;
+}
+
+.receipt-source-provider-heading strong {
+  color: #111827;
+}
+
+.receipt-source-provider-heading span {
+  color: #697386;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.receipt-source-provider-header {
+  border-bottom: 1px solid #dce1e7;
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+}
 .receipt-input-panel {
   padding: 12px;
 }
@@ -1055,6 +1124,53 @@ button {
   overflow-wrap: anywhere;
 }
 
+.receipt-source-inline {
+  display: grid;
+  gap: 2px;
+}
+
+.receipt-source-panel strong {
+  overflow-wrap: anywhere;
+}
+
+.receipt-source-panel small {
+  color: #697386;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.receipt-source-metadata-panel {
+  gap: 10px;
+}
+
+.receipt-source-metadata-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr;
+  margin: 0;
+}
+
+.receipt-source-metadata-grid div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.receipt-source-metadata-grid dt {
+  color: #697386;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.receipt-source-metadata-grid dd {
+  color: #111827;
+  font-weight: 700;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .receipt-confirm-panel,
 .receipt-confirmed-panel {
   background: #ffffff;
@@ -1339,6 +1455,15 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+
+  .receipt-source-provider-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receipt-source-metadata-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .receipt-summary-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
@@ -1372,6 +1497,9 @@ button {
 }
 
 @media (min-width: 860px) {
+  .receipt-source-provider-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
   .app-shell {
     display: grid;
     grid-template-columns: 244px minmax(0, 1fr);

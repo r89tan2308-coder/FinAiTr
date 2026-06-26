@@ -31,7 +31,6 @@ import {
   type ReceiptDraftItem,
   type ReceiptDraftItemFlag,
   type ReceiptDraftLineKind,
-  type ReceiptDraftSourceMetadata,
   type ReceiptDraftStatus,
   type ReceiptItem,
   type ReceiptStatus,
@@ -41,6 +40,15 @@ import {
 import { mockEmailReceiptText } from "../receipt-ingestion/fixtures";
 import { isSupportedLocalDriveDocsSelectedFileName } from "../receipt-ingestion/localDriveDocsSelectedFileSource";
 import { isSupportedLocalGmailEmailFileName } from "../receipt-ingestion/localGmailManualReceiptSource";
+import {
+  buildReceiptSourceMetadataView,
+  formatReceiptSourceKindLabel,
+  getReceiptSourceDuplicateStatus,
+  receiptSourceProviderUxEntries,
+  type ReceiptSourceMetadataView,
+  type ReceiptSourceProviderUxEntry,
+  type ReceiptSourceProviderUxKey,
+} from "../receipt-ingestion/sourceProviderUx";
 import { groceryReceiptText } from "../receipt-parser/fixtures";
 import {
   type ParsedReceiptDraft,
@@ -821,8 +829,28 @@ export function ReceiptsPage({
         </button>
       </div>
 
-      <PageSection title="Paste receipt text">
+      <PageSection title="Receipt sources">
+        <div className="receipt-source-provider-grid" aria-label="Receipt source providers">
+          {receiptSourceProviderUxEntries.map((provider) => (
+            <ReceiptSourceProviderCard key={provider.key} provider={provider} />
+          ))}
+        </div>
+      </PageSection>
+
+      {draftActionMessage && (
+        <div className="success-banner" role="status">
+          {draftActionMessage}
+        </div>
+      )}
+      {draftActionError && (
+        <div className="status-banner" role="alert">
+          {draftActionError}
+        </div>
+      )}
+
+      <PageSection title="Manual paste">
         <div className="form-panel receipt-input-panel">
+          <ReceiptSourceProviderHeader providerKey="manual_paste" />
           <label className="field field-wide" htmlFor="raw-receipt-text">
             <span>Raw receipt text</span>
             <textarea
@@ -837,8 +865,9 @@ export function ReceiptsPage({
         </div>
       </PageSection>
 
-      <PageSection title="Local Gmail receipt">
+      <PageSection title="Local Gmail">
         <div className="form-panel receipt-input-panel">
+          <ReceiptSourceProviderHeader providerKey="local_gmail" />
           <div className="form-grid">
             <label className="field">
               <span>From</span>
@@ -895,14 +924,23 @@ export function ReceiptsPage({
           </label>
 
           {(gmailRawText.trim() || gmailFilePreview) && (
-            <div className="receipt-source-panel">
-              <strong>{gmailFilePreview?.fileName ?? "Pasted Gmail text"}</strong>
-              <span>
-                Gmail · {gmailSourceSubject || "Subject from headers or missing"}
-              </span>
-              <span>{gmailSourceSender || "Sender from headers or missing"}</span>
-              <small>{gmailRawText.length} text characters ready.</small>
-            </div>
+            <ReceiptSourcePreviewPanel
+              details={[
+                gmailSourceReceivedAt
+                  ? `Received ${gmailSourceReceivedAt}`
+                  : "Received date from headers or missing",
+                `${gmailRawText.length} text characters ready.`,
+                "Duplicate check runs before draft save.",
+              ]}
+              line={[
+                "Gmail",
+                gmailSourceSubject || "Subject from headers or missing",
+                gmailSourceSender
+                  ? `From ${gmailSourceSender}`
+                  : "Sender from headers or missing",
+              ].join(" · ")}
+              title={gmailFilePreview?.fileName ?? "Pasted Gmail text"}
+            />
           )}
 
           {gmailSourceError && (
@@ -953,6 +991,7 @@ export function ReceiptsPage({
       </PageSection>
       <PageSection title="AI extraction simulator">
         <div className="form-panel receipt-input-panel">
+          <ReceiptSourceProviderHeader providerKey="manual_ai" />
           <div className="form-grid">
             <label className="field">
               <span>Source type</span>
@@ -1037,8 +1076,9 @@ export function ReceiptsPage({
         </div>
       </PageSection>
 
-      <PageSection title="Local Drive/Docs file">
+      <PageSection title="Local Drive/Docs">
         <div className="form-panel receipt-input-panel">
+          <ReceiptSourceProviderHeader providerKey="local_drive_docs" />
           <div className="form-grid">
             <label className="field">
               <span>Source type</span>
@@ -1068,14 +1108,18 @@ export function ReceiptsPage({
           </div>
 
           {selectedFilePreview && (
-            <div className="receipt-source-panel">
-              <strong>{selectedFilePreview.fileName}</strong>
-              <span>
-                {formatTitle(selectedFileSourceKind)} · {formatFileSize(selectedFilePreview.size)}
-              </span>
-              <span>{formatSelectedFileTimestamp(selectedFilePreview.lastModified)}</span>
-              <small>{selectedFilePreview.rawText.length} text characters ready.</small>
-            </div>
+            <ReceiptSourcePreviewPanel
+              details={[
+                formatSelectedFileTimestamp(selectedFilePreview.lastModified),
+                `${selectedFilePreview.rawText.length} text characters ready.`,
+                "Duplicate check runs before draft save.",
+              ]}
+              line={[
+                formatReceiptSourceKindLabel(selectedFileSourceKind),
+                formatFileSize(selectedFilePreview.size),
+              ].join(" · ")}
+              title={selectedFilePreview.fileName}
+            />
           )}
 
           {selectedFileError && (
@@ -1109,7 +1153,8 @@ export function ReceiptsPage({
           </div>
         </div>
       </PageSection>
-      <PageSection title="Mock Google sources">
+      <PageSection title="Mock Google samples">
+        <ReceiptSourceProviderHeader providerKey="mock_google" />
         {mockGoogleSourceCandidates.length > 0 ? (
           <div className="item-list">
             {mockGoogleSourceCandidates.map((candidate) => (
@@ -1119,7 +1164,19 @@ export function ReceiptsPage({
                   <span>
                     {formatTitle(candidate.kind)} · {candidate.sourceId}
                   </span>
-                  <small>{formatMockGoogleSourceSummary(candidate)}</small>
+                  <small>
+                    {formatMockGoogleSourceSummary(candidate)} ·{" "}
+                    {
+                      getReceiptSourceDuplicateStatus(
+                        {
+                          contentHash: candidate.contentHash,
+                          kind: candidate.kind,
+                          sourceId: candidate.sourceId,
+                        },
+                        { receiptDrafts, receipts },
+                      ).label
+                    }
+                  </small>
                 </div>
                 <div className="row-actions">
                   <button
@@ -1140,16 +1197,6 @@ export function ReceiptsPage({
         )}
       </PageSection>
       <PageSection title="Parser preview">
-        {draftActionMessage && (
-          <div className="success-banner" role="status">
-            {draftActionMessage}
-          </div>
-        )}
-        {draftActionError && (
-          <div className="status-banner" role="alert">
-            {draftActionError}
-          </div>
-        )}
         {parseStatus === "loading" && (
           <div className="empty-state" role="status">
             Parsing receipt text...
@@ -1184,9 +1231,7 @@ export function ReceiptsPage({
                     items · {formatReceiptDraftStatus(draft.status)} ·{" "}
                     {formatConfidence(draft.confidence)}
                   </span>
-                  {draft.sourceMetadata && (
-                    <small>{formatSourceMetadata(draft.sourceMetadata)}</small>
-                  )}
+                  <ReceiptSourceMetadataInline draft={draft} />
                 </div>
                 <b>
                   {formatOptionalDisplayAmount(
@@ -1276,12 +1321,7 @@ export function ReceiptsPage({
               </button>
             </div>
 
-            {selectedDraft.sourceMetadata && (
-              <div className="receipt-source-panel">
-                <strong>Source</strong>
-                <span>{formatSourceMetadata(selectedDraft.sourceMetadata)}</span>
-              </div>
-            )}
+            <ReceiptSourceMetadataPanel draft={selectedDraft} />
 
             <div className="form-grid">
               <label className="field">
@@ -1632,6 +1672,152 @@ export function ReceiptsPage({
       </PageSection>
     </div>
   );
+}
+
+function ReceiptSourceProviderCard({
+  provider,
+}: {
+  provider: ReceiptSourceProviderUxEntry;
+}) {
+  return (
+    <article className="receipt-source-provider-card">
+      <div className="receipt-source-provider-heading">
+        <ReceiptSourceProviderIcon providerKey={provider.key} />
+        <div>
+          <strong>{provider.label}</strong>
+          <span>{provider.statusLabel}</span>
+        </div>
+      </div>
+      <p>{provider.detail}</p>
+      <small>Creates editable receipt drafts only.</small>
+    </article>
+  );
+}
+
+function ReceiptSourceProviderHeader({
+  providerKey,
+}: {
+  providerKey: ReceiptSourceProviderUxKey;
+}) {
+  const provider = getReceiptSourceProviderEntry(providerKey);
+
+  if (!provider) {
+    return null;
+  }
+
+  return (
+    <div className="receipt-source-provider-header">
+      <div className="receipt-source-provider-heading">
+        <ReceiptSourceProviderIcon providerKey={provider.key} />
+        <div>
+          <strong>{provider.label}</strong>
+          <span>{provider.statusLabel}</span>
+        </div>
+      </div>
+      <small>{provider.detail}</small>
+    </div>
+  );
+}
+
+function ReceiptSourceProviderIcon({
+  providerKey,
+  size = 18,
+}: {
+  providerKey: ReceiptSourceProviderUxKey;
+  size?: number;
+}) {
+  switch (providerKey) {
+    case "local_gmail":
+      return <Mail aria-hidden="true" size={size} />;
+    case "local_drive_docs":
+      return <Upload aria-hidden="true" size={size} />;
+    case "manual_ai":
+    case "mock_google":
+      return <Sparkles aria-hidden="true" size={size} />;
+    case "manual_paste":
+    default:
+      return <ClipboardPaste aria-hidden="true" size={size} />;
+  }
+}
+
+function ReceiptSourcePreviewPanel({
+  details,
+  line,
+  title,
+}: {
+  details: string[];
+  line: string;
+  title: string;
+}) {
+  return (
+    <div className="receipt-source-panel">
+      <strong>{title}</strong>
+      <span>{line}</span>
+      {details.map((detail) => (
+        <small key={detail}>{detail}</small>
+      ))}
+    </div>
+  );
+}
+
+function ReceiptSourceMetadataInline({ draft }: { draft: ReceiptDraft }) {
+  const view = buildDraftReceiptSourceMetadataView(draft);
+
+  return (
+    <div className="receipt-source-inline" aria-label="Draft source metadata">
+      <small>{formatReceiptSourceMetadataLine(view)}</small>
+      <small>
+        {view.importedAtLabel} · {view.duplicateStatusLabel}
+      </small>
+    </div>
+  );
+}
+
+function ReceiptSourceMetadataPanel({ draft }: { draft: ReceiptDraft }) {
+  const view = buildDraftReceiptSourceMetadataView(draft);
+  const detailRows = [
+    ["Imported", view.importedAtLabel],
+    ["Duplicate", view.duplicateStatusLabel],
+    view.providerLabel ? ["Provider", view.providerLabel] : undefined,
+    view.modelLabel ? ["Model", view.modelLabel] : undefined,
+    view.sourceIdLabel ? ["Source ID", view.sourceIdLabel] : undefined,
+  ].filter((row): row is string[] => Boolean(row));
+
+  return (
+    <div className="receipt-source-panel receipt-source-metadata-panel">
+      <strong>Source</strong>
+      <span>{formatReceiptSourceMetadataLine(view)}</span>
+      <dl className="receipt-source-metadata-grid">
+        {detailRows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function buildDraftReceiptSourceMetadataView(
+  draft: ReceiptDraft,
+): ReceiptSourceMetadataView {
+  return buildReceiptSourceMetadataView({
+    createdAt: draft.createdAt,
+    merchant: draft.merchant,
+    metadata: draft.sourceMetadata,
+    receiptSource: draft.source,
+  });
+}
+
+function formatReceiptSourceMetadataLine(view: ReceiptSourceMetadataView): string {
+  return [view.sourceTypeLabel, view.sourceTitle, view.actorLabel].join(" · ");
+}
+
+function getReceiptSourceProviderEntry(
+  providerKey: ReceiptSourceProviderUxKey,
+): ReceiptSourceProviderUxEntry | undefined {
+  return receiptSourceProviderUxEntries.find((entry) => entry.key === providerKey);
 }
 
 function readTextLikeFile(file: File): Promise<string> {
@@ -2051,36 +2237,6 @@ function formatReceiptStatus(status: ReceiptStatus): string {
 
 function formatReceiptDraftStatus(status: ReceiptDraftStatus): string {
   return formatTitle(status);
-}
-
-function formatSourceMetadata(metadata: ReceiptDraftSourceMetadata): string {
-  const parts = [formatTitle(metadata.kind)];
-
-  if (metadata.title) {
-    parts.push(metadata.title);
-  }
-
-  if (metadata.sender) {
-    parts.push(`From ${metadata.sender}`);
-  }
-
-  if (metadata.receivedAt) {
-    parts.push(`Received ${metadata.receivedAt}`);
-  }
-
-  if (metadata.modifiedAt) {
-    parts.push(`Modified ${metadata.modifiedAt}`);
-  }
-
-  if (metadata.sourceProviderName) {
-    parts.push(metadata.sourceProviderName);
-  }
-
-  if (metadata.providerName) {
-    parts.push(metadata.providerName);
-  }
-
-  return parts.join(" · ");
 }
 
 function formatFileSize(size: number): string {

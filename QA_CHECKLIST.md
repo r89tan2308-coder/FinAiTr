@@ -211,6 +211,25 @@ Future implementation QA gates:
 - [ ] Before any real backend runtime is added, verify callback state/CSRF handling, redirect allowlisting, encrypted token storage, revocation, disconnect, provider-data deletion, redacted diagnostics, and failure-mode tests.
 - [ ] Verify real provider access still creates receipt drafts only and cannot update Dashboard, transactions, recurring expenses, CSV, JSON backup/restore, or FX behavior before human review and receipt confirmation.
 
+## Phase 9J Receipt Source-Provider UX and Metadata QA
+
+Phase 9J is local/mock UX and metadata cleanup only. It adds no OAuth flow, Google API client, backend server runtime, token storage, scheduled sync, provider revocation runtime, provider deletion runtime, dependency, OCR, real AI provider, source sync, or accounting behavior change.
+
+Automated checks:
+
+- [x] Receipts page shows a unified source-provider overview for manual paste, AI simulator, local Gmail, local Drive/Docs, and mock Google samples.
+- [x] Saved drafts show fallback source metadata even when a manual pasted draft has no explicit `sourceMetadata`.
+- [x] Gmail, Drive/Docs, AI simulator, and mock Google draft review still expose source type plus source title/from/filename metadata.
+- [x] Mock source candidates surface duplicate status when a matching draft or confirmed receipt exists locally.
+- [x] Duplicate warnings returned by source import actions are shown to the user.
+- [x] Manual paste, manual AI simulator, local Gmail-like import, local Drive/Docs selected-file import, and mock Google sample import all still create drafts only before confirmation.
+- [x] Dashboard-impacting records and Dashboard overview remain unchanged before explicit receipt confirmation across every current source path.
+
+Future implementation QA gates:
+
+- [ ] Verify any real provider UI uses the same source-provider overview and metadata evidence pattern before enabling OAuth-backed access.
+- [ ] Verify real provider duplicate status uses source id/content hash without exposing provider secrets, tokens, source URLs containing secrets, raw source text, or sync cursors.
+
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:
