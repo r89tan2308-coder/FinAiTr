@@ -885,6 +885,49 @@ Add a local-only Gmail-like manual receipt import prototype that models selected
 - Tests cover valid Gmail-like import, missing metadata, invalid metadata, duplicate detection, metadata preservation, invalid extraction rejection, `.eml` file input, and Dashboard unchanged before confirmation.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
+## Phase 9H: Google OAuth/backend release-gate planning
+
+### Goal
+
+Document the release gates required before any real Google OAuth, Gmail API, Drive API, Docs API, backend token handling, provider revocation, provider deletion, scheduled sync, or production provider access is implemented.
+
+### Scope
+
+- Create a Google release-gate checklist in `GOOGLE_INTEGRATION_PLAN.md`.
+- Define hard requirements before real Google integration can be enabled.
+- Cover OAuth consent, scopes, backend/token handling, revocation/disconnect, provider-data deletion, logging restrictions, privacy copy, and user-facing disclosures.
+- Define a minimum viable scope strategy:
+  - prefer narrow Drive/Docs selected-file access where possible;
+  - treat broad Gmail/Drive access as higher-risk restricted-scope work;
+  - keep all source ingestion draft-only.
+- Define go/no-go criteria for:
+  - frontend-only selected-file experiments;
+  - backend-backed OAuth;
+  - Gmail read-only source ingestion;
+  - Drive/Docs selected-file or picker-based ingestion;
+  - scheduled sync.
+- Define security checks: no tokens in IndexedDB/localStorage/sessionStorage, no raw email/document bodies in logs, no secrets in repo, and no Dashboard impact before human confirmation.
+- Add a future implementation sequence after release-gate approval.
+- Update Google integration, product, architecture, decision, QA, and progress docs.
+
+### Non-goals
+
+- No OAuth implementation.
+- No Google API calls.
+- No backend/server code.
+- No token storage.
+- No real AI API calls.
+- No product runtime behavior changes.
+- No dependency changes.
+
+### Acceptance
+
+- `GOOGLE_INTEGRATION_PLAN.md` documents the OAuth/backend release-gate checklist, hard requirements, scope strategy, go/no-go criteria, security checks, and future implementation sequence.
+- `PLAN.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `PRODUCT_SPEC.md`, `QA_CHECKLIST.md`, and `PROGRESS.md` reflect Phase 9H as planning-only.
+- Docs state that implementation remains disabled/no-op and source ingestion remains draft-only until human confirmation.
+- Package dependencies, `.env.example`, `src`, and product runtime behavior remain unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
 ## Deferred until after first MVP
 
 - Real OCR provider.

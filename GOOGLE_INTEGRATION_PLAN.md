@@ -422,6 +422,119 @@ Future sync must include:
 
 Scheduled sync is a separate backend phase, not a PWA-only feature.
 
+## Phase 9H Google OAuth/backend release gate
+
+Phase 9H is a planning-only release gate. It does not enable OAuth, call Google APIs, add a backend server, store tokens, add dependencies, call a real AI provider, or change product runtime behavior.
+
+Official Google documentation re-checked on 2026-06-26:
+
+- Google OAuth 2.0 for web server applications: `https://developers.google.com/identity/protocols/oauth2/web-server`
+- Sensitive scope verification: `https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification`
+- Gmail API scopes: `https://developers.google.com/workspace/gmail/api/auth/scopes`
+- Drive API scopes: `https://developers.google.com/workspace/drive/api/guides/api-specific-auth`
+- Google API Services User Data Policy: `https://developers.google.com/terms/api-services-user-data-policy`
+
+Current release-gate decision:
+
+- Real Gmail API access remains blocked.
+- Broad Drive/Docs access remains blocked.
+- Scheduled sync remains blocked.
+- Backend-backed OAuth remains blocked until the backend, consent, verification, deletion, and logging gates below are implemented and validated.
+- Frontend-only work remains limited to local manual prototypes and future narrow selected-file experiments that do not store long-lived credentials.
+- All Google source ingestion must remain draft-only until human review and explicit receipt confirmation.
+
+### Hard requirements before enabling real Google integration
+
+Every real Google provider phase must satisfy these requirements before code is enabled:
+
+1. Product and consent requirements
+   - Exact user-facing feature and import path are named before requesting scopes.
+   - OAuth consent copy explains who requests access, what data is accessed, why it is accessed, how it is used, how to disconnect, and how provider data is deleted.
+   - Privacy policy and support links are available and match in-app disclosures.
+   - Data use is limited to visible receipt import/review features and follows Google API Services User Data Policy limited-use expectations.
+   - AI extraction disclosure is shown before any selected Google source text is sent to a future real AI provider.
+2. Scope requirements
+   - Request the narrowest scope that can support the feature.
+   - Prefer selected-file Drive/Docs access, such as `drive.file` with Google Picker or an equivalent selected-file flow, before any broad Drive scope.
+   - Treat `gmail.readonly`, `gmail.metadata`, `drive`, `drive.readonly`, and broad Drive metadata scopes as higher-risk restricted-scope work.
+   - Use incremental authorization: request Google access in context, only when the user starts the matching import flow.
+   - Document why a narrower scope is not sufficient for every sensitive or restricted scope.
+3. Backend and token requirements
+   - Production OAuth callback handling, authorization-code exchange, refresh-token storage, scheduled sync, provider lifecycle, revocation, and deletion require a backend.
+   - Client secrets must never be in the PWA bundle, repo, IndexedDB, localStorage, sessionStorage, JSON backups, CSV exports, logs, or source metadata.
+   - Access tokens, refresh tokens, authorization codes, provider sessions, sync cursors, and provider cookies must not be stored in IndexedDB, localStorage, sessionStorage, JSON backups, CSV exports, receipt source metadata, or committed config.
+   - Refresh tokens, if used, must be in secure backend storage with encryption, rotation/revocation handling, least-privilege access, and deletion on disconnect where required.
+   - Backend endpoints must have CSRF/state validation, redirect URI allowlisting, per-user authorization, audit-safe structured logs, rate-limit handling, and test coverage.
+4. Revocation, disconnect, and deletion requirements
+   - Disconnect must revoke provider access where possible, clear backend token/session state, delete cached provider candidates and sync cursors, and show user-visible status.
+   - Provider-data deletion must cover cached Gmail/Drive/Docs bodies, attachments, snippets, candidate metadata, diagnostics, sync cursors, and temporary extraction payloads.
+   - Local user-created finance records remain unless the user separately deletes/reset/restores local data.
+   - Deletion and disconnect behavior must be covered by tests and release QA.
+5. Logging and diagnostics requirements
+   - Never log raw Gmail bodies, Drive/Docs text, attachment text, receipt source text, AI prompts containing receipt text, provider responses containing receipt text, OAuth credentials, authorization responses, client secrets, source URLs containing secrets, full provider ids, tokens, refresh tokens, or sync cursors.
+   - Diagnostics must use redacted counts, status codes, provider kind, short stable hashes, and user-visible error categories only.
+6. Accounting and local data requirements
+   - Google source text can create only receipt drafts and draft items after extraction validation passes.
+   - No Google source provider can create final receipts, receipt items, transactions, recurring expenses, FX updates, JSON restore changes, CSV import changes, or Dashboard-impacting records directly.
+   - Dashboard, Transactions, final Receipts, recurring expenses, FX settings, JSON backup/restore, and CSV behavior must remain unchanged until the user reviews and explicitly confirms a draft.
+   - Duplicate detection must run before mutation using provider kind plus provider source id and/or content hash.
+
+### Scope strategy
+
+Minimum viable strategy:
+
+- Drive/Docs selected-file or picker path first: prefer `drive.file` or another selected-file narrow scope that limits access to user-chosen files. This is the only candidate for a future frontend-light experiment, and only if it avoids long-lived credentials and broad scans.
+- Gmail manual/local prototype remains local-only: Phase 9G proves metadata and draft semantics without Gmail scopes.
+- Gmail real message body import is backend-gated because Gmail read scopes are restricted and can expose mailbox content and settings.
+- Broad Drive or Docs discovery is backend-gated because broad file and metadata scopes create wider data access and can trigger restricted-scope obligations.
+- Scheduled sync is backend-only because it requires long-lived credentials, refresh-token lifecycle, sync cursors, rate-limit handling, revocation, and deletion.
+
+### Go/no-go criteria
+
+Frontend-only selected-file experiments:
+
+- Go only for explicit user-selected local/browser files or a future narrow selected-file provider path with no broad scan, no scheduled sync, no refresh token, no provider session storage, and draft-only writes.
+- No-go if the feature needs mailbox access, broad Drive/Docs discovery, stored credentials, background refresh, provider cursors, or server-side data retention.
+
+Backend-backed OAuth:
+
+- Go only after backend endpoints, redirect URI configuration, state/CSRF checks, secure token storage, revocation, disconnect, deletion, privacy copy, support links, and tests are implemented.
+- No-go if tokens or authorization codes would touch PWA storage, source metadata, logs, JSON backups, CSV exports, or committed config.
+
+Gmail read-only source ingestion:
+
+- Go only after restricted-scope verification readiness, backend token handling, selected-message or explicit-filter UX, body/attachment minimization, redacted logging, deletion, revocation, rate-limit handling, duplicate checks, and draft-only tests are complete.
+- No-go for silent mailbox-wide scans, broad automatic import, logging message bodies, storing raw bodies outside the draft evidence path, or any Dashboard impact before review/confirm.
+
+Drive/Docs selected-file or picker ingestion:
+
+- Go first with narrow selected-file access, preferably `drive.file`, Google Picker or a user-equivalent selected-file flow, explicit file selection, duplicate checks, extraction validation, and draft-only writes.
+- No-go for broad Drive scan, broad Docs discovery, unrestricted `drive.readonly`, or persistent provider data caches unless backend and restricted-scope gates are approved.
+
+Scheduled sync:
+
+- Go only after backend OAuth, refresh-token storage, per-user sync cursors, visible sync status, pause/disconnect controls, rate limits, deletion/revocation handling, failure recovery, and QA are implemented.
+- No-go in the PWA-only runtime or for any sync that can create Dashboard-impacting records without human review and explicit confirmation.
+
+### Future implementation sequence after release-gate approval
+
+1. Phase 9I: Backend OAuth architecture implementation behind disabled flags.
+   - Add backend runtime only after explicit approval.
+   - Keep all real provider calls disabled by default.
+   - Add secure callback, state/CSRF, token-store abstraction, revocation, disconnect, deletion, and redacted diagnostics tests.
+2. Phase 9J: Narrow Drive/Docs picker-based selected-file provider.
+   - Prefer `drive.file` and explicit user selection.
+   - Fetch only selected document/file text.
+   - Keep draft-only writes and duplicate checks.
+3. Phase 9K: Gmail selected-message import behind backend and restricted-scope gates.
+   - Use explicit selected messages or user-provided filters.
+   - Fetch only receipt-like body/attachment text for selected candidates.
+   - Keep raw provider data minimization, redacted logs, deletion, duplicate checks, extraction validation, and draft-only writes.
+4. Phase 9L: Optional scheduled sync.
+   - Backend-only with visible user controls, cursors, rate limits, revocation, deletion, and no auto-confirmation.
+5. Phase 9M: Production hardening.
+   - Complete OAuth verification, restricted-scope review or security assessment if required, privacy/support documentation, security test evidence, manual QA, and release sign-off.
+
 ## Implementation Phases
 
 Phase 9B: Mock Google source provider boundary.
@@ -474,17 +587,18 @@ Phase 9G: Gmail manual receipt import prototype.
 
 Phase 9H: Google OAuth/backend release-gate planning.
 
-- Re-check backend, consent, restricted-scope verification, security assessment, logging, revocation, deletion, and support/privacy-policy readiness before any real Gmail, broad Drive, or broad Docs access.
-- Define selected-message or explicit-filter Gmail UX before production provider implementation.
-- Keep production provider access disabled until Phase 9D backend requirements and Phase 9E consent gates are implemented and validated.
+- Completed as a planning-only release gate before any real OAuth/Gmail/Drive/Docs implementation.
+- Defines hard requirements for consent, scopes, backend token handling, revocation/disconnect, deletion, logging, privacy copy, user disclosures, source minimization, draft-only ingestion, and no Dashboard impact before confirmation.
+- Defines go/no-go criteria for frontend-only selected-file experiments, backend-backed OAuth, Gmail read-only source ingestion, Drive/Docs selected-file or picker ingestion, and scheduled sync.
+- Keeps production provider access disabled until backend requirements, consent gates, restricted-scope verification readiness, security assessment needs, and release QA are implemented and validated.
 
-Phase 9I: Optional scheduled sync.
+Phase 9I: Backend OAuth architecture implementation behind disabled flags.
 
 - Backend-only.
 - Add token refresh, revocation, rate limits, per-user cursors, and visible sync status.
 - No silent broad scans.
 
-Phase 9J: Production hardening.
+Phase 9M: Production hardening.
 
 - Complete verification requirements, security review, deletion flows, privacy copy, logging controls, QA matrix, and release gate.
 

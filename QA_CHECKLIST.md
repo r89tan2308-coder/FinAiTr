@@ -172,6 +172,26 @@ Manual browser smoke before release/demo:
 - [ ] Re-import the same Gmail-like content; verify the duplicate error appears and no extra draft is created.
 - [ ] Enter an invalid received date and verify import is rejected without creating a draft.
 - [ ] Confirm a reviewed Gmail-sourced draft and verify Dashboard changes only after confirmation.
+## Phase 9H Google OAuth/Backend Release-Gate QA
+
+Phase 9H is planning-only. It adds no OAuth flow, Google API client, backend server, token storage, scheduled sync, provider revocation runtime, OCR, real AI provider, dependency, or runtime UI change.
+
+Documentation checks:
+
+- [x] `GOOGLE_INTEGRATION_PLAN.md` defines hard release requirements before real Google integration.
+- [x] OAuth consent, privacy copy, support links, scopes, backend token handling, revocation/disconnect, deletion, logging restrictions, and user-facing disclosures are covered.
+- [x] Minimum viable scope strategy prefers narrow Drive/Docs selected-file access and treats Gmail/broad Drive as higher-risk restricted-scope work.
+- [x] Go/no-go criteria exist for frontend-only selected-file experiments, backend-backed OAuth, Gmail read-only ingestion, Drive/Docs selected-file or picker ingestion, and scheduled sync.
+- [x] Security checks prohibit tokens in IndexedDB/localStorage/sessionStorage, raw email/document bodies in logs, secrets in repo, and Dashboard impact before human confirmation.
+- [x] A future implementation sequence after release-gate approval is documented.
+
+Future implementation QA gates:
+
+- [ ] Verify any real OAuth phase keeps provider calls disabled by default until consent, backend, token, revocation, deletion, logging, and QA gates pass.
+- [ ] Verify no access tokens, refresh tokens, authorization codes, provider sessions, sync cursors, provider cookies, or client secrets are stored in browser storage, JSON backups, CSV exports, source metadata, logs, tests, or committed config.
+- [ ] Verify Gmail import fetches body or attachment text only after explicit selected-message or user-filter action.
+- [ ] Verify Drive/Docs provider access starts with narrow selected-file/picker behavior and does not silently scan broad Drive files.
+- [ ] Verify scheduled sync is backend-only, visible to the user, rate-limited, revocable, deletable, and still draft-only before confirmation.
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:

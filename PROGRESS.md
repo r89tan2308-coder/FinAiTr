@@ -4063,3 +4063,98 @@ Result: succeeded. Git printed CRLF normalization warnings only.
 ### Next recommended phase
 
 Phase 9H: Google OAuth/backend release-gate planning. Re-check backend, consent, restricted-scope verification, security assessment, logging, revocation, deletion, and support/privacy-policy readiness before any real Gmail, broad Drive, or broad Docs access. Keep production provider access disabled until the Phase 9D backend requirements and Phase 9E consent gates are implemented and validated.
+
+## 2026-06-26: Phase 9H Google OAuth/backend release-gate planning completed
+
+### Goal
+
+Document the release gates required before any real Google OAuth, Gmail API, Drive API, Docs API, backend token handling, provider revocation, provider-data deletion, scheduled sync, or production provider access is implemented.
+
+### Completed
+
+- Re-checked official Google documentation for OAuth web-server behavior, sensitive-scope verification, Gmail scopes, Drive API scope strategy, and Google API Services User Data Policy.
+- Added a Phase 9H release-gate section to `GOOGLE_INTEGRATION_PLAN.md` covering:
+  - hard requirements before enabling real Google integration;
+  - OAuth consent, privacy copy, support links, and user-facing disclosure requirements;
+  - minimum viable scope strategy with narrow Drive/Docs selected-file access preferred where possible;
+  - Gmail read scopes and broad Drive/Docs scopes as higher-risk restricted-scope work;
+  - backend/token handling requirements;
+  - revocation/disconnect behavior;
+  - provider-data deletion expectations;
+  - logging restrictions;
+  - security checks for browser storage, committed config, backups, source metadata, and logs;
+  - draft-only ingestion and no Dashboard impact before human review/confirm;
+  - go/no-go criteria for frontend-only selected-file experiments, backend-backed OAuth, Gmail read-only ingestion, Drive/Docs selected-file or picker ingestion, and scheduled sync;
+  - a future implementation sequence after release-gate approval.
+- Updated `PLAN.md` with Phase 9H scope, non-goals, and acceptance criteria.
+- Updated `ARCHITECTURE.md` to record Phase 9H as documentation-only and to keep disabled/no-op Google boundaries unchanged.
+- Updated `DECISIONS.md` with a Phase 9H decision that real Google OAuth/provider access remains blocked until release gates are satisfied and validated.
+- Updated `PRODUCT_SPEC.md` to describe Phase 9H release gates before real Google provider access.
+- Updated `QA_CHECKLIST.md` with Phase 9H documentation checks and future implementation QA gates.
+- Kept product runtime behavior unchanged:
+  - no OAuth implementation;
+  - no Google API calls;
+  - no backend/server code;
+  - no token storage;
+  - no real AI API calls;
+  - no dependency changes;
+  - no `src` changes.
+
+### Changed files
+
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 23 test files passed, 165 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+### Known limitations
+
+- Phase 9H is planning-only. No real Google OAuth consent screen, backend runtime, Google API client, provider token storage, provider revocation call, provider-data deletion runtime, scheduled sync, real AI provider, or production Google data access exists yet.
+- Future implementation phases must re-check official Google documentation again because OAuth verification, sensitive/restricted scope treatment, Drive scope guidance, and user data policy requirements can change.
+- Release gates are documented but not implemented as runtime enforcement because real provider access remains disabled/no-op.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9I: Backend OAuth architecture implementation behind disabled flags. Add backend runtime only after explicit approval, keep all real provider calls disabled by default, and implement secure callback/state handling, token-store abstraction, revocation, disconnect, provider-data deletion, and redacted diagnostics tests before any real Gmail/Drive/Docs provider reads.

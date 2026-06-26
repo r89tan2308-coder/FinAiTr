@@ -711,3 +711,23 @@ Consequences:
 - Dashboard impact still requires human review and explicit receipt confirmation.
 - Receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.
 - Production Gmail import still requires the Phase 9D backend/token lifecycle decision and Phase 9E privacy/consent gates before any real provider access is enabled.
+## 2026-06-26: Phase 9H gates real Google OAuth and provider access
+
+Decision:
+
+Treat real Google OAuth, Gmail API access, broad Drive/Docs access, backend token lifecycle, scheduled sync, provider revocation, and provider-data deletion as blocked until the Phase 9H release gates in `GOOGLE_INTEGRATION_PLAN.md` are satisfied and validated. Phase 9H is documentation-only and does not change runtime behavior.
+
+Rationale:
+
+Official Google guidance keeps OAuth scope choice, consent clarity, redirect handling, token storage, restricted scopes, user data policy obligations, revocation, and deletion as release-critical concerns. The app now has local-only Gmail-like and Drive/Docs-like prototypes that prove the draft/review/confirm boundary, but real provider access would expose sensitive mailbox, document, and file data and must not be added opportunistically.
+
+Consequences:
+
+- Future real provider work must pass hard requirements for OAuth consent, privacy copy, support links, data minimization, scope justification, backend token handling, revocation/disconnect, provider-data deletion, logging restrictions, duplicate detection, extraction validation, and draft-only writes.
+- Narrow selected-file Drive/Docs access is the preferred first real provider path where practical; Gmail read scopes and broad Drive/Docs scopes remain higher-risk restricted-scope work.
+- Frontend-only experiments are allowed only when they do not request broad scopes, store long-lived credentials, use scheduled sync, or bypass draft-only accounting boundaries.
+- Backend-backed OAuth can proceed only after secure callback handling, state/CSRF protection, redirect URI allowlisting, encrypted token storage, revocation, disconnect, deletion, redacted diagnostics, and tests are implemented.
+- Gmail read-only ingestion can proceed only after backend, restricted-scope verification readiness, selected-message or explicit-filter UX, raw body/attachment minimization, deletion, rate-limit, duplicate, validation, and draft-only QA gates pass.
+- Scheduled sync is backend-only and cannot create Dashboard-impacting records without human review and explicit confirmation.
+- Tokens, authorization codes, provider sessions, sync cursors, provider cookies, client secrets, raw email/document bodies, provider responses, and source URLs containing secrets must not be stored in IndexedDB, localStorage, sessionStorage, JSON backups, CSV exports, receipt source metadata, logs, tests, or committed config.
+- Existing receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, Dashboard semantics, and local-only Google-like prototypes remain unchanged.
