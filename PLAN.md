@@ -928,6 +928,39 @@ Document the release gates required before any real Google OAuth, Gmail API, Dri
 - Package dependencies, `.env.example`, `src`, and product runtime behavior remain unchanged.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
+
+## Phase 9I: Disabled backend OAuth architecture skeleton
+
+### Goal
+
+Add a minimal typed backend OAuth architecture boundary for future Google provider access while keeping every OAuth, backend, token, provider read, revocation, and sync behavior disabled/no-op.
+
+### Scope
+
+- Add frontend-safe typed contracts for future backend OAuth start, callback handling, provider status, provider disconnect, provider grant revocation, and source sync.
+- Add disabled endpoint contract metadata for the future backend routes.
+- Reuse existing Phase 9D backend auth, sync, revocation, base URL, client id, and redirect URI placeholders; keep defaults disabled.
+- Add a disabled boundary client that returns typed disabled responses and never calls a network adapter while disabled.
+- Add tests proving disabled defaults, requested flags blocked by release gates, no endpoint/network/token behavior, and no token/secret/authorization URL exposure.
+- Update Google integration, product, architecture, decision, QA, and progress docs.
+
+### Non-goals
+
+- No real OAuth consent screen, redirect route, callback exchange, Google Identity Services integration, or Google API call.
+- No backend server runtime or scheduled sync job.
+- No token, authorization code, provider session, sync cursor, provider cookie, or client secret storage.
+- No provider revocation call, provider data deletion runtime, Gmail import, broad Drive/Docs access, OCR, real AI provider, or dependency change.
+- No changes to mock/manual Google-like imports, receipt confirmation, Dashboard, analytics, recurring, CSV, JSON backup/restore, or FX behavior.
+
+### Acceptance
+
+- `src/google-integration/googleOAuthBackendSkeleton.ts` defines disabled/no-op typed backend OAuth contracts and endpoint metadata for start, callback, status, disconnect, revoke, and source sync.
+- `src/google-integration/googleOAuthBackendSkeleton.test.ts` proves disabled defaults, blocked requested flags, no network adapter calls, no token storage behavior, and no token/secret/authorization URL exposure.
+- Existing Phase 9D readiness remains disabled/no-op, and product runtime behavior remains unchanged.
+- Package dependencies remain unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
+
 ## Deferred until after first MVP
 
 - Real OCR provider.

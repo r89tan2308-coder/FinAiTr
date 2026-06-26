@@ -731,3 +731,22 @@ Consequences:
 - Scheduled sync is backend-only and cannot create Dashboard-impacting records without human review and explicit confirmation.
 - Tokens, authorization codes, provider sessions, sync cursors, provider cookies, client secrets, raw email/document bodies, provider responses, and source URLs containing secrets must not be stored in IndexedDB, localStorage, sessionStorage, JSON backups, CSV exports, receipt source metadata, logs, tests, or committed config.
 - Existing receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, Dashboard semantics, and local-only Google-like prototypes remain unchanged.
+
+## 2026-06-26: Phase 9I keeps backend OAuth as disabled architecture only
+
+Decision:
+
+Add typed frontend-safe contracts for a future Google backend OAuth boundary while keeping OAuth, backend endpoint calls, token storage, provider reads, provider revocation, provider-data deletion runtime, source sync, and scheduled sync disabled. Phase 9I adds architecture skeleton code and tests only.
+
+Rationale:
+
+The project needs stable type-level boundaries before implementing any real backend OAuth flow. Defining start, callback, status, disconnect, revoke, and source sync contracts now makes future implementation reviewable, while disabled defaults and tests prevent accidental product behavior changes or premature provider access.
+
+Consequences:
+
+- `src/google-integration/googleOAuthBackendSkeleton.ts` defines disabled endpoint contracts and typed disabled request/response boundaries for OAuth start, callback, provider status, provider disconnect, provider revoke, and source sync.
+- `DisabledGoogleOAuthBackendBoundaryClient` returns disabled responses and does not call its optional network adapter while disabled.
+- Existing Phase 9D backend flags can be recognized as requested, but they remain `requested_but_blocked` and cannot enable endpoint calls, network calls, token storage, provider reads, revocation, or sync.
+- No backend server runtime, OAuth redirect handler, authorization-code exchange, Google API client, token store, provider revocation call, provider data deletion runtime, scheduled sync, dependency, or UI behavior is added.
+- Existing local-only Google-like prototypes, receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, and Dashboard semantics remain unchanged.
+- Future real backend work still requires explicit approval plus secure callback/state handling, encrypted credential storage, revocation, disconnect, deletion, redacted diagnostics, release-gate QA, and updated docs.

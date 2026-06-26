@@ -192,6 +192,25 @@ Future implementation QA gates:
 - [ ] Verify Gmail import fetches body or attachment text only after explicit selected-message or user-filter action.
 - [ ] Verify Drive/Docs provider access starts with narrow selected-file/picker behavior and does not silently scan broad Drive files.
 - [ ] Verify scheduled sync is backend-only, visible to the user, rate-limited, revocable, deletable, and still draft-only before confirmation.
+
+## Phase 9I Disabled Backend OAuth Architecture Skeleton QA
+
+Phase 9I adds typed disabled contracts only. It adds no OAuth flow, Google API client, backend server runtime, token storage, scheduled sync, provider revocation runtime, provider deletion runtime, dependency, OCR, real AI provider, or runtime UI change.
+
+Automated checks:
+
+- [x] `googleOAuthBackendEndpointContracts` defines disabled contracts for OAuth start, OAuth callback, provider status, provider disconnect, provider revoke, and source sync.
+- [x] Backend auth, sync, and revocation flags can be requested but remain blocked with endpoint calls, network calls, and token storage disabled.
+- [x] `DisabledGoogleOAuthBackendBoundaryClient` returns typed disabled responses for start, callback, status, disconnect, revoke, and source sync.
+- [x] The disabled boundary client does not call its optional network adapter.
+- [x] Disabled responses do not expose access tokens, refresh tokens, id tokens, client secrets, authorization URLs, source text, provider sessions, or sync cursors.
+- [x] Source sync returns zero synced candidates and does not store sync cursors or fetch source text.
+
+Future implementation QA gates:
+
+- [ ] Before any real backend runtime is added, verify callback state/CSRF handling, redirect allowlisting, encrypted token storage, revocation, disconnect, provider-data deletion, redacted diagnostics, and failure-mode tests.
+- [ ] Verify real provider access still creates receipt drafts only and cannot update Dashboard, transactions, recurring expenses, CSV, JSON backup/restore, or FX behavior before human review and receipt confirmation.
+
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:

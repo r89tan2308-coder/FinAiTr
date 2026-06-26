@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository now has a Phase 9D OAuth/backend decision record and disabled backend skeleton on top of the Phase 9C disabled Google readiness skeleton, Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status. Phase 9D records the backend-required OAuth/security decision, adds disabled backend endpoint definitions and a no-op backend client. Phase 9E adds privacy, consent, and user-facing disclosure planning. Phase 9F adds a local-only manual Drive/Docs selected-file import prototype that reads supported user-selected text-like files in the browser and saves validated receipt drafts only. Phase 9G adds a local-only Gmail-like manual import prototype for pasted email-like text and selected `.eml`/`.txt` files, still saving validated receipt drafts only. Phase 9H adds planning-only OAuth/backend release gates for any future real Google provider access. The app still adds no real Google API, Gmail API, OAuth flow, backend server, scheduled sync, token storage, OCR, or real AI calls.
+The repository now has a Phase 9D OAuth/backend decision record and disabled backend skeleton on top of the Phase 9C disabled Google readiness skeleton, Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status. Phase 9D records the backend-required OAuth/security decision, adds disabled backend endpoint definitions and a no-op backend client. Phase 9E adds privacy, consent, and user-facing disclosure planning. Phase 9F adds a local-only manual Drive/Docs selected-file import prototype that reads supported user-selected text-like files in the browser and saves validated receipt drafts only. Phase 9G adds a local-only Gmail-like manual import prototype for pasted email-like text and selected `.eml`/`.txt` files, still saving validated receipt drafts only. Phase 9H adds planning-only OAuth/backend release gates for any future real Google provider access. Phase 9I adds a disabled typed backend OAuth architecture skeleton for future start, callback, status, disconnect, revoke, and source sync boundaries. The app still adds no real Google API, Gmail API, OAuth flow, backend server, scheduled sync, token storage, OCR, or real AI calls.
 
 Existing files:
 
@@ -42,6 +42,7 @@ Existing files:
 - Phase 9F local-only manual Drive/Docs selected-file import prototype for text-like files.
 - Phase 9G local-only Gmail-like manual receipt import prototype for pasted email text and `.eml`/`.txt` files.
 - Phase 9H Google OAuth/backend release-gate planning before any real provider access.
+- Phase 9I disabled backend OAuth architecture skeleton with typed no-op contracts and tests.
 
 Still missing by design until later phases:
 
@@ -139,6 +140,8 @@ src/
   google-integration/
     googleBackendReadiness.test.ts
     googleBackendReadiness.ts
+    googleOAuthBackendSkeleton.test.ts
+    googleOAuthBackendSkeleton.ts
     googleIntegrationReadiness.test.ts
     googleIntegrationReadiness.ts
   receipt-ingestion/
@@ -990,6 +993,40 @@ The release-gate source of truth is `GOOGLE_INTEGRATION_PLAN.md`. It defines:
 - a future implementation sequence after release-gate approval: backend OAuth behind disabled flags, narrow Drive/Docs picker, Gmail selected-message import, optional scheduled sync, then production hardening.
 
 Until a future implementation phase explicitly satisfies those gates, Phase 9C/9D disabled provider and backend readiness boundaries remain no-op, and Phase 9B mock sources, Phase 9F local Drive/Docs files, and Phase 9G local Gmail paste/files remain the only Google-like runtime behavior.
+
+## Phase 9I Disabled Backend OAuth Architecture Skeleton
+
+Phase 9I adds a typed, frontend-safe architecture boundary for a future backend-backed Google OAuth implementation. It does not add a backend runtime, OAuth route, Google API client, credential exchange, token store, revocation call, provider data deletion runtime, source sync, scheduled sync, dependency, or UI behavior change.
+
+Implemented files:
+
+- `src/google-integration/googleOAuthBackendSkeleton.ts`
+- `src/google-integration/googleOAuthBackendSkeleton.test.ts`
+
+Disabled Phase 9I boundary:
+
+```text
+Phase 9D backend readiness flags
+  -> buildGoogleOAuthBackendSkeletonConfig
+  -> googleOAuthBackendEndpointContracts
+  -> DisabledGoogleOAuthBackendBoundaryClient
+  -> typed disabled responses only
+```
+
+Future backend contracts are named for OAuth start, OAuth callback, provider status, provider disconnect, provider revoke, and source sync. The endpoint contract metadata stays disabled and records that no provider credentials are stored.
+
+Phase 9I invariants:
+
+- `endpointCallsAllowed` is always `false`.
+- `networkCallsAllowed` is always `false`.
+- `tokenStorageAllowed` is always `false`.
+- Requested backend auth, revocation, or sync flags can move the skeleton to `requested_but_blocked`, but cannot enable calls.
+- The disabled boundary client does not call its optional network adapter.
+- Disabled responses do not expose access tokens, refresh tokens, id tokens, client secrets, authorization URLs, authorization-code values, provider sessions, sync cursors, or source text.
+- Source sync returns zero synced candidates and does not fetch provider text or store cursors.
+
+Existing product behavior remains unchanged. Phase 9B mock sources, Phase 9F local Drive/Docs files, and Phase 9G local Gmail paste/files remain the only Google-like runtime import behavior, and all still create receipt drafts only.
+
 ## AI receipt extraction contract and simulator
 
 `ReceiptExtractionProvider` is the future boundary between raw receipt text and structured draft data:

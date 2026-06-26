@@ -518,10 +518,10 @@ Scheduled sync:
 
 ### Future implementation sequence after release-gate approval
 
-1. Phase 9I: Backend OAuth architecture implementation behind disabled flags.
-   - Add backend runtime only after explicit approval.
-   - Keep all real provider calls disabled by default.
-   - Add secure callback, state/CSRF, token-store abstraction, revocation, disconnect, deletion, and redacted diagnostics tests.
+1. Phase 9I: Disabled backend OAuth architecture skeleton.
+   - Completed as typed frontend-safe boundary contracts only.
+   - Reuse existing disabled backend flags and keep endpoint, network, token, revocation, provider read, source sync, and scheduled sync behavior blocked.
+   - Define future start, callback, status, disconnect, revoke, and source sync endpoint contracts without adding backend runtime.
 2. Phase 9J: Narrow Drive/Docs picker-based selected-file provider.
    - Prefer `drive.file` and explicit user selection.
    - Fetch only selected document/file text.
@@ -592,11 +592,31 @@ Phase 9H: Google OAuth/backend release-gate planning.
 - Defines go/no-go criteria for frontend-only selected-file experiments, backend-backed OAuth, Gmail read-only source ingestion, Drive/Docs selected-file or picker ingestion, and scheduled sync.
 - Keeps production provider access disabled until backend requirements, consent gates, restricted-scope verification readiness, security assessment needs, and release QA are implemented and validated.
 
-Phase 9I: Backend OAuth architecture implementation behind disabled flags.
+Phase 9I: Disabled backend OAuth architecture skeleton.
 
-- Backend-only.
-- Add token refresh, revocation, rate limits, per-user cursors, and visible sync status.
-- No silent broad scans.
+- Implemented as frontend-safe typed contracts in `src/google-integration/googleOAuthBackendSkeleton.ts`.
+- Defines disabled endpoint metadata for future OAuth start, OAuth callback, provider status, provider disconnect, provider revoke, and source sync.
+- Reuses existing disabled backend auth, sync, revocation, base URL, client id, and redirect URI placeholders from Phase 9D.
+- Adds `DisabledGoogleOAuthBackendBoundaryClient`, which returns typed disabled responses and does not call a network adapter while disabled.
+- Adds tests for disabled defaults, requested flags blocked by release gates, no token storage behavior, no network adapter calls, and no token/secret/authorization URL exposure.
+- No backend runtime, OAuth redirect handling, authorization-code exchange, token refresh, provider credential storage, provider revocation call, provider data deletion runtime, source sync, scheduled sync, Google API call, dependency, or product behavior change.
+
+Phase 9J: Narrow Drive/Docs picker-based selected-file provider.
+
+- Prefer `drive.file` and explicit user selection.
+- Fetch only selected document/file text.
+- Keep draft-only writes and duplicate checks.
+- No broad Drive scan, Gmail access, scheduled sync, or Dashboard impact before confirmation.
+
+Phase 9K: Gmail selected-message import behind backend and restricted-scope gates.
+
+- Use explicit selected messages or user-provided filters.
+- Fetch only receipt-like body/attachment text for selected candidates.
+- Keep raw provider data minimization, redacted logs, deletion, duplicate checks, extraction validation, and draft-only writes.
+
+Phase 9L: Optional scheduled sync.
+
+- Backend-only with visible user controls, cursors, rate limits, revocation, deletion, and no auto-confirmation.
 
 Phase 9M: Production hardening.
 

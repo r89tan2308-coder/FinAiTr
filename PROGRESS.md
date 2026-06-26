@@ -4158,3 +4158,110 @@ Result: succeeded. Found 0 vulnerabilities.
 ### Next recommended phase
 
 Phase 9I: Backend OAuth architecture implementation behind disabled flags. Add backend runtime only after explicit approval, keep all real provider calls disabled by default, and implement secure callback/state handling, token-store abstraction, revocation, disconnect, provider-data deletion, and redacted diagnostics tests before any real Gmail/Drive/Docs provider reads.
+
+## 2026-06-26: Phase 9I disabled backend OAuth architecture skeleton completed
+
+### Goal
+
+Add a minimal disabled/no-op typed backend OAuth architecture boundary for future Google provider access while keeping OAuth, backend calls, token storage, provider reads, revocation, provider-data deletion runtime, source sync, scheduled sync, and product behavior disabled.
+
+### Completed
+
+- Added `src/google-integration/googleOAuthBackendSkeleton.ts` with:
+  - typed endpoint contracts for future OAuth start, OAuth callback, provider status, provider disconnect, provider revoke, and source sync;
+  - `buildGoogleOAuthBackendSkeletonConfig`, which reuses the existing Phase 9D disabled backend auth, sync, revocation, base URL, client id, and redirect URI placeholders;
+  - feature flags that can record requested backend auth/revocation/sync state but keep endpoint calls, network calls, and token storage disabled;
+  - `DisabledGoogleOAuthBackendBoundaryClient`, which returns typed disabled responses and does not call its optional network adapter.
+- Added `src/google-integration/googleOAuthBackendSkeleton.test.ts` proving:
+  - the Phase 9I backend OAuth skeleton is disabled by default;
+  - endpoint contracts are disabled and do not store provider credentials;
+  - requested backend flags remain `requested_but_blocked` and do not enable endpoint, network, or token behavior;
+  - start, callback, status, disconnect, revoke, and source sync all return typed disabled responses;
+  - the optional network adapter is not called;
+  - disabled responses do not expose access tokens, refresh tokens, id tokens, client secrets, Google authorization URLs, provider sessions, source text, or sync cursors.
+- Updated `.env.example` comments to describe the existing disabled flags as Phase 9D/9I placeholders only.
+- Updated `PLAN.md`, `GOOGLE_INTEGRATION_PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` to record Phase 9I as disabled architecture only.
+- Kept product runtime behavior unchanged:
+  - no OAuth implementation;
+  - no Google API calls;
+  - no backend/server runtime;
+  - no token storage;
+  - no provider revocation call;
+  - no provider data deletion runtime;
+  - no source sync or scheduled sync;
+  - no real AI provider;
+  - no dependency changes;
+  - no changes to mock/manual Gmail/Drive/Docs imports, receipt confirmation, Dashboard, analytics, recurring, CSV, JSON backup/restore, or FX behavior.
+
+### Changed files
+
+- `.env.example`
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+- `src/google-integration/googleOAuthBackendSkeleton.ts`
+- `src/google-integration/googleOAuthBackendSkeleton.test.ts`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 24 test files passed, 170 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+rg -n "fetch\(" src\google-integration
+```
+
+Result: no matches.
+
+```powershell
+git diff -- package.json package-lock.json
+```
+
+Result: no diff. Package dependencies remain unchanged.
+
+### Known limitations
+
+- Phase 9I is disabled architecture only. No real Google OAuth consent screen, backend runtime, redirect callback, Google API client, provider token storage, provider revocation call, provider-data deletion runtime, source sync, scheduled sync, real AI provider, or production Google data access exists yet.
+- Future real backend work still requires explicit approval plus secure callback/state handling, redirect URI allowlisting, encrypted token storage, revocation, disconnect, deletion, redacted diagnostics, failure-mode tests, release-gate QA, and updated docs.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9J: Narrow Drive/Docs picker-based selected-file provider planning behind disabled gates. Re-check official Google Drive Picker, OAuth, scope, token, privacy, and user data policy requirements before implementation; keep selected-file access explicit, draft-only, and disabled/no-op until backend and consent gates are satisfied.
