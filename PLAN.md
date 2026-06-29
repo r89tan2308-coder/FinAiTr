@@ -994,6 +994,38 @@ Unify the existing receipt source import flows into a clearer mobile-first sourc
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
 
+## Phase 9K: Source-provider end-to-end QA and release-candidate pass
+
+### Goal
+
+Perform an end-to-end release-candidate QA pass across every current receipt source path and prove the draft/review/confirm accounting boundary remains intact.
+
+### Scope
+
+- Verify manual paste/parser, manual AI simulator, local Gmail-like manual import, local Drive/Docs selected-file import, and mock Google source samples.
+- Verify each source path creates receipt drafts only before review and confirmation.
+- Verify source metadata is visible, consistent, preserved through confirmation, preserved through JSON backup/restore, and useful in confirmed receipt item CSV exports.
+- Verify duplicate warnings/status and invalid extraction rejection still prevent partial draft writes.
+- Verify review to confirm creates one final receipt, final receipt items, and one linked receipt transaction.
+- Verify Dashboard monthly spend and confirmed receipt item analytics update only after confirmation.
+- Verify CSV exports remain read-only.
+- Add regression tests for any uncovered release-candidate paths.
+- Update QA, architecture, product, decision, Google integration, and progress docs.
+
+### Non-goals
+
+- No real Gmail, Google Drive, or Google Docs APIs.
+- No OAuth, Google Identity Services, backend server runtime, token storage, provider revocation call, provider data deletion runtime, source sync, scheduled sync, OCR, real AI provider, network call, or dependency change.
+- No changes to receipt confirmation semantics, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, Dashboard semantics, or repository/service boundaries.
+- No removal of existing receipt import paths.
+
+### Acceptance
+
+- Automated QA covers the full current source-provider matrix and the representative source-provider release-candidate path from draft import through review, confirmation, Dashboard/item analytics, JSON backup/restore, and read-only CSV export.
+- Known limitations are documented.
+- Package dependencies remain unchanged.
+- Typecheck, lint, tests, build, audit, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
 ## Deferred until after first MVP
 
 - Real OCR provider.

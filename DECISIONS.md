@@ -769,3 +769,19 @@ Consequences:
 - Duplicate matching semantics remain in `financeDataService`; Phase 9J only surfaces duplicate status/warnings in the UI.
 - Tests cover source-provider metadata visibility, duplicate warnings/status, and unchanged Dashboard-impacting records before confirmation across every current receipt source path.
 - No real Gmail, Google Drive, Google Docs, OAuth, backend runtime, token storage, provider revocation, provider-data deletion runtime, source sync, scheduled sync, dependency, OCR, real AI provider, or accounting behavior change is added.
+
+## 2026-06-29: Phase 9K treats current source providers as release-candidate local QA
+
+Decision:
+
+Run Phase 9K as a local/mock source-provider end-to-end QA and release-candidate pass instead of implementing a real Google provider. Keep all real provider access blocked and add regression evidence around the current draft/review/confirm boundary.
+
+Rationale:
+
+The app now has several local/mock source paths and a unified source-provider UX. Before adding any new provider surface, the safer next step is to prove the current flows end-to-end: every source creates drafts only before confirmation, invalid extraction does not partially write, duplicate evidence remains visible, source metadata survives confirmation and backup/restore, Dashboard and item analytics update only after confirmation, and CSV exports remain read-only.
+
+Consequences:
+
+- `src/persistence/repositories/financeRepository.test.ts` now includes a source-provider release-candidate path from local Gmail import through review, confirmation, Dashboard/item analytics, JSON backup/restore, and confirmed receipt item CSV export.
+- Phase 9K adds no real Gmail, Google Drive, Google Docs, OAuth, backend runtime, token storage, provider revocation, provider-data deletion runtime, source sync, scheduled sync, dependency, OCR, real AI provider, or accounting behavior change.
+- Future real provider phases move after the Phase 9K release-candidate baseline and still require the existing OAuth/backend/privacy/release gates.

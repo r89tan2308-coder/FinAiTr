@@ -1906,6 +1906,236 @@ TOTAL USD 4.00`,
       buildFinanceOverview(afterSnapshot, { monthKey: "2026-06" }),
     ).toEqual(beforeOverview);
   });
+  it("verifies the source-provider release-candidate path through confirmation, backup restore, and CSV export", async () => {
+    const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
+    const beforeOverview = buildFinanceOverview(beforeSnapshot, {
+      monthKey: "2026-06",
+    });
+    const importResult = await importLocalGmailManualReceiptAndReload({
+      rawText: `From: rc-receipts@example.com
+Subject: Phase 9K source QA receipt
+Date: 2026-06-08T10:00:00.000Z
+
+RC Grocery
+2026-06-08
+Milk 6.00
+Bread 4.00
+TOTAL USD 10.00`,
+      sourceReceivedAt: "2026-06-08T10:00:00.000Z",
+      sourceSender: "rc-receipts@example.com",
+      sourceSubject: "Phase 9K source QA receipt",
+    });
+
+    expect(importResult.ok).toBe(true);
+
+    const draftRecord = importResult.draft;
+
+    if (!draftRecord?.draft.sourceMetadata || !importResult.data) {
+      throw new Error("Expected imported source-provider draft and finance data.");
+    }
+
+    const sourceMetadata = draftRecord.draft.sourceMetadata;
+    const expectedSourceMetadata = {
+      contentHash: sourceMetadata.contentHash,
+      extractedAt: sourceMetadata.extractedAt,
+      fetchedAt: sourceMetadata.fetchedAt,
+      kind: sourceMetadata.kind,
+      modelName: sourceMetadata.modelName,
+      providerName: sourceMetadata.providerName,
+      receivedAt: sourceMetadata.receivedAt,
+      sender: sourceMetadata.sender,
+      sourceId: sourceMetadata.sourceId,
+      sourceProviderName: sourceMetadata.sourceProviderName,
+      title: sourceMetadata.title,
+    };
+
+    expect(draftRecord.draft).toMatchObject({
+      merchant: "RC Grocery",
+      source: "ai_extraction_mock",
+      sourceMetadata: {
+        contentHash: expect.stringMatching(/^fnv1a-[0-9a-f]{8}$/),
+        kind: "gmail",
+        modelName: "local-heuristic-simulator",
+        providerName: "local-mock-ai-extractor",
+        receivedAt: "2026-06-08T10:00:00.000Z",
+        sender: "rc-receipts@example.com",
+        sourceId: expect.stringMatching(/^local-gmail-message-fnv1a-[0-9a-f]{8}$/),
+        sourceProviderName: "local-gmail-manual-import-provider",
+        title: "Phase 9K source QA receipt",
+      },
+      status: "draft",
+      total: 10,
+    });
+    expect(importResult.data.snapshot.transactions).toEqual(
+      beforeSnapshot.transactions,
+    );
+    expect(importResult.data.snapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(importResult.data.snapshot.receiptItems).toEqual(
+      beforeSnapshot.receiptItems,
+    );
+    expect(
+      buildFinanceOverview(importResult.data.snapshot, { monthKey: "2026-06" }),
+    ).toEqual(beforeOverview);
+
+    const reviewResult = await updateReceiptDraftAndReload(draftRecord.draft.id, {
+      currency: draftRecord.draft.currency,
+      date: draftRecord.draft.date,
+      items: draftRecord.items.map((item) => ({
+        categoryId: item.categoryId,
+        confidence: item.confidence,
+        flags: item.flags,
+        id: item.id,
+        kind: item.kind,
+        normalizedName: item.normalizedName,
+        quantity: item.quantity,
+        tags: item.tags,
+        totalPrice: item.totalPrice,
+        unitPrice: item.unitPrice,
+      })),
+      merchant: draftRecord.draft.merchant,
+      status: "reviewed",
+      total: draftRecord.draft.total,
+    });
+
+    expect(reviewResult.ok).toBe(true);
+
+    if (!reviewResult.data) {
+      throw new Error("Expected reviewed source-provider draft data.");
+    }
+
+    expect(reviewResult.draft?.draft).toMatchObject({
+      id: draftRecord.draft.id,
+      sourceMetadata: expectedSourceMetadata,
+      status: "reviewed",
+    });
+    expect(reviewResult.data.snapshot.transactions).toEqual(
+      beforeSnapshot.transactions,
+    );
+    expect(reviewResult.data.snapshot.receipts).toEqual(beforeSnapshot.receipts);
+    expect(reviewResult.data.snapshot.receiptItems).toEqual(
+      beforeSnapshot.receiptItems,
+    );
+    expect(
+      buildFinanceOverview(reviewResult.data.snapshot, { monthKey: "2026-06" }),
+    ).toEqual(beforeOverview);
+
+    const confirmResult = await confirmReceiptDraftAndReload(draftRecord.draft.id, {
+      accountId: "account-card",
+      categoryId: "groceries",
+    });
+
+    expect(confirmResult.ok).toBe(true);
+
+    const confirmation = confirmResult.confirmation;
+    const afterConfirmSnapshot = confirmResult.data?.snapshot;
+
+    if (!confirmation || !afterConfirmSnapshot) {
+      throw new Error("Expected source-provider receipt confirmation.");
+    }
+
+    expect(confirmation.draft).toMatchObject({
+      confirmedReceiptId: confirmation.receipt.id,
+      linkedTransactionId: confirmation.transaction.id,
+      sourceMetadata: expectedSourceMetadata,
+      status: "confirmed",
+    });
+    expect(confirmation.receipt).toMatchObject({
+      currency: "USD",
+      date: "2026-06-08",
+      merchant: "RC Grocery",
+      source: "ai_extraction_mock",
+      sourceMetadata: expectedSourceMetadata,
+      status: "confirmed",
+      total: 10,
+      transactionId: confirmation.transaction.id,
+    });
+    expect(confirmation.transaction).toMatchObject({
+      accountId: "account-card",
+      amount: 10,
+      categoryId: "groceries",
+      currency: "USD",
+      date: "2026-06-08",
+      merchant: "RC Grocery",
+      receiptId: confirmation.receipt.id,
+      source: "receipt",
+    });
+    expect(confirmation.items).toHaveLength(draftRecord.items.length);
+    expect(
+      confirmation.items.every((item) => item.receiptId === confirmation.receipt.id),
+    ).toBe(true);
+
+    const afterConfirmOverview = buildFinanceOverview(afterConfirmSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(afterConfirmOverview.monthlySpend).toBe(
+      roundMoney(
+        beforeOverview.monthlySpend +
+          convertMoney(10, "USD", "RUB", defaultCurrencySettings),
+      ),
+    );
+    expect(afterConfirmOverview.itemAnalytics.current_month.totalAmount).toBe(
+      roundMoney(
+        beforeOverview.itemAnalytics.current_month.totalAmount +
+          convertMoney(10, "USD", "RUB", defaultCurrencySettings),
+      ),
+    );
+    expect(
+      afterConfirmOverview.itemAnalytics.current_month.details.filter(
+        (detail) => detail.receiptId === confirmation.receipt.id,
+      ),
+    ).toHaveLength(confirmation.items.length);
+
+    const backup = await exportLocalJsonBackup();
+    const backedUpReceipt = backup.tables.receipts.find(
+      (receipt) => receipt.id === confirmation.receipt.id,
+    );
+    const backedUpDraft = backup.tables.receiptDrafts.find(
+      (draft) => draft.id === confirmation.draft.id,
+    );
+
+    expect(backedUpReceipt?.sourceMetadata).toEqual(expectedSourceMetadata);
+    expect(backedUpDraft).toMatchObject({
+      confirmedReceiptId: confirmation.receipt.id,
+      linkedTransactionId: confirmation.transaction.id,
+      sourceMetadata: expectedSourceMetadata,
+      status: "confirmed",
+    });
+
+    const beforeCsvSnapshot = (await getFinanceSnapshot()).snapshot;
+    const csv = await exportLocalCsv("confirmed_receipt_items");
+    const afterCsvSnapshot = (await getFinanceSnapshot()).snapshot;
+
+    expect(afterCsvSnapshot).toEqual(beforeCsvSnapshot);
+    expect(csv.content).toContain(confirmation.receipt.id);
+    expect(csv.content).toContain(sourceMetadata.sourceId);
+    expect(csv.content).toContain("Phase 9K source QA receipt");
+    expect(csv.content).toContain("rc-receipts@example.com");
+    expect(csv.content).toContain("local-mock-ai-extractor");
+    expect(csv.content).toContain("local-heuristic-simulator");
+
+    await resetLocalDataToSeed();
+    await restoreLocalJsonBackup(backup);
+
+    const restoredSnapshot = (await getFinanceSnapshot()).snapshot;
+    const restoredReceipt = restoredSnapshot.receipts.find(
+      (receipt) => receipt.id === confirmation.receipt.id,
+    );
+    const restoredDraft = restoredSnapshot.receiptDrafts.find(
+      (draft) => draft.id === confirmation.draft.id,
+    );
+    const restoredOverview = buildFinanceOverview(restoredSnapshot, {
+      monthKey: "2026-06",
+    });
+
+    expect(restoredReceipt?.sourceMetadata).toEqual(expectedSourceMetadata);
+    expect(restoredDraft?.sourceMetadata).toEqual(expectedSourceMetadata);
+    expect(restoredOverview.monthlySpend).toBe(afterConfirmOverview.monthlySpend);
+    expect(restoredOverview.itemAnalytics.current_month.totalAmount).toBe(
+      afterConfirmOverview.itemAnalytics.current_month.totalAmount,
+    );
+  });
+
   it("returns validation errors for mock AI extraction without changing data", async () => {
     const beforeSnapshot = (await getFinanceSnapshot()).snapshot;
 

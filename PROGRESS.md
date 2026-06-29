@@ -4264,7 +4264,7 @@ Result: no diff. Package dependencies remain unchanged.
 
 ### Next recommended phase
 
-Phase 9J: Narrow Drive/Docs picker-based selected-file provider planning behind disabled gates. Re-check official Google Drive Picker, OAuth, scope, token, privacy, and user data policy requirements before implementation; keep selected-file access explicit, draft-only, and disabled/no-op until backend and consent gates are satisfied.
+Phase 9J: Receipt source-provider UX and metadata unification for current local/mock import paths. Keep all source flows draft-only, improve source metadata visibility, and do not add real provider access.
 
 ## 2026-06-26: Phase 9J receipt source-provider UX and metadata unification completed
 
@@ -4280,7 +4280,7 @@ Unify the current local/mock receipt source import UX and source metadata displa
 - Added `src/receipt-ingestion/sourceProviderUx.test.ts` for provider entries, metadata formatting, manual fallback metadata, and draft/confirmed duplicate status.
 - Extended `src/pages/ReceiptsPage.test.tsx` for unified source cards, fallback source metadata, mock duplicate status, and duplicate warnings returned by source import callbacks.
 - Extended `src/persistence/repositories/financeRepository.test.ts` to import through manual paste, manual AI simulator, local Drive/Docs selected file, local Gmail manual import, and mock Google source import before confirmation and verify all results remain `draft` while Dashboard-impacting records and overview stay unchanged.
-- Updated `PLAN.md`, `GOOGLE_INTEGRATION_PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` to record Phase 9J and shift future real provider work to Phase 9K and later.
+- Updated `PLAN.md`, `GOOGLE_INTEGRATION_PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` to record Phase 9J and shift future real provider work to Phase 9L and later.
 - Kept product runtime constraints unchanged:
   - no real Gmail, Google Drive, or Google Docs API calls;
   - no OAuth implementation;
@@ -4366,4 +4366,113 @@ Result: no diff. Package dependencies remain unchanged.
 
 ### Next recommended phase
 
-Phase 9K: Narrow Drive/Docs picker-based selected-file provider planning behind disabled gates. Re-check official Google Drive Picker, OAuth, scope, token, privacy, and user data policy requirements before implementation; keep selected-file access explicit, draft-only, and disabled/no-op until backend and consent gates are satisfied.
+Phase 9K: Source-provider end-to-end QA and release-candidate pass. Verify all current local/mock source paths, draft-only behavior, duplicate/invalid extraction handling, confirmation boundaries, Dashboard/item analytics, JSON backup/restore, and read-only CSV export before future real provider work.
+
+## 2026-06-29: Phase 9K source-provider end-to-end QA and release-candidate pass completed
+
+### Goal
+
+Perform an end-to-end QA and release-candidate pass across the current local/mock receipt source-provider flows while keeping every real Google provider, OAuth, backend, token, scheduled sync, OCR, and real AI capability out of scope.
+
+### Completed
+
+- Reframed Phase 9K as source-provider end-to-end QA and release-candidate validation rather than a real Google Drive/Docs picker implementation.
+- Added a repository/service regression test covering a representative local Gmail source-provider path end to end:
+  - local Gmail import creates a validated draft only;
+  - source metadata includes kind, source id, content hash, sender, title, received date, local source provider, extraction provider, and model;
+  - review/edit remains draft-only and leaves Dashboard-impacting records unchanged;
+  - explicit confirmation creates one confirmed receipt, confirmed receipt items, and one linked receipt transaction;
+  - Dashboard monthly spend and confirmed receipt item analytics update only after confirmation;
+  - JSON backup preserves confirmed draft and receipt source metadata;
+  - reset plus JSON restore preserves that source metadata and derived analytics;
+  - confirmed receipt item CSV export includes source evidence and remains read-only.
+- Confirmed existing automated coverage still verifies:
+  - manual paste/parser, manual AI simulator, local Gmail, local Drive/Docs, and mock Google source paths create drafts only before confirmation;
+  - source metadata is visible and consistent in saved drafts and review panels;
+  - duplicate warnings/status are surfaced for source imports and candidates;
+  - invalid extraction output is rejected without partial draft writes for manual AI, local Gmail, local Drive/Docs, and mock Google paths;
+  - CSV exports are read-only;
+  - JSON backup/restore preserves source metadata.
+- Updated `PLAN.md`, `GOOGLE_INTEGRATION_PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` to record Phase 9K as local/mock QA and move future real provider work to Phase 9L and later.
+- Kept product runtime constraints unchanged:
+  - no real Gmail, Google Drive, or Google Docs API calls;
+  - no OAuth implementation;
+  - no backend/server runtime;
+  - no token storage;
+  - no provider revocation or provider-data deletion runtime;
+  - no source sync or scheduled sync;
+  - no OCR or real AI provider;
+  - no network calls or dependency changes;
+  - no changes to receipt confirmation, deterministic analytics, JSON backup/restore, CSV import/export, recurring expenses, FX, Dashboard semantics, or service/repository boundaries.
+
+### Changed files
+
+- `PLAN.md`
+- `GOOGLE_INTEGRATION_PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+- `src/persistence/repositories/financeRepository.test.ts`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 25 test files passed, 179 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+rg -n "fetch\(|localStorage|sessionStorage|indexedDB|access_token|refresh_token|client_secret|googleapis|gmail\.googleapis" src\receipt-ingestion src\pages src\services .env.example
+```
+
+Result: no matches.
+
+```powershell
+git diff -- package.json package-lock.json
+```
+
+Result: no diff. Package dependencies remain unchanged.
+
+### Known limitations
+
+- Phase 9K is an automated local/mock QA and release-candidate pass. A manual browser pass should still be run before a demo or release to visually inspect native file inputs, downloaded files, responsive layout, and browser IndexedDB behavior.
+- Phase 9K does not add real provider access, OAuth, backend runtime, token storage, source sync, scheduled sync, revocation, deletion runtime, OCR, or real AI calls.
+- Future real provider work still requires the existing OAuth/backend/privacy/release gates and should repeat the source-provider release-candidate matrix with that future implementation enabled.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 9L: Narrow Drive/Docs picker-based selected-file provider planning behind disabled gates. Re-check official Google Drive Picker, OAuth, scope, token, privacy, and user data policy requirements before implementation; keep selected-file access explicit, draft-only, and disabled/no-op until backend and consent gates are satisfied.

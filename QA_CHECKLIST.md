@@ -230,6 +230,28 @@ Future implementation QA gates:
 - [ ] Verify any real provider UI uses the same source-provider overview and metadata evidence pattern before enabling OAuth-backed access.
 - [ ] Verify real provider duplicate status uses source id/content hash without exposing provider secrets, tokens, source URLs containing secrets, raw source text, or sync cursors.
 
+## Phase 9K Source-Provider End-to-End QA and Release Candidate
+
+Phase 9K is a local/mock QA pass only. It adds no OAuth flow, Google API client, backend server runtime, token storage, scheduled sync, provider revocation runtime, provider deletion runtime, dependency, OCR, real AI provider, source sync, or accounting behavior change.
+
+Automated checks:
+
+- [x] Manual paste/parser, manual AI simulator, local Gmail, local Drive/Docs, and mock Google source paths all still create editable receipt drafts only before review and confirmation.
+- [x] Source metadata remains visible and consistent in saved drafts and draft review.
+- [x] Duplicate warnings/status remain visible for source imports and duplicate source candidates.
+- [x] Invalid extraction outputs are rejected without partial draft writes for manual AI, local Gmail, local Drive/Docs, and mock Google source paths.
+- [x] Review to confirmation creates one confirmed receipt, confirmed receipt items, and one linked receipt transaction.
+- [x] Dashboard monthly spend and confirmed receipt item analytics update only after explicit confirmation.
+- [x] JSON backup/restore preserves source metadata on confirmed drafts and final receipts.
+- [x] Confirmed receipt item CSV export remains read-only and includes source evidence for confirmed receipt items.
+
+Known limitations:
+
+- [x] Manual browser QA should still be run before a demo/release because Phase 9K automated checks do not replace visual inspection of native file inputs, downloaded files, and browser IndexedDB state.
+
+Future implementation QA gates:
+
+- [ ] Before any real provider access is added, repeat the Phase 9K source-provider release-candidate matrix with OAuth/backend gates enabled only in a dedicated future phase.
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:
