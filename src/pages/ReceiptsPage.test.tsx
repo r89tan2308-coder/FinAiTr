@@ -234,6 +234,7 @@ interface RenderReceiptsPageOptions {
   ) => Promise<ReceiptDraftActionResult>;
   receiptDraftItems?: ReceiptDraftItem[];
   receiptDrafts?: ReceiptDraft[];
+  receipts?: typeof seedReceipts;
 }
 
 function renderReceiptsPage(options: RenderReceiptsPageOptions = {}) {
@@ -264,7 +265,7 @@ function renderReceiptsPage(options: RenderReceiptsPageOptions = {}) {
       receiptDraftItems={options.receiptDraftItems ?? []}
       receiptDrafts={options.receiptDrafts ?? []}
       receiptItems={seedReceiptItems}
-      receipts={seedReceipts}
+      receipts={options.receipts ?? seedReceipts}
       transactions={seedTransactions}
     />,
   );
@@ -369,12 +370,27 @@ describe("ReceiptsPage parser preview", () => {
     expect(screen.getAllByText("Local Drive/Docs").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Mock Google").length).toBeGreaterThan(0);
     expect(
+      screen.getByText(/Every source below creates an editable receipt draft only/),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Draft only until review/).length).toBeGreaterThan(0);
+    expect(
       screen.getByText("Manual paste · GREEN MARKET · Source details not provided"),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Imported 2026-06-03T12:00:00.000Z/),
     ).toBeInTheDocument();
     expect(screen.getByText(/Duplicate check: unavailable/)).toBeInTheDocument();
+  });
+
+  it("shows draft-only empty states before receipt confirmation", () => {
+    renderReceiptsPage({ receipts: [] });
+
+    expect(
+      screen.getByText(/No saved receipt drafts yet/, { selector: ".empty-state" }),
+    ).toHaveTextContent("do not affect Dashboard until confirmed");
+    expect(
+      screen.getByText(/No confirmed receipts yet/, { selector: ".empty-state" }),
+    ).toHaveTextContent("receipt-linked transactions");
   });
 
   it("shows duplicate status for mock source candidates already saved locally", () => {

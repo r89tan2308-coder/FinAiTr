@@ -21,20 +21,32 @@ export function CategoriesPage({
   return (
     <div className="page-stack">
       <PageSection title="Expense categories">
-        <div className="category-grid">
-          {categories.map((category) => (
-            <article className="category-card" key={category.id}>
-              <span style={{ backgroundColor: category.color ?? "#64748b" }} />
-              <strong>{category.name}</strong>
-              <b>
-                {formatCurrencyAmount(
-                  spendByCategoryId.get(category.id) ?? 0,
-                  displayCurrency,
-                )}
-              </b>
-            </article>
-          ))}
-        </div>
+        <p className="settings-note">
+          Category totals use this month's local transactions in the selected
+          display currency. Receipt item categories are shown separately in
+          Dashboard item analytics.
+        </p>
+        {categories.length === 0 ? (
+          <div className="empty-state">
+            No categories configured yet. Imported or manual transactions without a
+            category remain uncategorized.
+          </div>
+        ) : (
+          <div className="category-grid">
+            {categories.map((category) => (
+              <article className="category-card" key={category.id}>
+                <span style={{ backgroundColor: category.color ?? "#64748b" }} />
+                <strong>{category.name}</strong>
+                <b>
+                  {formatCurrencyAmount(
+                    spendByCategoryId.get(category.id) ?? 0,
+                    displayCurrency,
+                  )}
+                </b>
+              </article>
+            ))}
+          </div>
+        )}
       </PageSection>
     </div>
   );

@@ -421,10 +421,22 @@ describe("SettingsPage local data tools", () => {
     renderSettingsPage();
 
     expect(
+      screen.getByRole("heading", { name: "Local-first and installability" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Data stays in this browser profile on this origin/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/JSON backup is the portable copy/)).toBeInTheDocument();
+    expect(screen.getByText(/No service worker or offline asset cache/)).toBeInTheDocument();
+    expect(
       screen.getAllByText(/Google integration planned \/ not connected/).length,
     ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/No Google OAuth flow, token storage/),
+    ).toBeInTheDocument();
     expect(screen.getByText("Feature flag is off by default.")).toBeInTheDocument();
     expect(screen.getByText("Provider calls blocked")).toBeInTheDocument();
+    expect(screen.getByText("Manifest ready")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /connect google/i })).not.toBeInTheDocument();
   });
 

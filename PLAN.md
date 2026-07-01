@@ -1063,6 +1063,41 @@ Verify and document that the local-first MVP can be built, previewed from produc
 - Typecheck, lint, tests, build, audit, production preview check, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
 
+## Phase 10B: MVP release polish, first-use UX, and installability QA
+
+### Goal
+
+Polish the local-first MVP release candidate so first-use copy, empty states, Settings explanations, release checklist, and installability expectations are clear without changing product behavior.
+
+### Scope
+
+- Review Dashboard, Transactions, Receipts, Recurring, Categories, and Settings for unclear labels, confusing empty states, and mobile readability.
+- Improve low-risk help text and empty states only.
+- Make Settings clearly explain local-first IndexedDB storage, JSON backup/restore, CSV import/export, reset scope, display currency/manual FX rates, disabled Google access, and current installability limits.
+- Make Receipts/source import UI clearly explain that imports create drafts only before review and explicit confirmation.
+- Add or update an MVP release checklist in README or QA docs.
+- Add PWA/installability notes based on current behavior without claiming offline support.
+- Add focused regression tests for copy and empty-state guardrails where practical.
+- Update product, architecture, decision, QA, production, README, and progress docs.
+
+### Non-goals
+
+- No core behavior, data model, accounting semantic, service, repository, or persistence changes.
+- No real Google APIs, OAuth, backend, provider sync, network calls, token storage, secrets, real AI, bank, OCR, crypto, brokerage, payment, or live FX integration.
+- No service worker or offline caching implementation.
+- No dependency changes unless a validation blocker requires it.
+- No Phase 9L/real provider work.
+
+### Acceptance
+
+- Dashboard, Transactions, Receipts, Recurring, Categories, and Settings remain usable and clearer for first use.
+- Settings clearly states local storage, backup/restore, CSV, reset, manual FX, disabled Google, and installability limits.
+- Receipts clearly states draft-only source behavior before review/confirm.
+- README/QA/production docs contain a release checklist and accurate installability notes.
+- Regression tests cover the new copy/empty-state guardrails.
+- Package dependencies remain unchanged.
+- Typecheck, lint, tests, build, audit, production preview check, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
 ## Deferred until after first MVP
 
 - Real OCR provider.

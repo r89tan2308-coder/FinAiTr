@@ -803,3 +803,20 @@ Consequences:
 - Production preview must verify built `dist/` assets, not only the Vite dev server.
 - No service worker, offline cache, backend, OAuth, provider API, token storage, dependency, or product behavior change is added.
 - Dev, production preview, and deployed URLs remain separate browser origins with separate IndexedDB data.
+
+## 2026-07-01: Phase 10B polishes first-use UX without behavior changes
+
+Decision:
+
+Treat MVP release polish as copy, empty-state, checklist, and installability QA work only. Clarify local-first storage, draft-only receipt imports, planning-only recurring expenses, JSON/CSV data ownership, disabled Google access, and current PWA installability limits without changing product data semantics.
+
+Rationale:
+
+The MVP is a release candidate, but first-use surfaces must make boundaries obvious before broader manual QA: local data stays in this browser origin, receipt sources do not affect Dashboard until review and confirmation, recurring expenses do not create transactions, Google remains disabled, and installability does not imply offline app-shell caching.
+
+Consequences:
+
+- Transactions, Receipts, Recurring, and Settings can receive low-risk explanatory copy and empty-state polish.
+- README, production build docs, QA checklist, product spec, architecture, and progress docs must record accurate release/installability expectations.
+- Regression tests should cover the new copy guardrails where practical.
+- No service worker, offline cache, backend, OAuth, real provider call, token storage, dependency, or accounting behavior change is added.

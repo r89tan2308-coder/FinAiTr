@@ -453,25 +453,32 @@ export function DashboardPage({
       </PageSection>
 
       <PageSection title="Recent transactions">
-        <div className="item-list">
-          {overview.recentTransactions.slice(0, 3).map((transaction) => (
-            <article className="list-row" key={transaction.id}>
-              <div>
-                <strong>{transaction.merchant}</strong>
-                <span>
-                  {transaction.date} · {transaction.source}
-                </span>
-              </div>
-              <b>
-                {formatDisplayMoney(
-                  transaction.amount,
-                  transaction.currency,
-                  currencySettings,
-                )}
-              </b>
-            </article>
-          ))}
-        </div>
+        {overview.recentTransactions.length === 0 ? (
+          <div className="empty-state">
+            No recent transactions yet. Manual entries and confirmed receipt
+            transactions will appear here.
+          </div>
+        ) : (
+          <div className="item-list">
+            {overview.recentTransactions.slice(0, 3).map((transaction) => (
+              <article className="list-row" key={transaction.id}>
+                <div>
+                  <strong>{transaction.merchant}</strong>
+                  <span>
+                    {transaction.date} · {transaction.source}
+                  </span>
+                </div>
+                <b>
+                  {formatDisplayMoney(
+                    transaction.amount,
+                    transaction.currency,
+                    currencySettings,
+                  )}
+                </b>
+              </article>
+            ))}
+          </div>
+        )}
       </PageSection>
     </div>
   );

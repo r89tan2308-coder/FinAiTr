@@ -26,7 +26,7 @@ The MVP must be useful without bank access, server accounts, cloud storage, or r
 
 Local data ownership is part of the MVP. The user can export app-owned local data to a versioned JSON backup, restore from a previously exported FinAiTr backup with validation and strong confirmation, export read-only CSV files for transactions, confirmed receipt items, and recurring expenses, import transaction and recurring expense CSV files through preview and strong confirmation, and reset this device's local app data back to the baseline seed state with strong confirmation.
 
-Phase 10A adds production-build readiness documentation for the local-first MVP. It documents local development, production build, production preview from `dist/`, static hosting expectations, PWA metadata, browser-origin data separation, and the current limitation that no service worker or guaranteed offline asset cache is implemented yet.
+Phase 10A adds production-build readiness documentation for the local-first MVP. It documents local development, production build, production preview from `dist/`, static hosting expectations, PWA metadata, browser-origin data separation, and the current limitation that no service worker or guaranteed offline asset cache is implemented yet. Phase 10B adds first-use UX and release-checklist polish: Transactions, Receipts, Recurring, and Settings explain local-first storage, draft-only receipt imports, planning-only recurring expenses, JSON backup/restore, CSV import/export, reset, manual FX rates, disabled Google access, and installability limits without changing product behavior.
 
 ## Current analytics vs future AI ingestion
 

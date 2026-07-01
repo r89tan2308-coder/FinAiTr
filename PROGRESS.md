@@ -4596,3 +4596,131 @@ Result after the test-date fix: both succeeded.
 ### Next recommended phase
 
 Phase 10B: production-preview manual browser QA and optional static-hosting dry run. Keep future real provider work behind the existing OAuth/backend/privacy/release gates.
+
+## 2026-07-01: Phase 10B MVP release polish, first-use UX, and installability QA completed
+
+### Goal
+
+Polish the local-first MVP release candidate so first-use copy, empty states, Settings explanations, release checklist, and installability expectations are clearer without changing product behavior.
+
+### Completed
+
+- Reviewed Dashboard, Transactions, Receipts, Recurring, Categories, and Settings for low-risk first-use UX issues.
+- Added presentation-only copy and empty-state polish:
+  - Dashboard now shows an empty state for recent transactions when none exist.
+  - Transactions explains local manual entries and receipt-linked entries created after confirmation.
+  - Receipts explains every source creates editable drafts only before review and explicit confirmation.
+  - Recurring explains recurring expenses are planning estimates and do not create transactions.
+  - Categories explains current-month transaction category totals versus receipt item analytics.
+  - Settings adds a local-first and installability section covering IndexedDB, JSON backup/restore, CSV import/export, reset scope, PWA manifest/install limits, and disabled Google access.
+- Updated README with an MVP release checklist and installability expectations.
+- Updated `PRODUCTION_BUILD.md` with installability QA notes and the no-offline-cache limitation.
+- Updated `PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` for Phase 10B scope and constraints.
+- Added regression coverage for first-use copy and empty-state guardrails in Dashboard, Transactions, Receipts, Recurring, and Settings page tests.
+- Kept product runtime constraints unchanged:
+  - no core behavior, data model, accounting semantic, persistence, service, or repository changes;
+  - no real Google APIs, OAuth, backend, provider sync, token storage, network calls, real AI, OCR, bank, crypto, brokerage, payment, or live FX integration;
+  - no service worker or offline asset cache;
+  - no dependency changes.
+
+### Changed files
+
+- `README.md`
+- `PRODUCTION_BUILD.md`
+- `PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+- `src/pages/CategoriesPage.tsx`
+- `src/pages/DashboardPage.tsx`
+- `src/pages/DashboardPage.test.tsx`
+- `src/pages/TransactionsPage.tsx`
+- `src/pages/TransactionsPage.test.tsx`
+- `src/pages/ReceiptsPage.tsx`
+- `src/pages/ReceiptsPage.test.tsx`
+- `src/pages/RecurringPage.tsx`
+- `src/pages/RecurringPage.test.tsx`
+- `src/pages/SettingsPage.tsx`
+- `src/pages/SettingsPage.test.tsx`
+
+### Validation commands and results
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run src/pages/TransactionsPage.test.tsx src/pages/RecurringPage.test.tsx src/pages/ReceiptsPage.test.tsx src/pages/SettingsPage.test.tsx src/pages/DashboardPage.test.tsx
+```
+
+Initial result: failed because two new empty-state matchers used broad text predicates that also matched parent containers.
+
+Fix: narrowed those assertions to `.empty-state` selectors.
+
+Final result: succeeded. 5 test files passed, 47 tests passed. npm printed warnings that file paths and `--run` are parsed as npm CLI args, but Vitest completed successfully.
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Result: succeeded. 25 test files passed, 182 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist/`, including `dist/index.html`, `dist/assets/index-BeOeuupv.css`, and `dist/assets/index-fFERKGN6.js`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+git diff -- package.json package-lock.json
+```
+
+Result: no diff. Package dependencies remain unchanged.
+
+```powershell
+npm run preview -- --port 4173
+```
+
+Initial sandboxed preview result: failed with `spawn EPERM` while Vite/esbuild loaded `vite.config.ts`. This was a sandbox execution issue, not an application build issue.
+
+Final production preview probe with approved escalation:
+
+- Preview URL: `http://127.0.0.1:4173/`
+- Root page: HTTP 200
+- `manifest.webmanifest`: HTTP 200
+- Built JS asset `assets/index-fFERKGN6.js`: HTTP 200
+- `dist/manifest.webmanifest` parsed locally with `name=FinAiTr`, `display=standalone`, and `scope=/`
+- Preview server was stopped after the probe and `http://127.0.0.1:4173/` no longer responded.
+
+### Known limitations
+
+- Phase 10B does not automate native browser file picker flows. JSON restore and CSV imports remain covered by component/repository tests and should still be repeated in a normal browser before release/demo.
+- Phase 10B does not implement service-worker caching. The app is local-first for finance data, but static app assets are not guaranteed to load offline.
+- Production preview data is origin-scoped and separate from dev-server data unless moved with Settings JSON backup/restore.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Run the manual release browser pass from `QA_CHECKLIST.md` against production preview or a deployed HTTPS static host. Keep Phase 9L and all real provider work deferred until the manual MVP release pass is complete.

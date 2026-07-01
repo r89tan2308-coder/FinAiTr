@@ -192,7 +192,7 @@ export function RecurringPage({
         <strong>
           {formatCurrencyAmount(monthlyEstimate, currencySettings.displayCurrency)}
         </strong>
-        <small>Active recurring expenses only</small>
+        <small>Planning estimate only; recurring expenses do not create transactions.</small>
       </div>
 
       <section className="form-panel" aria-label="Recurring expense form">
@@ -210,6 +210,11 @@ export function RecurringPage({
             </button>
           )}
         </div>
+        <p className="settings-note">
+          Use recurring expenses for subscriptions and repeating bills. They affect
+          only the separate recurring estimate until you create transactions
+          yourself.
+        </p>
 
         <div className="form-grid">
           <label className="field">
@@ -374,7 +379,10 @@ export function RecurringPage({
 
       <PageSection title="Recurring expenses">
         {sortedExpenses.length === 0 ? (
-          <div className="empty-state">No recurring expenses yet.</div>
+          <div className="empty-state">
+            No recurring expenses yet. Add subscriptions or repeating bills above;
+            they stay planning records and do not create transactions.
+          </div>
         ) : (
           <div className="item-list">
             {sortedExpenses.map((expense) => (

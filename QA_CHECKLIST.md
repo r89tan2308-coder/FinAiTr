@@ -275,6 +275,26 @@ Manual browser checks before release/demo:
 - [ ] Verify preview-origin IndexedDB data is separate from dev-server data unless moved with JSON backup/restore.
 - [ ] Verify there is no offline-mode promise in UI or docs beyond local browser data ownership.
 
+## Phase 10B MVP Release Polish and First-Use QA
+
+Phase 10B is copy, checklist, and installability polish only. It adds no backend, OAuth, real provider access, network calls, service worker, offline cache, dependency, or accounting behavior change.
+
+Automated and documentation checks:
+
+- [x] Transactions explains that manual entries are local and receipt-linked entries appear only after receipt confirmation.
+- [x] Receipts explains that every source creates editable drafts only and Dashboard totals change only after review and explicit confirmation.
+- [x] Recurring explains that recurring expenses are planning records and do not create transactions.
+- [x] Settings explains local-first IndexedDB storage, JSON backup/restore, CSV import/export, reset scope, manual FX settings, installability limits, and disabled Google access.
+- [x] README and production build docs include an MVP release checklist and installability notes without offline guarantees.
+- [x] Regression tests cover first-use copy and empty-state guardrails for Transactions, Receipts, Recurring, and Settings.
+
+Manual release pass additions:
+
+- [ ] Confirm mobile layout remains readable for Dashboard, Transactions, Receipts, Recurring, Categories, and Settings.
+- [ ] Confirm Settings still shows display currency and manual FX rates after the new local-first/installability section.
+- [ ] Confirm receipt source cards and saved-draft empty state make draft-only behavior clear before any confirmation.
+- [ ] Confirm native file inputs for JSON restore and CSV imports still require preview/confirmation in a normal browser.
+- [ ] Confirm no UI copy says Google is connected, offline-ready, or backed by real AI/provider calls.
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:

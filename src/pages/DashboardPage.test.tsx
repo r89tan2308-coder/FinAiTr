@@ -54,6 +54,7 @@ describe("DashboardPage", () => {
       screen.getByText("No transaction trend data yet."),
     ).toBeInTheDocument();
     expect(screen.getByText("No category spending this month.")).toBeInTheDocument();
+    expect(screen.getByText(/No recent transactions yet/)).toBeInTheDocument();
   });
 
   it("shows income trend summary when income categories are present", () => {

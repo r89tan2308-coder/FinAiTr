@@ -56,12 +56,26 @@ npm audit
 
 `npm run test -- --run` may print an npm warning about `--run`; Vitest still runs through the configured `test` script.
 
+## MVP Release Checklist
+
+Before a release checkpoint or demo:
+
+- Build and preview production assets from `dist/`, not only the Vite dev server.
+- Verify Dashboard, Transactions, Receipts, Recurring, Categories, and Settings at a mobile viewport.
+- Create one manual transaction and confirm Dashboard/Transactions update after save.
+- Create one receipt draft from a local/mock source, review it, mark reviewed, confirm it, and verify Dashboard/item analytics update only after confirmation.
+- Create one recurring expense and verify it changes only the recurring estimate, not Transactions.
+- Export JSON, reset local data, restore the JSON backup, then recheck Dashboard, Transactions, Receipts, and Recurring.
+- Export CSV files and verify they are read-only reporting files.
+- Check Settings copy for local-first storage, JSON backup/restore, CSV import/export, reset, manual FX rates, and disabled Google access.
+- Check installability expectations: manifest metadata is present, HTTPS is required for real deployment install prompts, and no offline app-shell guarantee exists yet.
+
 ## Local Data And Privacy
 
 - App data is stored in the browser IndexedDB database `finaitr-local`.
 - JSON backup export, JSON restore, CSV export, and CSV import use browser-local files.
 - Dev and production preview URLs are different browser origins when they use different ports, so each origin has separate IndexedDB data.
-- Phase 10A does not add a service worker or offline asset cache. The app is local-first for finance data, but static assets are not guaranteed to load offline until an explicit offline-caching phase is implemented.
+- The current MVP does not add a service worker or offline asset cache. The app is local-first for finance data, but static assets are not guaranteed to load offline until an explicit offline-caching phase is implemented.
 - No secrets, tokens, bank credentials, OAuth grants, provider sessions, or real Google data are stored by the current MVP.
 
 ## Static Hosting Notes

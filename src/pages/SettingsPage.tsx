@@ -153,7 +153,7 @@ export function SettingsPage({
         label: "Storage",
         value: storageMode === "indexeddb" ? "IndexedDB" : "Seed fallback",
       },
-      { icon: Smartphone, label: "PWA", value: "Ready" },
+      { icon: Smartphone, label: "PWA", value: "Manifest ready" },
       { icon: ShieldCheck, label: "Integrations", value: googleIntegrationStatus.label },
       {
         icon: Database,
@@ -585,6 +585,45 @@ export function SettingsPage({
           {errorMessage ?? "Local data could not be loaded."}
         </div>
       )}
+      <PageSection title="Local-first and installability">
+        <div className="form-panel local-data-panel">
+          <div className="settings-action-grid">
+            <div className="settings-action-block">
+              <strong>Local storage</strong>
+              <p className="settings-note">
+                Data stays in this browser profile on this origin. Transactions,
+                receipts, drafts, recurring expenses, and FX settings are stored in
+                IndexedDB when available.
+              </p>
+            </div>
+            <div className="settings-action-block">
+              <strong>Backups and files</strong>
+              <p className="settings-note">
+                JSON backup is the portable copy for restore. CSV exports are
+                read-only reporting files, while CSV imports always show a preview
+                before writing local records.
+              </p>
+            </div>
+            <div className="settings-action-block">
+              <strong>PWA install</strong>
+              <p className="settings-note">
+                The manifest is present for supported browser install prompts. No
+                service worker or offline asset cache is registered yet, so the app
+                shell still needs the static host to load.
+              </p>
+            </div>
+            <div className="settings-action-block">
+              <strong>Google access</strong>
+              <p className="settings-note">
+                Google integration is planned and disabled. Current Gmail, Drive,
+                and Docs-like import paths are local or mock draft sources and do
+                not connect to Google APIs.
+              </p>
+            </div>
+          </div>
+        </div>
+      </PageSection>
+
       <PageSection title="Currency">
         <div className="form-panel currency-settings-panel">
           {currencyMessage && (
@@ -686,6 +725,10 @@ export function SettingsPage({
               <strong>Google integration</strong>
             </div>
             <p className="settings-note">{googleIntegrationStatus.label}.</p>
+            <p className="settings-note">
+              No Google OAuth flow, token storage, provider sync, or real Google API
+              call is enabled in this MVP.
+            </p>
             <div className="settings-preview-grid">
               <span>Status {formatGoogleIntegrationState(googleIntegrationStatus.state)}</span>
               <span>
@@ -708,6 +751,11 @@ export function SettingsPage({
 
       <PageSection title="Local data">
         <div className="form-panel local-data-panel">
+          <p className="settings-note">
+            These tools operate on app-owned local data for this browser origin.
+            Preview import and restore results before confirmation; reset replaces
+            only local app records on this device.
+          </p>
           {localDataMessage && (
             <div className="success-banner" role="status">
               {localDataMessage}

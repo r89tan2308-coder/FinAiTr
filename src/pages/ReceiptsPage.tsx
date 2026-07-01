@@ -830,6 +830,10 @@ export function ReceiptsPage({
       </div>
 
       <PageSection title="Receipt sources">
+        <p className="settings-note">
+          Every source below creates an editable receipt draft only. Dashboard totals
+          change only after review, mark reviewed, and Confirm receipt.
+        </p>
         <div className="receipt-source-provider-grid" aria-label="Receipt source providers">
           {receiptSourceProviderUxEntries.map((provider) => (
             <ReceiptSourceProviderCard key={provider.key} provider={provider} />
@@ -1289,7 +1293,10 @@ export function ReceiptsPage({
             ))}
           </div>
         ) : (
-          <div className="empty-state">No saved receipt drafts yet.</div>
+          <div className="empty-state">
+            No saved receipt drafts yet. Import or paste receipt text above; drafts
+            do not affect Dashboard until confirmed.
+          </div>
         )}
       </PageSection>
 
@@ -1649,26 +1656,33 @@ export function ReceiptsPage({
       </PageSection>
 
       <PageSection title="Receipt inbox">
-        <div className="item-list">
-          {receipts.map((receipt) => (
-            <article className="list-row" key={receipt.id}>
-              <div>
-                <strong>{receipt.merchant ?? "Unknown merchant"}</strong>
-                <span>
-                  {receipt.date ?? "No date"} · {itemCounts.get(receipt.id) ?? 0}{" "}
-                  items · {formatReceiptStatus(receipt.status)}
-                </span>
-              </div>
-              <b>
-                {formatOptionalDisplayAmount(
-                  receipt.total,
-                  receipt.currency,
-                  currencySettings,
-                )}
-              </b>
-            </article>
-          ))}
-        </div>
+        {receipts.length === 0 ? (
+          <div className="empty-state">
+            No confirmed receipts yet. Confirm reviewed drafts to create
+            receipt-linked transactions and item analytics.
+          </div>
+        ) : (
+          <div className="item-list">
+            {receipts.map((receipt) => (
+              <article className="list-row" key={receipt.id}>
+                <div>
+                  <strong>{receipt.merchant ?? "Unknown merchant"}</strong>
+                  <span>
+                    {receipt.date ?? "No date"} · {itemCounts.get(receipt.id) ?? 0}{" "}
+                    items · {formatReceiptStatus(receipt.status)}
+                  </span>
+                </div>
+                <b>
+                  {formatOptionalDisplayAmount(
+                    receipt.total,
+                    receipt.currency,
+                    currencySettings,
+                  )}
+                </b>
+              </article>
+            ))}
+          </div>
+        )}
       </PageSection>
     </div>
   );
@@ -1689,7 +1703,7 @@ function ReceiptSourceProviderCard({
         </div>
       </div>
       <p>{provider.detail}</p>
-      <small>Creates editable receipt drafts only.</small>
+      <small>Draft only until review and Confirm receipt.</small>
     </article>
   );
 }

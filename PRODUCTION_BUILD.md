@@ -1,6 +1,6 @@
 # Production Build Guide
 
-Phase 10A verifies that FinAiTr can be built and served from Vite production assets without changing product behavior.
+Phase 10A verifies that FinAiTr can be built and served from Vite production assets. Phase 10B adds first-use and release-checklist polish without changing product behavior.
 
 ## Build
 
@@ -44,7 +44,14 @@ Current PWA readiness:
 
 Current limitation:
 
-- No service worker or offline asset cache is registered in Phase 10A. Local-first means finance records stay in browser IndexedDB on the current origin. It does not mean the app shell is guaranteed to load while offline.
+- No service worker or offline asset cache is registered. Local-first means finance records stay in browser IndexedDB on the current origin. It does not mean the app shell is guaranteed to load while offline.
+
+## Installability QA Notes
+
+- Browser install prompts depend on browser support, manifest metadata, and a secure deployed origin such as HTTPS or localhost.
+- Verify the app loads from production preview, then inspect Settings for `Manifest ready` rather than treating the dev server as production proof.
+- Do not describe the MVP as offline-ready until a later service-worker phase implements and validates asset caching.
+- Re-run the manual release checklist after moving from dev origin to preview or a deployed HTTPS origin because IndexedDB data is origin-scoped.
 
 ## Static Hosting
 

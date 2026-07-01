@@ -44,6 +44,20 @@ function renderTransactionsPage(options: RenderTransactionsPageOptions = {}) {
 }
 
 describe("TransactionsPage", () => {
+  it("shows local first-use guidance and an empty state", () => {
+    renderTransactionsPage({ transactions: [] });
+
+    expect(
+      screen.getByText(/Manual entries are saved in this browser profile/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Local transaction records include manual entries/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/No transactions yet\. Add one above/),
+    ).toBeInTheDocument();
+  });
+
   it("creates a manual transaction through the action callback", async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn(async () => ({ ok: true }));

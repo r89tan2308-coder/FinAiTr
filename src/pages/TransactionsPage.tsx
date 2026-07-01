@@ -190,6 +190,11 @@ export function TransactionsPage({
             </button>
           )}
         </div>
+        <p className="settings-note">
+          Manual entries are saved in this browser profile and update Dashboard
+          totals after save. Confirmed receipt drafts also create receipt-linked
+          transactions here.
+        </p>
 
         <div className="form-grid">
           <label className="field">
@@ -360,9 +365,17 @@ export function TransactionsPage({
         </select>
       </div>
 
-      <PageSection title="Manual transactions">
+      <PageSection title="Transactions">
+        <p className="settings-note">
+          Local transaction records include manual entries and receipt-linked
+          entries created only after receipt confirmation.
+        </p>
         {visibleTransactions.length === 0 ? (
-          <div className="empty-state">No transactions match the current filters.</div>
+          <div className="empty-state">
+            {transactions.length === 0
+              ? "No transactions yet. Add one above to start tracking local spending."
+              : "No transactions match the current filters."}
+          </div>
         ) : (
           <div className="item-list">
             {visibleTransactions.map((transaction) => (

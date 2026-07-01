@@ -50,6 +50,16 @@ function renderRecurringPage(options: RenderRecurringPageOptions = {}) {
 }
 
 describe("RecurringPage", () => {
+  it("explains recurring expenses are planning records", () => {
+    renderRecurringPage();
+
+    expect(screen.getByText(/Planning estimate only/)).toBeInTheDocument();
+    expect(screen.getByText(/Use recurring expenses/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No recurring expenses yet/, { selector: ".empty-state" }),
+    ).toHaveTextContent("do not create transactions");
+  });
+
   it("creates a recurring expense through the action callback", async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn(async () => ({ ok: true }));
