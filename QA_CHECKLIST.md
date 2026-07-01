@@ -322,6 +322,37 @@ Pre-release checks before a `v0.1.0` tag:
 - [ ] CSV import smoke for transaction and recurring previews, warnings/errors, and strong confirmation.
 - [ ] Release notes match the exact commit being tagged.
 
+## 2026-07-01 MVP v0.1 Release Browser Pass Results
+
+Environment: production build served by Vite preview at `http://127.0.0.1:4173/`.
+
+Overall result: completed with release-gate limitations. No critical product bug was found in completed browser flows, but `v0.1.0` tagging is not approved yet because native file-picker flows and recurring create via native date input still need a human normal-browser pass.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Production preview HTTP probe | Passed | Root page, `manifest.webmanifest`, and built JS asset `assets/index-fFERKGN6.js` returned HTTP 200 from `127.0.0.1:4173`. |
+| First launch / baseline state | Passed | Dashboard rendered seed totals, pending review count, monthly trend, item analytics controls, and recent transactions from production preview. |
+| Mobile viewport smoke | Passed | Dashboard, Transactions, Receipts, Recurring, Categories, and Settings rendered at 390x844 with page headings, main content, and no horizontal overflow. |
+| Manual transaction CRUD | Passed | Created `QA Manual Market`, Dashboard July spend updated, edited it to `QA Manual Market Edited`, then confirmed two-step delete and Dashboard returned to July `0,00 ₽`. |
+| Recurring expense CRUD | Partial | Edit/delete passed on seeded `Adobe` record, monthly estimate updated and returned to `5 006,62 ₽`, and no transaction was created. Create was not completed because in-app browser automation could not populate the native `input type=date` control; component/repository tests still cover recurring create. |
+| Receipt parser -> draft -> review -> confirm | Passed | Parsed sample receipt, saved `GREEN MARKET` draft, reviewed source/items, marked reviewed, confirmed receipt, and verified one receipt-linked transaction plus updated June Dashboard trend. |
+| Manual AI simulator -> draft -> review -> confirm | Passed | Used email sample, saved Gmail-sourced `Fresh Market` AI draft, verified provider/model/source metadata, marked reviewed, confirmed, and verified linked transaction plus Dashboard trend update. |
+| Local Drive/Docs selected-file import | Not completed | File input button was visible, but no accessible Windows file picker appeared through in-app browser/Computer Use. Needs human normal-browser file-picker pass. |
+| Gmail-like manual import | Passed for paste path | Imported custom pasted `QA GMAIL SHOP` text with Gmail metadata, reviewed duplicate/source metadata, confirmed it, and verified receipt-linked transaction. `.eml` file picker path remains covered by tests but needs human normal-browser picker pass. |
+| Item analytics / search / filter / drilldown | Passed | All-time item analytics showed confirmed receipt items; search `milk` narrowed drilldown rows; Dairy filter narrowed totals to 2 Milk items and showed source receipt rows. |
+| Dashboard monthly trends | Passed | June trend updated from 5 to 8 transactions after confirmed receipt flows, then reset restored seed June trend to 5 transactions. |
+| JSON export / reset / restore | Partial | Export JSON showed `Backup JSON exported`; reset required `RESET LOCAL DATA`, restored seed records, and removed QA data. JSON restore file-picker path was not completed and needs human normal-browser pass. |
+| CSV export | Passed | Transactions, confirmed receipt items, and recurring CSV export buttons showed success statuses. |
+| CSV transaction import preview/confirm | Not completed | Transactions CSV file input remained disabled for import because native file selection could not be automated. Needs human normal-browser pass. |
+| CSV recurring import preview/confirm | Not completed | Recurring CSV file input remained disabled for import because native file selection could not be automated. Needs human normal-browser pass. |
+| Display currency / FX behavior | Passed | Saved display currency as USD, Dashboard switched to `$`, then restored RUB and Dashboard returned to `₽`; original source amounts remained visible in recurring/items during the pass. |
+| Settings local-first / disabled Google / PWA notes | Passed | Settings showed IndexedDB local storage, JSON backup guidance, CSV preview wording, PWA manifest/no-service-worker note, and Google integration planned/not connected with provider calls blocked. |
+
+Release blockers before tag:
+
+- Run a normal-browser manual pass for native file selection: Local Drive/Docs selected-file import, Gmail `.eml` selection, JSON restore, transaction CSV import, and recurring CSV import.
+- Run a normal-browser recurring create pass to verify the native date control can be filled by a human user.
+- Re-run the release validation commands after any blocker fix or manual-confirmed doc update.
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:

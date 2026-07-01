@@ -4836,3 +4836,107 @@ Production preview probe with approved escalation:
 ### Next recommended phase
 
 Run the manual release browser pass from `QA_CHECKLIST.md` against production preview or an explicitly approved HTTPS static host, then tag the validated commit as `v0.1.0` and prepare a GitHub release from `RELEASE_NOTES.md`. Keep Phase 9L and all real provider work deferred until the MVP v0.1 release pass is complete.
+
+## 2026-07-01: MVP v0.1 release browser pass completed with blockers
+
+### Goal
+
+Run the MVP v0.1 release browser pass from `QA_CHECKLIST.md` against production preview before deciding whether the `v0.1.0` tag is approved.
+
+### Environment
+
+- Production build: `npm run build`
+- Preview URL: `http://127.0.0.1:4173/`
+- Preview probe: root page, `manifest.webmanifest`, and built JS asset `assets/index-fFERKGN6.js` returned HTTP 200.
+- Browser surface: Codex in-app browser against production preview.
+
+### Browser pass results
+
+Passed:
+
+- First launch/baseline Dashboard state rendered from seed data.
+- Mobile viewport smoke at 390x844 passed for Dashboard, Transactions, Receipts, Recurring, Categories, and Settings with no horizontal overflow.
+- Manual transaction CRUD passed: created `QA Manual Market`, verified Dashboard July spend, edited it, confirmed two-step delete, and verified Dashboard returned to `0,00 ₽` for July.
+- Recurring edit/delete passed on seeded `Adobe`: monthly estimate changed, then returned to `5 006,62 ₽`; no transaction was created.
+- Receipt parser flow passed: parsed sample text, saved `GREEN MARKET` draft, reviewed, marked reviewed, confirmed, and verified the receipt-linked transaction and Dashboard June trend update.
+- Manual AI simulator flow passed: used email sample, created Gmail-sourced `Fresh Market` draft with provider/model/source metadata, reviewed, confirmed, and verified linked transaction and Dashboard trend update.
+- Gmail-like manual paste import passed: imported custom `QA GMAIL SHOP` text with Gmail metadata, reviewed duplicate/source metadata, confirmed, and verified linked transaction.
+- Dashboard item analytics passed: All time showed confirmed receipt items, search `milk` narrowed drilldown rows, and Dairy filter narrowed totals to 2 Milk items.
+- Dashboard monthly trend passed: June trend updated during receipt confirmations and reset restored the seed June trend.
+- JSON export action passed with visible `Backup JSON exported` status.
+- Reset local data passed with strong confirmation `RESET LOCAL DATA`; records returned to 25, seed Dashboard/Transactions/Receipts/Recurring returned, and QA data was removed.
+- CSV export passed for transactions, confirmed receipt items, and recurring expenses via visible success statuses.
+- Display currency/FX passed: saved USD, Dashboard switched to `$`, restored RUB, and Dashboard returned to `₽`.
+- Settings copy/status passed for local-first IndexedDB storage, JSON backup guidance, CSV preview wording, PWA manifest/no-service-worker note, and disabled Google integration/provider calls blocked.
+
+Not completed in browser automation:
+
+- Recurring create: the in-app browser automation could not populate the native `input type=date` control for the Add recurring form. Existing component/repository tests cover recurring create, but this still needs a normal-browser human pass before tagging.
+- Local Drive/Docs selected-file import: the file input was visible, but no accessible Windows file picker appeared through the in-app browser/Computer Use path.
+- Gmail `.eml` file selection: paste path passed, but native file picker selection still needs a normal-browser pass.
+- JSON restore: export and reset passed, but restore file selection remained blocked by native file-picker automation.
+- CSV transaction import and recurring import: file inputs remained unavailable to automation, so preview/confirmation write paths still need a normal-browser pass.
+
+### Release decision
+
+`v0.1.0` tagging is not approved by this browser pass yet. Required before tagging:
+
+- Run a human normal-browser pass for native file selection: Local Drive/Docs selected-file import, Gmail `.eml` selection, JSON restore, transaction CSV import, and recurring CSV import.
+- Run a human normal-browser recurring create pass to verify the native date control accepts user input.
+- Re-run validation after any fix or manual-confirmed documentation update.
+
+### Product changes
+
+No product runtime changes were made during the browser pass. No release-blocking product bug was fixed because no critical product bug was found in the flows that completed.
+
+### Final validation after browser-pass documentation
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+git diff -- package.json package-lock.json src public index.html
+```
+
+Result: no diff. Product code, package files, and public runtime assets were not changed.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test
+```
+
+Result: succeeded with approved escalation because Vitest/esbuild has previously hit sandbox `spawn EPERM`. 25 test files passed, 182 tests passed.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built `dist/index.html`, `dist/assets/index-BeOeuupv.css`, and `dist/assets/index-fFERKGN6.js`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:4173/
+Invoke-WebRequest http://127.0.0.1:4173/manifest.webmanifest
+Invoke-WebRequest http://127.0.0.1:4173/assets/index-fFERKGN6.js
+```
+
+Result: production preview probe succeeded. Root, manifest, and built JS asset returned HTTP 200; manifest parsed as `name=FinAiTr`, `display=standalone`.
