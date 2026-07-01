@@ -4476,3 +4476,123 @@ Result: no diff. Package dependencies remain unchanged.
 ### Next recommended phase
 
 Phase 9L: Narrow Drive/Docs picker-based selected-file provider planning behind disabled gates. Re-check official Google Drive Picker, OAuth, scope, token, privacy, and user data policy requirements before implementation; keep selected-file access explicit, draft-only, and disabled/no-op until backend and consent gates are satisfied.
+## 2026-07-01: Phase 10A local production build and PWA packaging readiness completed
+
+### Goal
+
+Verify and document that the local-first MVP can be built, previewed from production assets, and prepared for static PWA hosting without changing product behavior.
+
+### Completed
+
+- Confirmed the working tree started clean on `master...origin/master` at commit `9f9f6b0 test: add source provider qa pass` before Phase 10A edits.
+- Added `README.md` with install, dev server, production build, production preview, validation, local data/privacy, and static hosting notes.
+- Added `PRODUCTION_BUILD.md` with `dist/` build expectations, local production preview steps, PWA packaging state, static hosting requirements, and browser-origin data notes.
+- Updated `index.html` app metadata with application name and mobile web app metadata while preserving the existing title, description, theme color, favicon, and manifest link.
+- Updated `public/manifest.webmanifest` with `id`, `scope`, `orientation`, `categories`, and `lang` while keeping the existing app name, description, standalone display, colors, and SVG icon placeholder.
+- Updated `PLAN.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `QA_CHECKLIST.md` to record Phase 10A production-build/PWA packaging readiness and the no-service-worker limitation.
+- Fixed a time-dependent repository test by freezing only `Date` in `src/persistence/repositories/financeRepository.test.ts` to `2026-06-15T12:00:00.000Z`. Product code was not changed. This keeps the seeded June 2026 dashboard expectations stable after the real date moved to July 2026.
+- Verified `dist/manifest.webmanifest` contains `name: FinAiTr`, `display: standalone`, and `scope: /` after build.
+- Kept product runtime constraints unchanged:
+  - no service worker or offline asset cache;
+  - no backend, auth, sync, real Google provider, real AI provider, bank, OCR, crypto, brokerage, payment, or live FX integration;
+  - no changes to transaction, receipt, recurring, Dashboard, JSON backup/restore, CSV, FX, source-provider, or confirmation semantics;
+  - no dependency changes.
+
+### Changed files
+
+- `README.md`
+- `PRODUCTION_BUILD.md`
+- `PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `index.html`
+- `public/manifest.webmanifest`
+- `src/persistence/repositories/financeRepository.test.ts`
+- `PROGRESS.md`
+
+### Validation commands and results
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test -- --run
+```
+
+Initial result: failed in `src/persistence/repositories/financeRepository.test.ts` because the real current date is 2026-07-01, while the seeded dashboard fixtures and service-boundary expectations use June 2026 as the current-month scenario. The failure showed July current-month overview values such as monthly spend `0` where June seeded totals were expected.
+
+Fix: added a test-only fixed `Date` clock in `financeRepository.test.ts` with `vi.useFakeTimers({ toFake: ["Date"] })` and `vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"))`. This does not fake async timers and does not change product code.
+
+```powershell
+npm run test -- --run src/persistence/repositories/financeRepository.test.ts
+```
+
+Result after fix: succeeded. 1 test file passed, 44 tests passed. npm printed warnings that the file path and `--run` are parsed as npm CLI args, but Vitest completed successfully.
+
+```powershell
+npm run test -- --run
+```
+
+Final result: succeeded. 25 test files passed, 179 tests passed. npm printed the existing warning that `--run` is an unknown npm CLI config in this npm version.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist/`, including `dist/index.html`, `dist/assets/index-BeOeuupv.css`, and `dist/assets/index-DisxiSSz.js`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+npm run preview -- --host 127.0.0.1 --port 4173
+```
+
+Initial sandboxed preview result: failed with `spawn EPERM` while Vite/esbuild loaded `vite.config.ts`. This was a sandbox execution issue, not an application build issue.
+
+Final production preview probe with approved escalation:
+
+- Preview URL: `http://127.0.0.1:4173/`
+- Root page: HTTP 200
+- `manifest.webmanifest`: HTTP 200
+- Built JS asset `assets/index-DisxiSSz.js`: HTTP 200
+- `dist/manifest.webmanifest` parsed locally with `name=FinAiTr`, `display=standalone`, and `scope=/`
+- Preview server was stopped after the probe.
+
+```powershell
+npm run typecheck
+npm run lint
+```
+
+Result after the test-date fix: both succeeded.
+
+### Known limitations
+
+- Phase 10A does not implement service-worker caching. The app is local-first for finance data, but static app assets are not guaranteed to load offline.
+- Production preview data is origin-scoped and separate from dev-server data unless moved with Settings JSON backup/restore.
+- A manual browser pass is still recommended before demo/release to visually inspect production preview UI, native file inputs, downloaded files, and browser IndexedDB state.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Phase 10B: production-preview manual browser QA and optional static-hosting dry run. Keep future real provider work behind the existing OAuth/backend/privacy/release gates.

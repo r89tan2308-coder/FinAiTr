@@ -252,6 +252,29 @@ Known limitations:
 Future implementation QA gates:
 
 - [ ] Before any real provider access is added, repeat the Phase 9K source-provider release-candidate matrix with OAuth/backend gates enabled only in a dedicated future phase.
+
+## Phase 10A Production Build and PWA Packaging QA
+
+Phase 10A is production-readiness documentation and preview verification. It adds no backend, OAuth, real Google provider, token storage, source sync, service worker, offline cache, dependency, or accounting behavior change.
+
+Automated and local checks:
+
+- [x] `README.md` documents install, local dev, production build, production preview, validation, local data/privacy, and static hosting basics.
+- [x] `PRODUCTION_BUILD.md` documents `npm run build`, `npm run preview`, `dist/`, manifest/icon expectations, static hosting, and no-service-worker limitations.
+- [x] `index.html` includes app description, theme color, app name metadata, favicon, and manifest link.
+- [x] `public/manifest.webmanifest` includes name, short name, description, start URL, scope, display mode, colors, categories, language, and SVG icon placeholder.
+- [x] Documentation states that local-first IndexedDB data does not imply guaranteed offline asset loading.
+- [x] Production preview must serve `dist/` and return the root page plus manifest successfully.
+
+Manual browser checks before release/demo:
+
+- [ ] Run `npm run build`.
+- [ ] Run `npm run preview -- --host 127.0.0.1 --port 4173`.
+- [ ] Open `http://127.0.0.1:4173/` and verify Dashboard renders.
+- [ ] Open Settings and verify storage/PWA status renders.
+- [ ] Verify preview-origin IndexedDB data is separate from dev-server data unless moved with JSON backup/restore.
+- [ ] Verify there is no offline-mode promise in UI or docs beyond local browser data ownership.
+
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:

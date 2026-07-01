@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSeedFinanceSnapshot } from "../../data/seedData";
 import {
   convertMoney,
@@ -58,12 +58,15 @@ import {
 
 describe("finance repository transaction CRUD", () => {
   beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"));
     await financeDb.delete();
     await financeDb.open();
   });
 
   afterAll(async () => {
     await financeDb.delete();
+    vi.useRealTimers();
   });
 
   it("creates, updates, deletes, and recalculates dashboard totals", async () => {

@@ -2,10 +2,15 @@
   "name": "FinAiTr",
   "short_name": "FinAiTr",
   "description": "Mobile-first local personal finance tracker for receipt item analysis.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f6f7f8",
   "theme_color": "#0f766e",
+  "categories": ["finance", "productivity", "utilities"],
+  "lang": "en",
   "icons": [
     {
       "src": "/app-icon.svg",
@@ -15,4 +20,3 @@
     }
   ]
 }
-

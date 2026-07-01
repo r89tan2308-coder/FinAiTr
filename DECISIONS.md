@@ -785,3 +785,21 @@ Consequences:
 - `src/persistence/repositories/financeRepository.test.ts` now includes a source-provider release-candidate path from local Gmail import through review, confirmation, Dashboard/item analytics, JSON backup/restore, and confirmed receipt item CSV export.
 - Phase 9K adds no real Gmail, Google Drive, Google Docs, OAuth, backend runtime, token storage, provider revocation, provider-data deletion runtime, source sync, scheduled sync, dependency, OCR, real AI provider, or accounting behavior change.
 - Future real provider phases move after the Phase 9K release-candidate baseline and still require the existing OAuth/backend/privacy/release gates.
+
+## 2026-07-01: Phase 10A documents production build readiness without offline claims
+
+Decision:
+
+Treat production packaging readiness as documentation plus build/preview verification before adding new provider scope. Keep the app as a Vite static build with existing PWA metadata, but do not add a service worker or claim guaranteed offline asset loading in Phase 10A.
+
+Rationale:
+
+The MVP is already local-first for finance data through IndexedDB, JSON backups, and CSV files. That is separate from offline app-shell caching. Production users and static-hosting reviewers need clear build, preview, deployment, and privacy notes before any broader release or future provider work.
+
+Consequences:
+
+- `README.md` and `PRODUCTION_BUILD.md` describe install, development, validation, production build, local production preview, `dist/`, static hosting, local data ownership, and privacy constraints.
+- `index.html` and `public/manifest.webmanifest` carry explicit app metadata for the current PWA shell.
+- Production preview must verify built `dist/` assets, not only the Vite dev server.
+- No service worker, offline cache, backend, OAuth, provider API, token storage, dependency, or product behavior change is added.
+- Dev, production preview, and deployed URLs remain separate browser origins with separate IndexedDB data.

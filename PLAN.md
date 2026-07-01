@@ -1026,6 +1026,43 @@ Perform an end-to-end release-candidate QA pass across every current receipt sou
 - Package dependencies remain unchanged.
 - Typecheck, lint, tests, build, audit, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
+
+## Phase 10A: Local production build and PWA packaging readiness
+
+### Goal
+
+Verify and document that the local-first MVP can be built, previewed from production assets, and prepared for static PWA hosting without changing product behavior.
+
+### Scope
+
+- Review current Vite and PWA packaging readiness.
+- Add or update `README.md` with setup, development, validation, production build, production preview, local data, and privacy notes.
+- Add a production build guide for local preview and static hosting.
+- Ensure production metadata is present for app name, description, theme color, manifest, and icon placeholders.
+- Document that the app is local-first through IndexedDB, JSON, and CSV files.
+- Document that Phase 10A does not add a service worker or guaranteed offline asset caching.
+- Document static hosting requirements and privacy warnings for browser-local finance data.
+- Run a production preview check against built `dist/` assets.
+- Update QA, architecture, product, decision, and progress docs.
+
+### Non-goals
+
+- No product behavior changes.
+- No service worker or offline caching implementation unless a later explicit phase plans it.
+- No backend, auth, sync, real Google provider, real AI provider, bank, OCR, crypto, brokerage, payment, or live FX integration.
+- No changes to transaction, receipt, recurring, Dashboard, JSON backup/restore, CSV, FX, source-provider, or confirmation semantics.
+- No dependency changes unless a validation blocker requires it.
+
+### Acceptance
+
+- `README.md` explains local development, production build, production preview, validation, local data ownership, privacy, and static hosting basics.
+- Production build guide documents `npm run build`, `npm run preview`, `dist/`, manifest/icon expectations, no-service-worker limitation, and static hosting requirements.
+- PWA metadata remains present in `index.html` and `public/manifest.webmanifest`.
+- Production preview serves `dist/` and returns the app shell plus manifest successfully.
+- Package dependencies remain unchanged.
+- Typecheck, lint, tests, build, audit, production preview check, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
+
 ## Deferred until after first MVP
 
 - Real OCR provider.
