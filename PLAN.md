@@ -1098,6 +1098,42 @@ Polish the local-first MVP release candidate so first-use copy, empty states, Se
 - Package dependencies remain unchanged.
 - Typecheck, lint, tests, build, audit, production preview check, and `git diff --check` pass.
 - `PROGRESS.md` states the next recommended phase.
+
+## Phase 10C: MVP v0.1 release notes, deployment decision, and static hosting readiness
+
+### Goal
+
+Prepare the local-first MVP for a v0.1 release checkpoint by documenting release notes, deployment choices, static-hosting requirements, safety risks, and pre-release validation gates without changing product behavior.
+
+### Scope
+
+- Add `RELEASE_NOTES.md` for MVP v0.1 current features, safety notes, known limitations, deployment decision, static hosting requirements/risks, pre-release checklist, and GitHub tag/release guidance.
+- Document local-only usage versus static hosting as an explicit deployment decision.
+- Document static hosting requirements for a local-first finance PWA, including HTTPS, SPA fallback, no secrets, no backend, origin-scoped IndexedDB, and JSON backup expectations.
+- Ensure docs state app data is stored in browser IndexedDB and users should export JSON backups before reset, browser cleanup, profile changes, or moving between origins.
+- Add a pre-release checklist covering build, typecheck, lint, tests, audit, production preview, mobile viewport smoke, JSON backup/restore smoke, and CSV import/export smoke.
+- Add GitHub release/tag process notes where appropriate.
+- Update README, production build, QA, product, architecture, decision, and progress docs.
+
+### Non-goals
+
+- No deployment unless a target is explicitly selected, reviewed, and approved.
+- No product runtime behavior changes.
+- No new product features.
+- No hosting-provider-specific secrets or tokens.
+- No backend/server runtime, service worker, offline cache, real Google integration, OAuth, provider calls, network calls, real AI, OCR, bank, crypto, brokerage, payment, or live FX integration.
+- No changes to receipt, transaction, analytics, recurring, FX, JSON backup/restore, CSV import/export, or Dashboard semantics.
+
+### Acceptance
+
+- `RELEASE_NOTES.md` exists and covers current features, limitations, safety notes, deployment decision, static hosting requirements/risks, pre-release checklist, and GitHub tag/release notes.
+- README, production build, QA, product, architecture, decision, and progress docs reflect Phase 10C.
+- Docs clearly state IndexedDB origin-scoped storage and JSON backup expectations before reset/browser cleanup/origin moves.
+- Docs do not claim a deployment, backend, real provider, service worker, or offline asset cache.
+- Package dependencies and product runtime code remain unchanged.
+- Typecheck, lint, tests, build, audit, production preview check, and `git diff --check` pass.
+- `PROGRESS.md` states the next recommended phase.
+
 ## Deferred until after first MVP
 
 - Real OCR provider.

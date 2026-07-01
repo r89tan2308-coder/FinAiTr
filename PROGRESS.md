@@ -4724,3 +4724,115 @@ Final production preview probe with approved escalation:
 ### Next recommended phase
 
 Run the manual release browser pass from `QA_CHECKLIST.md` against production preview or a deployed HTTPS static host. Keep Phase 9L and all real provider work deferred until the manual MVP release pass is complete.
+## 2026-07-01: Phase 10C MVP v0.1 release notes and deployment readiness completed
+
+### Goal
+
+Document MVP v0.1 release readiness, deployment posture, static-hosting requirements, local-first data safety notes, and pre-release checks without changing product runtime behavior.
+
+### Completed
+
+- Added `RELEASE_NOTES.md` for FinAiTr MVP v0.1.0.
+- Documented current MVP features, limitations, data safety notes, and known release risks.
+- Documented the deployment decision:
+  - local-only usage is the recommended v0.1 posture until the manual release browser pass is complete;
+  - static hosting is acceptable only for an explicitly approved demo/private release from a validated `dist/` build;
+  - no deployment was performed in this phase.
+- Documented static-hosting requirements and risks for a local-first finance PWA:
+  - browser IndexedDB is tied to the exact origin;
+  - JSON backups must be exported before reset, browser storage cleanup, profile changes, or moving between dev, preview, and hosted origins;
+  - CSV files are reporting/import aids, not full backups;
+  - no service worker/offline asset cache is included in v0.1;
+  - no secrets, tokens, user data, backups, CSV files, receipt text, or IndexedDB exports should be uploaded to hosting.
+- Added pre-release checklist coverage for build, tests, audit, production preview, mobile viewport smoke, JSON backup/reset/restore smoke, CSV import/export smoke, Settings copy, and release tag readiness.
+- Added GitHub release/tag guidance for a future `v0.1.0` tag after the manual release pass.
+- Updated release/deployment documentation across README, production build notes, plan, product spec, architecture, decisions, and QA checklist.
+- Kept product runtime constraints unchanged:
+  - no product code changes;
+  - no dependency or package metadata changes;
+  - no backend/server;
+  - no real Google APIs, OAuth, provider sync, tokens, OCR, real AI, bank, crypto, brokerage, payment, or live FX integration;
+  - no service worker or offline cache.
+
+### Changed files
+
+- `RELEASE_NOTES.md`
+- `README.md`
+- `PRODUCTION_BUILD.md`
+- `PLAN.md`
+- `PRODUCT_SPEC.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `QA_CHECKLIST.md`
+- `PROGRESS.md`
+
+### Validation commands and results
+
+```powershell
+git diff -- package.json package-lock.json src public index.html
+```
+
+Result: no diff. Product code, app metadata files, package files, and public runtime assets were not changed by Phase 10C.
+
+```powershell
+git diff --check
+```
+
+Result: succeeded. Git printed CRLF normalization warnings only.
+
+```powershell
+npm run typecheck
+```
+
+Result: succeeded.
+
+```powershell
+npm run lint
+```
+
+Result: succeeded.
+
+```powershell
+npm run test
+```
+
+Initial sandboxed result: failed with `spawn EPERM` while Vitest/Vite/esbuild loaded `vitest.config.js`. This was a sandbox execution issue, not a test failure.
+
+Final result with approved escalation: succeeded. 25 test files passed, 182 tests passed.
+
+```powershell
+npm run build
+```
+
+Result: succeeded. Vite built production assets into `dist/`, including `dist/index.html`, `dist/assets/index-BeOeuupv.css`, and `dist/assets/index-fFERKGN6.js`.
+
+```powershell
+npm audit
+```
+
+Result: succeeded. Found 0 vulnerabilities.
+
+```powershell
+npm run preview -- --port 4173
+```
+
+Production preview probe with approved escalation:
+
+- Preview URL: `http://127.0.0.1:4173/`
+- Root page: HTTP 200
+- `manifest.webmanifest`: HTTP 200
+- Built JS asset `assets/index-fFERKGN6.js`: HTTP 200
+- Manifest parsed through the preview server with `name=FinAiTr`, `display=standalone`, and `start_url=/`
+- Preview server was stopped after the probe and `http://127.0.0.1:4173/` no longer responded.
+
+### Known limitations
+
+- Phase 10C is documentation-only and does not replace the manual release browser pass.
+- Native browser file picker flows still need manual verification for JSON restore and CSV imports before tagging or static-hosting release.
+- Mobile viewport smoke checks still need a manual browser pass against production preview or the final hosted origin.
+- Static hosting remains optional and should not be performed until the user explicitly selects and approves a target.
+- Git prints CRLF normalization warnings on this Windows working tree.
+
+### Next recommended phase
+
+Run the manual release browser pass from `QA_CHECKLIST.md` against production preview or an explicitly approved HTTPS static host, then tag the validated commit as `v0.1.0` and prepare a GitHub release from `RELEASE_NOTES.md`. Keep Phase 9L and all real provider work deferred until the MVP v0.1 release pass is complete.

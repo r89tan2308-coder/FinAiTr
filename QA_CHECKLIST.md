@@ -295,6 +295,33 @@ Manual release pass additions:
 - [ ] Confirm receipt source cards and saved-draft empty state make draft-only behavior clear before any confirmation.
 - [ ] Confirm native file inputs for JSON restore and CSV imports still require preview/confirmation in a normal browser.
 - [ ] Confirm no UI copy says Google is connected, offline-ready, or backed by real AI/provider calls.
+
+## Phase 10C MVP v0.1 Release Notes and Deployment Readiness QA
+
+Phase 10C is release documentation and deployment-readiness work only. It adds no product features, backend, OAuth, real provider access, network calls, hosting secrets, service worker, offline cache, dependency, or accounting behavior change.
+
+Documentation checks:
+
+- [x] `RELEASE_NOTES.md` documents v0.1 current features, safety notes, known limitations, deployment decision, static hosting requirements/risks, pre-release checklist, and GitHub tag/release guidance.
+- [x] README links to release notes and states that users should export JSON backups before reset, browser cleanup, profile changes, or moving origins.
+- [x] `PRODUCTION_BUILD.md` documents local-only usage versus static hosting and the risks of a local-first finance PWA on a hosted origin.
+- [x] Product, architecture, plan, decision, QA, and progress docs record Phase 10C as documentation-only release readiness.
+
+Pre-release checks before a `v0.1.0` tag:
+
+- [ ] `git diff --check`
+- [ ] `npm run typecheck`
+- [ ] `npm run lint`
+- [ ] `npm run test -- --run`
+- [ ] `npm run build`
+- [ ] `npm audit`
+- [ ] Production preview HTTP probe for root, manifest, and one built JS asset.
+- [ ] Mobile viewport smoke for Dashboard, Transactions, Receipts, Recurring, Categories, and Settings.
+- [ ] JSON backup, reset, and restore smoke in a normal browser.
+- [ ] CSV export smoke for transactions, confirmed receipt items, and recurring expenses.
+- [ ] CSV import smoke for transaction and recurring previews, warnings/errors, and strong confirmation.
+- [ ] Release notes match the exact commit being tagged.
+
 ## Manual Browser Checklist
 
 Use this checklist for a human browser pass before a release checkpoint or demo:

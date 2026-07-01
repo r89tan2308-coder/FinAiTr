@@ -2,13 +2,14 @@
 
 ## Current repository state
 
-The repository now has a Phase 9D OAuth/backend decision record and disabled backend skeleton on top of the Phase 9C disabled Google readiness skeleton, Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status. Phase 9D records the backend-required OAuth/security decision, adds disabled backend endpoint definitions and a no-op backend client. Phase 9E adds privacy, consent, and user-facing disclosure planning. Phase 9F adds a local-only manual Drive/Docs selected-file import prototype that reads supported user-selected text-like files in the browser and saves validated receipt drafts only. Phase 9G adds a local-only Gmail-like manual import prototype for pasted email-like text and selected `.eml`/`.txt` files, still saving validated receipt drafts only. Phase 9H adds planning-only OAuth/backend release gates for any future real Google provider access. Phase 9I adds a disabled typed backend OAuth architecture skeleton for future start, callback, status, disconnect, revoke, and source sync boundaries. Phase 9J unifies the current local/mock receipt source-provider UX and source metadata display. Phase 9K completes a local/mock source-provider end-to-end QA and release-candidate pass. Phase 10A documents and verifies local production build, production preview, PWA metadata, and static-hosting readiness. Phase 10B adds first-use copy, empty-state, release-checklist, and installability QA polish without changing product behavior. The app still adds no real Google API, Gmail API, OAuth flow, backend server, scheduled sync, token storage, OCR, real AI calls, or service-worker offline cache.
+The repository now has a Phase 9D OAuth/backend decision record and disabled backend skeleton on top of the Phase 9C disabled Google readiness skeleton, Phase 9B mock Google source-provider boundary, Phase 9A planning checkpoint, and Phase 8F React + TypeScript + Vite app shell. Runtime behavior remains the Phase 8F local-first MVP: local data models, Dexie-backed IndexedDB persistence, service-loaded screens, manual transaction CRUD, manual local currency conversion settings, deterministic receipt parsing, persisted receipt drafts, receipt draft review/edit, reviewed-draft confirmation into final receipt data plus one linked transaction, recurring expense CRUD, transaction-only monthly trend analytics, searchable confirmed receipt item analytics, future receipt ingestion contracts, a local-only manual AI extraction simulator that saves AI-extracted output as receipt drafts only, Settings tools for JSON backup/restore/reset, CSV export/import flows, and a documented MVP stabilization QA checklist. Phase 9A adds documentation for future Gmail, Google Drive, and Google Docs source integrations. Phase 9B adds mock/local Gmail, Google Drive, and Google Docs source providers that can create validated receipt drafts only. Phase 9C adds environment placeholder names, a disabled Google integration status model, disabled real-provider placeholders, and a Settings planned/not connected status. Phase 9D records the backend-required OAuth/security decision, adds disabled backend endpoint definitions and a no-op backend client. Phase 9E adds privacy, consent, and user-facing disclosure planning. Phase 9F adds a local-only manual Drive/Docs selected-file import prototype that reads supported user-selected text-like files in the browser and saves validated receipt drafts only. Phase 9G adds a local-only Gmail-like manual import prototype for pasted email-like text and selected `.eml`/`.txt` files, still saving validated receipt drafts only. Phase 9H adds planning-only OAuth/backend release gates for any future real Google provider access. Phase 9I adds a disabled typed backend OAuth architecture skeleton for future start, callback, status, disconnect, revoke, and source sync boundaries. Phase 9J unifies the current local/mock receipt source-provider UX and source metadata display. Phase 9K completes a local/mock source-provider end-to-end QA and release-candidate pass. Phase 10A documents and verifies local production build, production preview, PWA metadata, and static-hosting readiness. Phase 10B adds first-use copy, empty-state, release-checklist, and installability QA polish. Phase 10C adds MVP v0.1 release notes, deployment decision, and static-hosting readiness documentation without changing product behavior. The app still adds no real Google API, Gmail API, OAuth flow, backend server, scheduled sync, token storage, OCR, real AI calls, or service-worker offline cache.
 
 Existing files:
 
 - `AGENTS.md`
 - `README.md`
 - `PRODUCTION_BUILD.md`
+- `RELEASE_NOTES.md`
 - `finance_ai_tracker_codex_plan_ru.md`
 - project planning docs;
 - `QA_CHECKLIST.md` for Phase 8F manual browser QA and known limitations;
@@ -49,6 +50,7 @@ Existing files:
 - Phase 9K source-provider end-to-end QA and release-candidate regression coverage.
 - Phase 10A production build and PWA packaging readiness docs.
 - Phase 10B first-use copy, release checklist, and installability QA polish docs/tests.
+- Phase 10C MVP v0.1 release notes, deployment decision, and static-hosting readiness docs.
 
 Still missing by design until later phases:
 
@@ -77,7 +79,7 @@ No backend is required for the first MVP.
 
 ## Production build and PWA packaging
 
-Phase 10A keeps the build pipeline on Vite, and Phase 10B keeps the same packaging model while clarifying first-use and installability expectations:
+Phase 10A keeps the build pipeline on Vite, Phase 10B keeps the same packaging model while clarifying first-use and installability expectations, and Phase 10C documents the v0.1 release/deployment decision without changing the build pipeline:
 
 ```text
 npm run build
@@ -106,7 +108,7 @@ Phase 10A and Phase 10B do not add a service worker or offline asset cache. The 
 
 Phase 10B UI copy remains presentation-only. Transactions explains local manual entries and receipt-linked entries, Receipts explains source imports are draft-only until review/confirm, Recurring explains records are planning estimates and do not create transactions, and Settings explains local storage, JSON backup/restore, CSV import/export, reset scope, manual FX, disabled Google access, and installability limits.
 
-Browser storage is origin-scoped. Data under the dev server origin, production preview origin, and any deployed HTTPS origin is separate. Moving data between origins should use Settings JSON backup and restore.
+Browser storage is origin-scoped. Data under the dev server origin, production preview origin, and any deployed HTTPS origin is separate. Moving data between origins should use Settings JSON backup and restore. Phase 10C recommends local-only usage until manual release smoke passes; static hosting is acceptable only for an explicitly approved demo/private release that serves `dist/` over HTTPS, avoids secrets, keeps SPA fallback configured, and tells users to export JSON backups before reset, browser cleanup, profile changes, or origin moves.
 
 ## Architecture principles
 

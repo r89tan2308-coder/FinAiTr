@@ -820,3 +820,20 @@ Consequences:
 - README, production build docs, QA checklist, product spec, architecture, and progress docs must record accurate release/installability expectations.
 - Regression tests should cover the new copy guardrails where practical.
 - No service worker, offline cache, backend, OAuth, real provider call, token storage, dependency, or accounting behavior change is added.
+
+## 2026-07-01: Phase 10C documents v0.1 release readiness without deployment
+
+Decision:
+
+Prepare MVP v0.1 release notes, deployment decision guidance, static-hosting requirements/risks, pre-release checklist, and GitHub tag guidance as documentation only. Do not deploy or change runtime behavior in Phase 10C.
+
+Rationale:
+
+The local-first MVP is close to a release checkpoint, but a finance PWA needs explicit release notes and deployment guidance before a tag or hosted build. Users must understand that data lives in browser IndexedDB on a specific origin, JSON backups are required before reset/browser cleanup/origin moves, static hosting does not provide server backup, and installability does not imply offline app-shell caching.
+
+Consequences:
+
+- `RELEASE_NOTES.md` becomes the source for v0.1 features, safety notes, known limitations, deployment decision, pre-release checklist, and GitHub release/tag notes.
+- Local-only usage remains the recommended v0.1 path until the manual browser release pass is complete.
+- Static hosting requires explicit approval, HTTPS, SPA fallback, no secrets, no backend, and repeated production preview/manual smoke checks.
+- No service worker, offline cache, backend, hosting secret, OAuth, real provider call, dependency, or product behavior change is added.
